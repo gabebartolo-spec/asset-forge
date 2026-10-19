@@ -18,3 +18,7 @@ host = "127.0.0.1"
 port = 7860
 library_dir = "library"
 exports_dir = "exports"
+
+[generators]
+# The menu on Step 1, top to bottom; the first is preselected (D-018, D-019).
+order = ["hi3dgen", "triposg"]
