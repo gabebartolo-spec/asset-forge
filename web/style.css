@@ -75,3 +75,6 @@ button:focus-visible, .drop:focus-within { outline: 2px solid #fff; outline-offs
   .drop img { max-height: 52px; }
   .gen { padding: 6px 12px; margin-bottom: 4px; }
 }
+.hint { margin: -4px 0 8px; color: var(--dim); font-size: 13px; }
+.viewer-msg.busy { background: rgba(10, 12, 16, 0.82); }
+.viewer-msg .sub { margin-top: 10px; font-size: 14px; color: var(--dim); max-width: 380px; }

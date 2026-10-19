@@ -40,8 +40,9 @@ function clock(s) {
   const t = Math.floor(s || 0);
   return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
 }
-function roundedVram(gb) {
-  return `about ${Math.max(1, Math.round(gb))} GB of video memory (VRAM)`;
+function makerVram(id) { // the same wording the maker card shows (one source: the menu)
+  const g = state.menu && state.menu.generators.find((x) => x.id === id);
+  return g ? g.vram.replace(/^uses /, "") : "";
 }
 function note(el, text, kind = "") {
   el.className = "note " + kind;
@@ -153,6 +154,7 @@ async function start() {
   state.busy = true;
   render();
   note($("note"), "");
+  $("foot-info").textContent = "Making your model...";
   showMsg("Sending your picture...", "busy");
   try {
     if (!state.asset) {
@@ -178,7 +180,8 @@ async function watch(jobId) {
     if (j.state === "done") return finish(j);
     if (j.state === "failed") return fail(j.error || j.message);
     let text;
-    if (j.state === "waiting") text = "Waiting for the graphics card (another job is running)...";
+    if (j.state === "waiting") text = "Waiting for the graphics card (another job is running)...
+It starts by itself when the graphics card is free. You can leave this open.";
     else if (j.state === "queued") text = j.ahead > 0 ? "Waiting for your turn..." : "Getting ready...";
     else text = `Making your model... ${clock(j.elapsed_s)}\nThis can take ${makerTime()}.`;
     showMsg(text, "busy");
@@ -201,7 +204,7 @@ async function finish(job) {
   state.done = true;
   const name = state.menu.generators.find((g) => g.id === r.generator)?.name || r.generator;
   $("foot-info").textContent = `Made with ${name} in ${Math.round(r.total_s)} s`
-    + (r.gpu_peak_gb != null ? `, using ${roundedVram(r.gpu_peak_gb)}` : "");
+    + (makerVram(r.generator) ? `, using ${makerVram(r.generator)}` : "");
   note($("note"), "Happy with it? Press Next. Not right? Press Redo for a new try.", "ok");
   render();
 }
