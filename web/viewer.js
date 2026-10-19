@@ -27,8 +27,11 @@ export class Viewer {
     this.ready = false;
     new ResizeObserver(() => this.resize()).observe(el);
     this.resize();
+    this.markers = null;
+    this.mixer = null;
     this.renderer.setAnimationLoop(() => {
       this.controls.update();
+      this.updateMarkers();
       this.renderer.render(this.scene, this.camera);
     });
   }
@@ -43,11 +46,15 @@ export class Viewer {
 
   clear() {
     if (this.model) this.scene.remove(this.model);
+    if (this.markers) this.scene.remove(this.markers.group);
     this.model = null;
+    this.markers = null;
+    this.mixer = null;
     this.ready = false;
   }
 
-  async load(url) {
+  // keepView: swap the model but leave the camera where the user put it.
+  async load(url, { keepView = false, pose = false, showBones = false } = {}) {
     const gltf = await new GLTFLoader().loadAsync(url);
     this.clear();
     const clay = new THREE.MeshStandardMaterial({ color: 0xc9ccd4, roughness: 0.7, metalness: 0.0 });
@@ -71,9 +78,69 @@ export class Viewer {
     this.scene.add(holder);
     this.model = holder;
     const h = box.max.y - box.min.y;
-    this.controls.target.set(0, h / 2, 0);
-    this.camera.position.set(1.6, h * 0.75, 3.0);
-    this.controls.update();
+    if (!keepView) {
+      this.controls.target.set(0, h / 2, 0);
+      this.camera.position.set(1.6, h * 0.75, 3.0);
+      this.controls.update();
+    }
+    this.buildMarkers(root, h);
+    this.setBones(showBones);
+    if (pose && gltf.animations.length) { // freeze the quick test pose (the clip's last frame)
+      this.mixer = new THREE.AnimationMixer(root);
+      const clip = gltf.animations[0];
+      this.mixer.clipAction(clip).play();
+      this.mixer.setTime(clip.duration);
+      root.updateMatrixWorld(true);
+    }
     this.ready = true;
+  }
+
+  // Joint dots and the lines between them, drawn on top of the body so they can be seen.
+  buildMarkers(root, height) {
+    const bones = [];
+    root.traverse((o) => { if (o.isBone) bones.push(o); });
+    if (!bones.length) return;
+    const group = new THREE.Group();
+    group.visible = false;
+    group.renderOrder = 10;
+    const dotGeo = new THREE.SphereGeometry(height * 0.012, 12, 8);
+    const dotMat = new THREE.MeshBasicMaterial({ color: 0xffd23f, depthTest: false, transparent: true });
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x4fd0ff, depthTest: false, transparent: true });
+    const dots = bones.map((b) => {
+      const d = new THREE.Mesh(dotGeo, dotMat);
+      d.renderOrder = 11;
+      group.add(d);
+      return d;
+    });
+    const pairs = [];
+    bones.forEach((b, i) => {
+      const j = bones.indexOf(b.parent);
+      if (j >= 0) pairs.push([j, i]);
+    });
+    const lineGeo = new THREE.BufferGeometry();
+    lineGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(pairs.length * 6), 3));
+    const lines = new THREE.LineSegments(lineGeo, lineMat);
+    lines.frustumCulled = false;
+    lines.renderOrder = 10;
+    group.add(lines);
+    this.scene.add(group);
+    this.markers = { group, bones, dots, pairs, lines };
+  }
+
+  updateMarkers() {
+    const m = this.markers;
+    if (!m || !m.group.visible) return;
+    const v = new THREE.Vector3();
+    const pos = m.lines.geometry.attributes.position;
+    m.bones.forEach((b, i) => { b.getWorldPosition(v); m.dots[i].position.copy(v); });
+    m.pairs.forEach(([a, b], k) => {
+      pos.setXYZ(k * 2, ...m.dots[a].position.toArray());
+      pos.setXYZ(k * 2 + 1, ...m.dots[b].position.toArray());
+    });
+    pos.needsUpdate = true;
+  }
+
+  setBones(on) {
+    if (this.markers) this.markers.group.visible = on;
   }
 }

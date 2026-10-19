@@ -24,7 +24,7 @@ TEST_POSES: dict[str, list[tuple[str, str, float]]] = {
     "bird": [
         ("Neck1", "X", 15), ("Head", "Z", 40),
         ("Tail1", "X", 30),
-        ("LeftWing1", "Z", -70), ("RightWing1", "Z", 40),
+        ("LeftWing1", "Z", -45), ("RightWing1", "Z", 20),
         ("LeftUpperLeg", "X", -40), ("LeftLowerLeg", "X", 55),
     ],
 }
