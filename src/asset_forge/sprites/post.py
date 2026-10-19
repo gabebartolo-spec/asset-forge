@@ -10,6 +10,11 @@ from PIL import Image
 from .grid import detect_grid, downsample_on_grid
 from .presets import EDGE_MARGIN_PX, OUTLINE_COLOUR, OUTLINE_LUMA_MAX, Preset
 
+POCKET_MIN_PX = 24  # an enclosed background-coloured area this big is not part of the sprite
+MAX_HOLE_PX = 12  # smaller see-through pockets are filled; bigger ones fail the QA instead
+SHADOW_MIN_PX = 20
+SHADOW_FLATNESS = 0.35  # a shadow is at most this tall compared to its width
+SECOND_BODY_FRAC = 0.25  # a separate piece this big, relative to the biggest, is a second body
 N4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
 N8 = N4 + ((1, 1), (1, -1), (-1, 1), (-1, -1))
 
@@ -70,8 +75,32 @@ def remove_background(rgb: np.ndarray, tolerance: float = 48.0) -> np.ndarray:
     labels, _ = label(close)
     touching = _border_labels(labels)
     is_bg = np.isin(labels, list(touching)) if touching else np.zeros((h, w), bool)
+    # Large background-coloured pockets (inside a curled tail, between legs) are background too.
+    sizes = np.bincount(labels.ravel())
+    for k in np.nonzero(sizes >= POCKET_MIN_PX)[0]:
+        if k:
+            is_bg |= labels == k
+    is_bg |= _ground_shadow(rgb, is_bg)
     out = np.dstack([rgb, np.where(is_bg, 0, 255).astype(np.uint8)])
     out[is_bg, :3] = 0
+    return out
+
+
+def _ground_shadow(rgb: np.ndarray, is_bg: np.ndarray) -> np.ndarray:
+    """Flat, wide, grey patches on the background: a drawn ground shadow, not the sprite."""
+    f = rgb.astype(np.float64)
+    sat = (f.max(axis=2) - f.min(axis=2)) / np.maximum(f.max(axis=2), 1.0)
+    grey = (sat < 0.12) & (luma(rgb) > 80) & (luma(rgb) < 235) & ~is_bg
+    labels, n = label(grey)
+    pad = np.pad(is_bg, 1, constant_values=False)
+    near_bg = pad[:-2, 1:-1] | pad[2:, 1:-1] | pad[1:-1, :-2] | pad[1:-1, 2:]
+    out = np.zeros_like(is_bg)
+    for k in range(1, n + 1):
+        region = labels == k
+        ys, xs = np.nonzero(region)
+        h, w = ys.max() - ys.min() + 1, xs.max() - xs.min() + 1
+        if len(ys) >= SHADOW_MIN_PX and h <= SHADOW_FLATNESS * w and (region & near_bg).any():
+            out |= region
     return out
 
 
@@ -88,8 +117,21 @@ def remove_strays(rgba: np.ndarray, max_px: int = 2) -> np.ndarray:
     return out
 
 
+def keep_main_bodies(rgba: np.ndarray, frac: float = SECOND_BODY_FRAC) -> np.ndarray:
+    """Drop separate pieces smaller than `frac` of the biggest (stray bits of a sheet or a tail)."""
+    out = rgba.copy()
+    labels, n = label(opaque(out), eight=True)
+    if n <= 1:
+        return out
+    sizes = np.bincount(labels.ravel(), minlength=n + 1)
+    for k in range(1, n + 1):
+        if sizes[k] < frac * sizes[1:].max():
+            out[labels == k] = 0
+    return out
+
+
 def fill_holes(rgba: np.ndarray) -> np.ndarray:
-    """Fill pockets enclosed by the sprite with their neighbours' common colour."""
+    """Fill small pockets enclosed by the sprite with their neighbours' common colour."""
     out = rgba.copy()
     h, w, _ = out.shape
     labels, n = label(~opaque(out), eight=True)
@@ -98,6 +140,8 @@ def fill_holes(rgba: np.ndarray) -> np.ndarray:
         if k in edge:
             continue
         region = labels == k
+        if region.sum() > MAX_HOLE_PX:
+            continue
         ys, xs = np.nonzero(region)
         around = []
         for y, x in zip(ys, xs, strict=True):
@@ -192,7 +236,7 @@ def process(raw: Image.Image, preset: Preset) -> tuple[np.ndarray, dict]:
     rgb = np.asarray(raw.convert("RGB"))
     info = detect_grid(rgb)
     native = downsample_on_grid(rgb, info)
-    sprite = remove_strays(remove_background(native))
+    sprite = keep_main_bodies(remove_strays(remove_background(native)))
     sprite = fit_to_canvas(sprite, preset.art_size)
     sprite = reduce_palette(sprite, preset.max_colours - 1)
     sprite = fill_holes(remove_strays(sprite))

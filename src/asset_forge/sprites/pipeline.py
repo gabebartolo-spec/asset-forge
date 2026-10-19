@@ -14,7 +14,7 @@ from .post import process
 from .presets import Preset, get_preset
 from .qa import check_back_view, check_sprite
 
-MAX_ATTEMPTS = 4
+MAX_ATTEMPTS = 6
 
 
 class SpriteFailed(Exception):

@@ -128,3 +128,36 @@ def test_process_accepts_any_pil_mode():
     assert isinstance(rgba_img, Image.Image)
     sprite, _ = process(rgba_img, SC)
     assert sprite.shape == (96, 96, 4)
+
+
+def test_large_enclosed_background_pocket_is_removed_but_small_holes_filled():
+    img = native_creature().copy()
+    img[60:80, 56:66] = 255  # 200 px white pocket inside the body (curled tail)
+    rgba = remove_background(img)
+    assert rgba[70, 60, 3] == 0
+    s = good_sprite(SC)
+    s[50:52, 48:50] = 0
+    assert fill_holes(s)[50, 48, 3] == 255
+    big = good_sprite(SC)
+    big[45:60, 45:55] = 0  # large enclosed gap: left for the QA to fail, not painted over
+    assert fill_holes(big)[50, 50, 3] == 0
+
+
+def test_flat_grey_ground_shadow_is_removed_but_the_body_stays():
+    img = native_creature().copy()
+    yy, xx = np.mgrid[0:128, 0:128]
+    shadow = ((yy - 112) / 5.0) ** 2 + ((xx - 60) / 30.0) ** 2 <= 1
+    img[shadow & (img.sum(axis=2) == 765)] = (150, 150, 150)
+    rgba = remove_background(img)
+    assert rgba[112, 60, 3] == 0 and rgba[70, 60, 3] == 255
+
+
+def test_small_separate_pieces_are_dropped_but_an_equal_second_body_is_kept_for_the_qa():
+    from asset_forge.sprites.post import keep_main_bodies
+
+    s = np.zeros((64, 64, 4), np.uint8)
+    s[10:40, 10:40] = 255  # 900 px body
+    s[50:56, 50:56] = 255  # 36 px bit
+    assert keep_main_bodies(s)[52, 52, 3] == 0
+    s[44:62, 4:30] = 255  # second body, half the size
+    assert keep_main_bodies(s)[50, 10, 3] == 255

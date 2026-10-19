@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .post import bbox, edge_pixels, is_outline, label, opaque
+from .post import SECOND_BODY_FRAC, bbox, edge_pixels, is_outline, label, opaque
 from .presets import BACK_IOU_MAX, EDGE_MARGIN_PX, Preset
 
 
@@ -39,6 +39,9 @@ def check_sprite(rgba: np.ndarray, preset: Preset) -> list[str]:
     if count > 1:
         sizes = np.bincount(labels.ravel(), minlength=count + 1)[1:]
         strays = int(((sizes <= 2) & (sizes < sizes.max())).sum())
+        big = np.sort(sizes[sizes > 2])
+        if len(big) > 1 and big[-2] >= SECOND_BODY_FRAC * big[-1]:
+            problems.append("The sprite has more than one separate body (a second creature).")
         if strays:
             problems.append(f"{strays} stray pixels (pieces of 1-2 pixels) float off the body.")
 

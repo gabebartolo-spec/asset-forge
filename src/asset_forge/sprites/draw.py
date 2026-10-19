@@ -17,21 +17,21 @@ SDXL_REPO = "stabilityai/stable-diffusion-xl-base-1.0"
 LORA_REPO = "nerijs/pixel-art-xl"
 LORA_FILE = "pixel-art-xl.safetensors"
 
-STYLE = "pixel art, flat colours, clean pixels, full body, centred, plain white background"
+STYLE = (
+    "pixel art, flat colours, clean pixels, full body, centred, "
+    "plain white background, no shadow, no ground, a single creature, solo"
+)
 VIEW_PROMPTS = {
     "front": "{subject}, three-quarter front view, facing the viewer, face and eyes visible, "
     + STYLE,
-    "back": (
-        "{subject}, seen from directly behind, rear view, turned away from the viewer, "
-        "showing its back and rump and tail, head turned away, face hidden, " + STYLE
-    ),
+    "back": "pixel art, one single sprite of {subject} from behind, back view, battle sprite, "
+    "plain white background, no shadow",
 }
+_BAD = "blurry, smooth, gradient, photo, 3d render, text, watermark, cropped, scenery, plants, "
+_BAD += "shadow, ground, floor, multiple creatures, sprite sheet, collage, group, many, top view"
 NEGATIVE = {
-    "front": "blurry, smooth, gradient, photo, 3d render, text, watermark, cropped, scenery",
-    "back": (
-        "face, eyes, mouth, front view, facing the viewer, blurry, smooth, gradient, photo, "
-        "3d render, text, watermark, cropped, scenery"
-    ),
+    "front": _BAD,
+    "back": "face, eyes, mouth, front view, facing the viewer, side view, profile, " + _BAD,
 }
 
 

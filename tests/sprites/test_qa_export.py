@@ -111,7 +111,7 @@ def test_lazy_back_that_copies_the_front_is_never_exported(tmp_path):
     with pytest.raises(SpriteFailed) as e:
         make_pair("a small fire lizard creature", drawer, "southern_cross", seed=1)
     assert e.value.view == "back" and "same outline" in str(e.value)
-    assert [v for v, _ in drawer.calls].count("back") == 4  # retried on new seeds, then gave up
+    assert [v for v, _ in drawer.calls].count("back") == 6  # retried on new seeds, then gave up
     assert list(tmp_path.iterdir()) == []
 
 
@@ -127,3 +127,12 @@ def test_same_seed_same_pixels():
     a = make_pair("x", FakeDrawer(noise=6), "southern_cross", seed=3)
     b = make_pair("x", FakeDrawer(noise=6), "southern_cross", seed=3)
     assert np.array_equal(a.front, b.front) and np.array_equal(a.back, b.back)
+
+
+def test_a_second_body_fails():
+    from asset_forge.sprites.post import add_outline
+
+    s = np.zeros((96, 96, 4), np.uint8)
+    s[8:30, 8:30] = (200, 90, 40, 255)
+    s[60:84, 60:84] = (200, 90, 40, 255)  # two equal bodies far apart
+    assert "more than one separate body" in words(check_sprite(add_outline(s), SC))
