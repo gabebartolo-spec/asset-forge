@@ -180,8 +180,7 @@ async function watch(jobId) {
     if (j.state === "done") return finish(j);
     if (j.state === "failed") return fail(j.error || j.message);
     let text;
-    if (j.state === "waiting") text = "Waiting for the graphics card (another job is running)...
-It starts by itself when the graphics card is free. You can leave this open.";
+    if (j.state === "waiting") text = "Waiting for the graphics card (another job is running)...\nIt starts by itself when the graphics card is free. You can leave this open.";
     else if (j.state === "queued") text = j.ahead > 0 ? "Waiting for your turn..." : "Getting ready...";
     else text = `Making your model... ${clock(j.elapsed_s)}\nThis can take ${makerTime()}.`;
     showMsg(text, "busy");
