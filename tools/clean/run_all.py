@@ -74,6 +74,32 @@ def row(folder: Path, shade: str, label: str, ref: Image.Image | None) -> Image.
     return im
 
 
+def lit_numbers(out: Path, prompt: str) -> dict:
+    """Mean luminance and saturation of the lit front colour render (body pixels) against the
+    reference picture (its opaque pixels). Ratios near 1.0 mean the sheet reads true."""
+    import numpy as np
+
+    ref = np.asarray(Image.open(MODELS / "bakeoff" / "refs" / f"{prompt}.png").convert("RGBA"),
+                     np.float64) / 255
+    rgb = ref[ref[..., 3] > 0.5][:, :3]
+    img = Image.open(out / "after" / "front_colour.png").convert("RGB")
+    shot = np.asarray(img, np.float64) / 255
+    body = np.abs(shot - shot[2, 2]).sum(axis=2) > 0.06
+    inner = body.copy()
+    for sh in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        inner &= np.roll(body, sh, (0, 1))
+    lit = shot[inner]
+
+    def stats(c):
+        mx, mn = c.max(axis=1), c.min(axis=1)
+        luma = (c @ [0.2126, 0.7152, 0.0722]).mean()
+        return float(luma), float(((mx - mn) / np.maximum(mx, 1e-6)).mean())
+
+    (rl, rs), (ll, ls) = stats(rgb), stats(lit)
+    return {"ref_luma": round(rl, 3), "lit_luma": round(ll, 3), "luma_ratio": round(ll / rl, 3),
+            "ref_sat": round(rs, 3), "lit_sat": round(ls, 3), "sat_ratio": round(ls / rs, 3)}
+
+
 def sheet(cand: str, prompt: str, out: Path, dest: Path):
     ref = Image.open(MODELS / "bakeoff" / "refs" / f"{prompt}.png").convert("RGBA")
     bg = Image.new("RGBA", ref.size, (255, 255, 255, 255))
@@ -109,7 +135,8 @@ def main():
             broken = check(r, TYPES[prompt])
             s = r["silhouette"]
             lp = r["loose_parts"]
-            summary[f"{cand}/{prompt}"] = r | {"gate_failures": broken}
+            summary[f"{cand}/{prompt}"] = r | {"gate_failures": broken,
+                                                "lit_vs_reference": lit_numbers(out, prompt)}
             lines.append(
                 f"| {cand} | {prompt} | {r['type']} | {r['raw_triangles']:,} | {r['triangles']:,} "
                 f"| {r['texture']['width']} | {lp['raw_after_weld']} / "

@@ -19,12 +19,20 @@ What it does, in order (every number is in report.json):
     turn that puts the head toward -Y is chosen, by outline, and it must win by a clear margin.
     Origin at the feet (centre of the footprint, lowest point on z = 0), real-world scale.
  4. Decimate (collapse) to the type's triangle budget, smart UV unwrap.
- 5. Colour (generators here are geometry only): the reference is projected onto the surfaces that
-    face the camera it was drawn from (humanoid/monster: the front, -Y; animal: the creature's
-    left side, +X), with a ray-cast test so hidden texels get no paint. Nothing is mirrored. Every
-    other texel (back, far side, grazing edges, under-sides) gets a low-frequency colour: a
-    normal-weighted Gaussian blend of the projected colour in 3D, never a copy of the picture.
-    The result is padded and written to ONE texture on ONE material.
+ 5. Colour (generators here are geometry only), all in bake_colour:
+    - Registration: the reference outline is fitted to the model's outline seen from the reference
+      camera (bbox scale per axis, then a smoothed per-row sideways shift), so a head drawn off
+      centre lands on the geometric head. If the model's head band and the picture's differ too
+      much in width (HEAD_WIDTH_RATIO) the head gets low-frequency colour instead of a misplaced
+      face.
+    - Projection onto surfaces facing the reference camera (humanoid/monster: front, -Y; animal:
+      the left side, +X) with a ray test. Side views also mirror LEFT-RIGHT across the body's
+      sagittal plane (x only, never front-to-back), so the far flank gets the eye and the face.
+    - Fill (back, grazing edges, under-sides): normalised diffusion over the mesh graph from
+      well-facing, sunlit vertices (grazing under 70 deg and shadow-dark pixels are ignored),
+      interpolated across triangles; the picture fades into it over FEATHER x height of surface.
+    The result is padded and written to ONE texture on ONE material; report.json records the
+    albedo's luminance and saturation per height band against the reference.
  6. Silhouette check: 1 - IoU of the filled outline against the raw mesh from front, side, top.
 """
 
@@ -292,51 +300,152 @@ def uv_unwrap(obj):
     bpy.ops.object.mode_set(mode="OBJECT")
 
 
-MIN_FACING = 0.2   # a texel must face the reference camera at least this much to be projected
-FULL_FACING = 0.6  # ...and is fully trusted from here on
+MIN_FACING = 0.34  # cos 70 deg: a surface turned more than 70 deg from the camera is grazing
+FULL_FACING = 0.70  # fully trusted from here (cos 45 deg)
+SHADOW_REL = 0.55   # fill ignores reference pixels darker than this x their height-band median
+BANDS = 8           # height bands for the shadow median
+HEAD_BAND = 0.16    # top fraction of the height treated as the head for the registration gate
+# model head-band width / reference head-band width allowed (squeeze to 2.5x, stretch to 2x)
+HEAD_WIDTH_RATIO = (0.4, 2.0)
+FEATHER = 0.05      # projected-to-fill seam width, as a fraction of the height (surface distance)
+REG_ROWS = 64
+MIRROR_DIRS = ((1.0, 0.0, 0.0),)  # camera directions that are side views (animals)
 
 
-def gaussian_fft(shape, sigma):
-    ker = 1.0
-    for ax, n in enumerate(shape):
-        f = np.fft.fftfreq(n) if ax < len(shape) - 1 else np.fft.rfftfreq(n)
-        g = np.exp(-2 * np.pi ** 2 * sigma ** 2 * f ** 2)
-        ker = ker * g.reshape([-1 if i == ax else 1 for i in range(len(shape))])
-    return ker
+def luma(c):
+    return c[..., 0] * 0.2126 + c[..., 1] * 0.7152 + c[..., 2] * 0.0722
 
 
-def blend_field(p, colour, alpha, co):
-    """Low-frequency colour at every point p: normal-weighted (alpha) Gaussian average of the
-    projected colour in a 3D grid, using the smallest blur that reaches data. Returns (n, 3)."""
-    lo = co.min(axis=0)
-    cell = max(np.ptp(co, axis=0)) / GRID
-    pad = int(BLUR_SIGMAS[-1] * 2)
-    shape = tuple(int(np.ceil(np.ptp(co[:, i]) / cell)) + 1 + 2 * pad for i in range(3))
-    idx = np.clip(((p - lo) / cell).astype(int) + pad, 0, np.array(shape) - 1)
-    flat = np.ravel_multi_index(idx.T, shape)
-    wsum = np.bincount(flat, weights=alpha, minlength=int(np.prod(shape))).reshape(shape)
-    csum = np.stack([np.bincount(flat, weights=alpha * colour[:, c],
-                                 minlength=int(np.prod(shape))).reshape(shape) for c in range(3)])
-    out = np.full((len(p), 3), np.nan)
-    for sg in BLUR_SIGMAS:
-        ker = gaussian_fft(shape, sg)
-        bw = np.fft.irfftn(np.fft.rfftn(wsum) * ker, s=shape)
-        bc = [np.fft.irfftn(np.fft.rfftn(csum[c]) * ker, s=shape) for c in range(3)]
-        wv = bw[tuple(idx.T)]
-        ok = np.isnan(out[:, 0]) & (wv > 0.01 * bw.max())
-        for c in range(3):
-            out[ok, c] = bc[c][tuple(idx.T)][ok] / wv[ok]
-    out[np.isnan(out[:, 0])] = 0.5
-    return out
+def sat(c):
+    mx = c.max(axis=-1)
+    return np.where(mx > 1e-6, (mx - c.min(axis=-1)) / np.maximum(mx, 1e-6), 0.0)
+
+
+def ramp(w):
+    return np.clip((w - MIN_FACING) / (FULL_FACING - MIN_FACING), 0, 1)
+
+
+def smooth_rows(a, sigma):
+    """Gaussian smooth of a 1D array with NaN holes (holes interpolated first)."""
+    x = np.arange(len(a))
+    ok = ~np.isnan(a)
+    if not ok.any():
+        return np.zeros_like(a)
+    a = np.interp(x, x[ok], a[ok])
+    k = np.exp(-0.5 * (np.arange(-int(3 * sigma) - 1, int(3 * sigma) + 2) / sigma) ** 2)
+    pad = len(k) // 2
+    ap = np.pad(a, pad, mode="edge")
+    return np.convolve(ap, k / k.sum(), mode="valid")
+
+
+def row_extents(sn, vn, rows):
+    r = np.minimum((vn * rows).astype(int), rows - 1)
+    lo = np.full(rows, np.inf)
+    hi = np.full(rows, -np.inf)
+    np.minimum.at(lo, r, sn)
+    np.maximum.at(hi, r, sn)
+    bad = ~np.isfinite(lo)
+    lo[bad] = np.nan
+    hi[bad] = np.nan
+    return lo, hi
+
+
+class Registration:
+    """Fit the reference's alpha outline to the model's outline seen from the reference camera.
+    Both outlines are normalised to their own bounding box (scale per axis), then each height row
+    of the reference is shifted sideways so its outline centre sits on the model's outline centre
+    (a smoothed shear), so a head that the generator centred but the picture drew left of centre
+    still lands on the geometric head."""
+
+    def __init__(self, P_all, right, ref):
+        s, z = P_all @ right, P_all[:, 2]
+        self.s0, self.sw = s.min(), max(np.ptp(s), 1e-9)
+        self.z0, self.zh = z.min(), max(np.ptp(z), 1e-9)
+        ys, xs = np.where(ref_mask(ref))
+        self.rx0, self.rx1, self.ry0, self.ry1 = xs.min(), xs.max() + 1, ys.min(), ys.max() + 1
+        rw, rh = self.rx1 - 1 - self.rx0, self.ry1 - 1 - self.ry0
+        mlo, mhi = row_extents((s - self.s0) / self.sw, (z - self.z0) / self.zh, REG_ROWS)
+        rlo, rhi = row_extents((xs - self.rx0) / max(rw, 1), (ys - self.ry0) / max(rh, 1),
+                               REG_ROWS)
+        self.mid_m = smooth_rows((mlo + mhi) / 2, 2.0)
+        self.mid_r = smooth_rows((rlo + rhi) / 2, 2.0)
+        self.shift = self.mid_r - self.mid_m
+        self.rows_v = (np.arange(REG_ROWS) + 0.5) / REG_ROWS
+        h0 = int((1 - HEAD_BAND) * REG_ROWS)
+        wm = np.nanmean((mhi - mlo)[h0:]) if np.isfinite((mhi - mlo)[h0:]).any() else np.nan
+        wr = np.nanmean((rhi - rlo)[h0:]) if np.isfinite((rhi - rlo)[h0:]).any() else np.nan
+        ok = bool(wr and np.isfinite(wr) and wr > 0)
+        self.head_width_ratio = float(wm / wr) if ok else float("nan")
+        self.head_shift = float(np.mean(self.shift[h0:]))
+
+    def head_ok(self):
+        lo, hi = HEAD_WIDTH_RATIO
+        return bool(np.isfinite(self.head_width_ratio) and lo <= self.head_width_ratio <= hi)
+
+    def to_ref(self, sv, z):
+        """(s along camera right, z) of source points -> reference pixel coordinates."""
+        vn = np.clip((z - self.z0) / self.zh, 0, 1)
+        xn = (sv - self.s0) / self.sw + np.interp(vn, self.rows_v, self.shift)
+        px = self.rx0 + xn * (self.rx1 - 1 - self.rx0)
+        py = self.ry0 + vn * (self.ry1 - 1 - self.ry0)
+        return px, py
+
+
+def box_blur(img, r):
+    if r <= 0:
+        return img
+    k = 2 * r + 1
+    p = np.pad(img, ((r, r), (r, r), (0, 0)), mode="edge")
+    c = np.cumsum(np.cumsum(p, axis=0), axis=1)
+    c = np.pad(c, ((1, 0), (1, 0), (0, 0)))
+    return (c[k:, k:] - c[:-k, k:] - c[k:, :-k] + c[:-k, :-k]) / (k * k)
+
+
+def mesh_edges(vi):
+    e = np.concatenate([vi[:, [0, 1]], vi[:, [1, 2]], vi[:, [2, 0]]])
+    e = np.unique(np.sort(e, axis=1), axis=0)
+    return np.concatenate([e, e[:, ::-1]])  # both directions (i -> j)
+
+
+def graph_mean(x, edges, deg):
+    """One diffusion step: average of self and neighbours along mesh edges (x: (nv, k))."""
+    acc = np.zeros_like(x)
+    for c in range(x.shape[1]):
+        acc[:, c] = np.bincount(edges[:, 0], weights=x[edges[:, 1], c], minlength=len(x))
+    return (x + acc) / (deg[:, None] + 1)
+
+
+def diffuse(x, edges, deg, iters):
+    for _ in range(iters):
+        x = graph_mean(x, edges, deg)
+    return x
+
+
+def fill_colour(c, s, edges, deg):
+    """Normalised graph diffusion of colour c (nv,3) with source weight s (nv,): at each vertex the
+    smallest scale (iterations) that has gathered enough weight is used, so the fill is the
+    nearest trustworthy colour on the surface, never a UV-block average."""
+    x = np.concatenate([c * s[:, None], s[:, None]], axis=1)
+    out = np.full((len(c), 3), np.nan)
+    done = 0
+    for target in (3, 6, 12, 24, 48, 96, 192, 384):
+        x = diffuse(x, edges, deg, target - done)
+        done = target
+        ok = np.isnan(out[:, 0]) & (x[:, 3] > 0.12)
+        out[ok] = x[ok, :3] / x[ok, 3:4]
+    if np.isnan(out[:, 0]).any():
+        out[np.isnan(out[:, 0])] = c[s > 0].mean(axis=0) if (s > 0).any() else 0.5
+    return diffuse(out, edges, deg, 3)
 
 
 def bake_colour(obj, ref, d0, size):
-    """Project `ref` onto obj (see module docstring). Returns (RGBA array, stats)."""
+    """Project `ref` onto obj (see module docstring). Returns (RGBA array, stats, info)."""
     me = obj.data
     me.calc_loop_triangles()
     uvl = me.uv_layers.active.data
     tris = me.loop_triangles
     nt = len(tris)
+    nv = len(me.vertices)
     vi = np.empty(nt * 3, np.int32)
     li = np.empty(nt * 3, np.int32)
     tris.foreach_get("vertices", vi)
@@ -348,11 +457,16 @@ def bake_colour(obj, ref, d0, size):
     uvs = uvs.reshape(-1, 2)[li].astype(np.float64) * size  # (nt,3,2) in texels
     P = co[vi]  # (nt,3,3)
     N = np.cross(P[:, 1] - P[:, 0], P[:, 2] - P[:, 0])
-    N /= np.maximum(np.linalg.norm(N, axis=1, keepdims=True), 1e-12)
+    area = np.linalg.norm(N, axis=1)
+    N /= np.maximum(area[:, None], 1e-12)
+    vn = np.zeros((nv, 3))
+    for k in range(3):
+        np.add.at(vn, vi[:, k], N * area[:, None])
+    vn /= np.maximum(np.linalg.norm(vn, axis=1, keepdims=True), 1e-12)
 
-    pos = np.zeros((size, size, 3))
-    nrm = np.zeros((size, size, 3))
-    cov = np.zeros((size, size), bool)
+    # Rasterise: per texel the triangle and barycentric weights.
+    tid = np.full((size, size), -1, np.int32)
+    bary = np.zeros((size, size, 3))
     for t in range(nt):
         a, b, c = uvs[t]
         x0, x1 = int(max(min(a[0], b[0], c[0]) - 1, 0)), int(min(max(a[0], b[0], c[0]) + 1, size))
@@ -369,61 +483,110 @@ def bake_colour(obj, ref, d0, size):
         m = (w0 >= 0) & (w1 >= 0) & (w2 >= 0)
         if not m.any():
             continue
-        p = w0[m, None] * P[t, 0] + w1[m, None] * P[t, 1] + w2[m, None] * P[t, 2]
         ys, xs = np.nonzero(m)
-        pos[y0 + ys, x0 + xs] = p
-        nrm[y0 + ys, x0 + xs] = N[t]
-        cov[y0 + ys, x0 + xs] = True
+        tid[y0 + ys, x0 + xs] = t
+        bary[y0 + ys, x0 + xs] = np.stack([w0[m], w1[m], w2[m]], axis=1)
+    cov = tid >= 0
+    ty, tx = np.nonzero(cov)
+    tt = tid[ty, tx]
+    bw = bary[ty, tx]                                        # (m,3)
+    p = np.einsum("mk,mkc->mc", bw, P[tt])                   # texel positions
+    n = N[tt]                                                # face normals
+    d_arr = np.array(d0, float)
+    wt = np.einsum("mk,mkc->mc", bw, vn[vi[tt]]) @ d_arr     # smooth facing
 
-    # Map the mesh's outline box in the camera plane onto the reference's outline box.
-    f = -np.array(d0, float)
+    f = -d_arr
     right = np.cross(f, [0, 0, 1.0])
     right /= np.linalg.norm(right)
-    sv = co @ right
-    zv = co[:, 2]
-    ys, xs = np.where(ref_mask(ref))
-    rh, rw = ref.shape[:2]
-    rx0, rx1, ry0, ry1 = xs.min(), xs.max() + 1, ys.min(), ys.max() + 1
+    reg = Registration(co, right, ref)
+    height = max(np.ptp(co[:, 2]), 1e-9)
     mask = ref_mask(ref, erode=3)
-
-    ty, tx = np.nonzero(cov)
-    p = pos[ty, tx]
-    n = nrm[ty, tx]
-    w = n @ np.array(d0, float)  # > 0: faces the camera the reference was drawn from
-    cand = w >= MIN_FACING
+    rh, rw = ref.shape[:2]
     bvh = bvhtree.BVHTree.FromObject(obj, bpy.context.evaluated_depsgraph_get())
     eps = max(np.ptp(co, axis=0)) * 1e-3
-    colour = np.zeros((len(ty), 4))
-    known = np.zeros(len(ty), bool)
     d_vec = Vector(d0)
-    for k in np.nonzero(cand)[0]:
-        origin = Vector(p[k] + n[k] * eps)
-        if bvh.ray_cast(origin, d_vec)[0] is None:  # not hidden from the camera
-            known[k] = True
-    q = p[known]
-    u = (q @ right - sv.min()) / max(np.ptp(sv), 1e-9)
-    v = (q[:, 2] - zv.min()) / max(np.ptp(zv), 1e-9)
-    px = rx0 + u * (rx1 - rx0 - 1)
-    py = ry0 + v * (ry1 - ry0 - 1)
-    ix = np.clip(np.rint(px).astype(int), 0, rw - 1)
-    iy = np.clip(np.rint(py).astype(int), 0, rh - 1)
-    inside = mask[iy, ix]
-    rgb = ref[iy, ix, :3]
-    kk = np.nonzero(known)[0]
-    colour[kk[inside], :3] = rgb[inside]
-    known[kk[~inside]] = False  # outline background: treat as unpainted
-    # Trust in a projected texel falls off towards the silhouette (stretched pixels there).
-    alpha = np.where(known, np.clip((w - MIN_FACING) / (FULL_FACING - MIN_FACING), 0, 1), 0.0)
-    painted = int(known.sum())
+    mirror = tuple(round(x, 3) for x in d0) in MIRROR_DIRS
+    cx = 0.0
+    if mirror:  # sagittal plane: the body's mid-length slice (the head and tail may be turned)
+        yv = co[:, 1]
+        body = (yv > yv.min() + 0.25 * np.ptp(yv)) & (yv < yv.max() - 0.25 * np.ptp(yv))
+        cx = (co[body, 0].min() + co[body, 0].max()) / 2
+    n_mirrored = [0]
 
-    # Low-frequency colour for everything else, and under the grazing edges of the painted part.
-    field = blend_field(p, colour[:, :3], alpha, co)
-    colour[:, :3] = alpha[:, None] * colour[:, :3] + (1 - alpha[:, None]) * field
-    colour[:, 3] = 1.0
+    def sources(Pp, w, Nn):
+        """Source point on the surface that the camera sees for each point: the point itself, or
+        (side views) for the far flank its left-right mirror image across the sagittal plane
+        (x -> 2 cx - x only, never front-to-back) snapped to the nearest surface."""
+        Q, WQ, NQ = Pp.copy(), w.copy(), Nn.copy()
+        if mirror:
+            for k in np.nonzero(w < -MIN_FACING)[0]:
+                m = Vector((2 * cx - Pp[k, 0], Pp[k, 1], Pp[k, 2]))
+                loc, nrm, _i, _d = bvh.find_nearest(m)
+                if loc is not None:
+                    Q[k], NQ[k] = (loc.x, loc.y, loc.z), (nrm.x, nrm.y, nrm.z)
+                    WQ[k] = nrm.dot(d_vec)
+                    n_mirrored[0] += 1
+        seen = np.zeros(len(Pp), bool)
+        for k in np.nonzero(WQ >= MIN_FACING)[0]:
+            if bvh.ray_cast(Vector(Q[k] + NQ[k] * eps), d_vec)[0] is None:
+                seen[k] = True
+        return Q, WQ, seen
+
+    def sample(Q, img):
+        px, py = reg.to_ref(Q @ right, Q[:, 2])
+        ix = np.clip(np.rint(px).astype(int), 0, rw - 1)
+        iy = np.clip(np.rint(py).astype(int), 0, rh - 1)
+        return img[iy, ix, :3], mask[iy, ix]
+
+    ref64 = ref.astype(np.float64)
+    blur5 = box_blur(ref64, 2)
+
+    # Vertex level: where the picture is trusted (a0) and where the fill colour comes from.
+    vw = vn @ d_arr
+    VQ, VWQ, vseen = sources(co, vw, vn)
+    vcol, vinside = sample(VQ, blur5)
+    head_ok = reg.head_ok()
+    vz = (co[:, 2] - co[:, 2].min()) / height
+    a0 = ramp(VWQ) * (vseen & vinside)
+    if not head_ok:
+        a0 = np.where(vz >= 1 - HEAD_BAND, 0.0, a0)  # head does not match: low frequency only
+    lum_v = luma(vcol)
+    band = np.minimum((vz * BANDS).astype(int), BANDS - 1)
+    shadow = np.zeros(nv, bool)
+    for b in range(BANDS):
+        sel = (a0 > 0) & (band == b)
+        if sel.sum() >= 5:
+            shadow[sel] = lum_v[sel] < SHADOW_REL * np.median(lum_v[sel])
+    s_fill = np.where(shadow, 0.0, a0)
+    edges = mesh_edges(vi)
+    deg = np.bincount(edges[:, 0], minlength=nv).astype(np.float64)
+    fill_v = fill_colour(vcol, s_fill, edges, deg)
+    # Seam feather: diffuse the trust over a surface distance of FEATHER x height.
+    mean_edge = float(np.linalg.norm(co[edges[:, 0]] - co[edges[:, 1]], axis=1).mean())
+    iters = int(np.clip(round((FEATHER * height / max(mean_edge, 1e-9)) ** 2 * 2), 4, 80))
+    a_diff = diffuse((a0 > 0).astype(np.float64)[:, None], edges, deg, iters)[:, 0]
+    a_vert = np.clip((a_diff - 0.5) * 2.0, 0, 1) * (a0 > 0)  # 0 at the seam, 1 well inside
+
+    # Texel level: detail from the picture inside the trusted area, vertex-interpolated fill else.
+    fill_t = np.einsum("mk,mkc->mc", bw, fill_v[vi[tt]])
+    alpha_t = np.einsum("mk,mk->m", bw, a_vert[vi[tt]])
+    colour = fill_t.copy()
+    known = np.zeros(len(tt), bool)
+    cand = np.nonzero(alpha_t > 0.01)[0]
+    if len(cand):
+        Q, WQ, seen = sources(p[cand], wt[cand], n[cand])
+        pc, inside = sample(Q, ref64)
+        ok = seen & inside
+        kk = cand[ok]
+        known[kk] = True
+        colour[kk] = alpha_t[kk, None] * pc[ok] + (1 - alpha_t[kk, None]) * fill_t[kk]
+    alpha_used = np.where(known, alpha_t, 0.0)
+    painted = int((alpha_used > 0.5).sum())
 
     img = np.zeros((size, size, 4), np.float32)
     img[..., :3] = 0.5
-    img[ty, tx] = colour
+    img[ty, tx, :3] = colour
+    img[ty, tx, 3] = 1.0
     # Pad the islands (mip/filter bleed): grow painted texels outwards 8 px.
     have = cov.copy()
     for _ in range(8):
@@ -440,12 +603,71 @@ def bake_colour(obj, ref, d0, size):
     stats = {
         "texels_covered": int(cov.sum()),
         "texels_projected": painted,
-        "texels_projected_full_trust": int((alpha >= 1).sum()),
+        "texels_projected_full_trust": int((alpha_used >= 0.99).sum()),
         "texels_low_frequency": int(len(ty) - painted),
         "mirrored_far_side": False,
+        "mirrored_left_right": bool(mirror),
+        "mirrored_points": int(n_mirrored[0]),
+        "registration": {
+            "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the "
+                      f"reference outline onto the centre of the model outline), {REG_ROWS} rows",
+            "head_band": HEAD_BAND,
+            "head_shift_of_width": round(reg.head_shift, 4),
+            "head_width_ratio": round(reg.head_width_ratio, 3),
+            "head_width_ratio_allowed": list(HEAD_WIDTH_RATIO),
+            "head_painted_from_reference": head_ok,
+            "max_row_shift": round(float(np.abs(reg.shift).max()), 4),
+        },
+        "fill": {
+            "min_facing_cos": MIN_FACING, "full_facing_cos": FULL_FACING,
+            "shadow_rel_to_band_median": SHADOW_REL, "shadow_bands": BANDS,
+            "shadow_vertices_ignored": int(shadow.sum()),
+            "method": "normalised vertex-graph diffusion, interpolated across triangles",
+            "seam_feather_height_frac": FEATHER, "seam_feather_iterations": iters,
+        },
     }
-    info = {"facing": w, "pos": p, "colour": colour[:, :3], "projected": known}
+    info = {"facing": wt, "pos": p, "colour": colour, "projected": alpha_used > 0.5,
+            "alpha": alpha_used, "texel_xy": (ty, tx)}
     return img, stats, info
+
+
+
+def albedo_check(tex_path, info, ref, bands=4):
+    """Mean luminance and saturation of the SAVED albedo texture against the reference, per height
+    band (bottom to top). The texture is read back from the PNG on disk (so a colour-space error
+    in saving shows), texels sit in a band by the height of the surface point they cover, reference
+    pixels by their row inside the reference outline. Ratios near 1.0 mean the bake is true."""
+    img = bpy.data.images.load(str(tex_path))
+    w, h = img.size
+    px = np.empty(w * h * 4, np.float32)
+    img.pixels.foreach_get(px)
+    bpy.data.images.remove(img)
+    ty, tx = info["texel_xy"]
+    rows = band_stats(px.reshape(h, w, 4)[ty, tx, :3], info["pos"][:, 2], ref, bands)
+    for r in rows:
+        r["luma_ratio"] = round(r["albedo_luma"] / max(r["ref_luma"], 1e-6), 3)
+        r["sat_ratio"] = round(r["albedo_sat"] / max(r["ref_sat"], 1e-6), 3)
+    return rows
+
+
+def band_stats(tex_rgb, texel_z, ref, bands=4):
+    """tex_rgb (m,3) texel colours, texel_z (m,) heights; per band luma/sat of texture vs ref."""
+    z = (texel_z - texel_z.min()) / max(np.ptp(texel_z), 1e-9)
+    ys, xs = np.where(ref_mask(ref))
+    ry = (ys - ys.min()) / max(np.ptp(ys), 1)
+    rgb = ref[ys, xs, :3]
+    out = []
+    for b in range(bands):
+        lo, hi = b / bands, (b + 1) / bands
+        sel = (z >= lo) & (z < hi + (1e-9 if b == bands - 1 else 0))
+        rsel = (ry >= lo) & (ry < hi + (1e-9 if b == bands - 1 else 0))
+        if not sel.any() or not rsel.any():
+            continue
+        out.append({"band": b, "albedo_luma": round(float(luma(tex_rgb[sel]).mean()), 4),
+                    "ref_luma": round(float(luma(rgb[rsel]).mean()), 4),
+                    "albedo_sat": round(float(sat(tex_rgb[sel]).mean()), 4),
+                    "ref_sat": round(float(sat(rgb[rsel]).mean()), 4)})
+    return out
 
 
 def make_material(obj, img_array, out_dir, size):
@@ -475,6 +697,8 @@ SHEET_VIEWS = {  # name: (azimuth deg around Z from the front, elevation deg)
     "three_quarter": (35, 20), "top": (0, 89.5),
 }
 SHEET_RES = 512
+# EV: studio shading averages 0.68 of the albedo (encoded); this makes the sheet read true
+SHEET_EXPOSURE = 1.1
 
 
 def export_glb(obj, path):
@@ -492,11 +716,17 @@ def render_sheets(raw, clean, out):
     hi = np.maximum(verts_np(raw).max(axis=0), verts_np(clean).max(axis=0))
     centre = Vector(((lo + hi) / 2).tolist())
     scene.render.engine = "BLENDER_WORKBENCH"
+    # The factory default view transform (AgX) darkens and desaturates every colour; the sheet
+    # must read the albedo true, so it is rendered with the Standard transform.
+    scene.view_settings.view_transform = "Standard"
+    scene.view_settings.look = "None"
+    scene.view_settings.exposure = SHEET_EXPOSURE
     scene.render.resolution_x = scene.render.resolution_y = SHEET_RES
     scene.render.film_transparent = False
     sh = scene.display.shading
     sh.light = "STUDIO"
     sh.show_cavity = True
+    sh.show_specular_highlight = False  # highlights wash the albedo out to white
     sh.cavity_type = "BOTH"
     sh.show_object_outline = False
     sh.background_type = "VIEWPORT"
@@ -622,8 +852,9 @@ def main():
     lap("uv_unwrap", t0)
 
     t0 = time.perf_counter()
-    img_arr, bake_stats, _ = bake_colour(work, ref, d0, tex_px)
+    img_arr, bake_stats, bake_info = bake_colour(work, ref, d0, tex_px)
     img = make_material(work, img_arr, out, tex_px)
+    albedo = albedo_check(out / "texture.png", bake_info, ref)
     lap("colour_bake", t0)
 
     # Silhouette check against the raw mesh in the same world frame.
@@ -669,6 +900,7 @@ def main():
         "orientation": {"turn_deg": yaw, "decided_by": yaw_how, "generator": o["generator"],
                         "outline_iou_by_turn": yaw_table},
         "colour_route": {"camera_toward": list(d0), "reference": o["ref"], **bake_stats},
+        "albedo_vs_reference": albedo,
         "timings_s": timings,
     })
     report["timings_s"]["total"] = round(time.perf_counter() - t_all, 2)
