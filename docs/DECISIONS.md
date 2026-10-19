@@ -4,6 +4,11 @@ Cap: 400 lines; oldest roll to `docs/archive/`. One decision per entry, newest f
 that is not here does not exist. Format: date · id · who decided · the decision · why · what it
 changes. Only the lead edits this file, from the "Board and log" section of merged PRs.
 
+## 2026-10-20 · D-017 · Director · Direct3D-S2 dropped; Hi3DGen gets one low-VRAM try
+Asked (to go faster): drop Hi3DGen (13 GB peak) and Direct3D-S2 (20 GB, ~14 min a model), both
+over the 12 GB card in testing? Answer: "drop direct 3d only". Changes: Direct3D-S2 leaves the
+bake-off (fails the 12 GB / 3 min bar as measured); Hi3DGen gets one bounded attempt to fit 12 GB.
+
 ## 2026-10-20 · D-016 · Director · A Claude MCP server to operate the app
 His words: "add to roadmap: claude mcp so you can operate the program". Changes: Phase 8 in the
 roadmap; design 5.7. Built on the same backend job API the UI uses, so it adds no second code path.

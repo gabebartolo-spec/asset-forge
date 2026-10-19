@@ -16,7 +16,7 @@ one AskUserQuestion to the director to pick, decision logged.
   Docs edits (LF endings; write files with bytes, Python write_text makes CRLF on Windows):
   DECISIONS D-011 SF3D skipped (director), D-012 per-model envs (lead), D-013 UI clean+intuitive,
   D-014 non-technical users / only on his PC / VRAM shown, D-015 optional local-AI QA (Phase 7,
-  design 5.6), D-016 Claude MCP server (Phase 8, design 5.7); design section 6 UI gate; ROADMAP 7-8.
+  design 5.6), D-016 Claude MCP server (Phase 8, design 5.7); D-017 Direct3D-S2 dropped by director, Hi3DGen one low-VRAM try; pick = D-018; design section 6 UI gate; ROADMAP 7-8.
 - Envs MAIN/models/envs/<name>, src MAIN/models/src/<name>, weights MAIN/models/hf (gitignored).
   Torch standard: 2.14.1+cu130 (download.pytorch.org/whl/cu130); PyPI torch on Windows is CPU-only.
 - Builder rules: C:\Users\DANTE\AppData\Roaming\Claude\side-session-notes\local_b118c49f-c304-49df-91fd-c598a7a48c30\bakeoff_builder_rules.md
