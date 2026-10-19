@@ -4,6 +4,27 @@ Cap: 400 lines; oldest roll to `docs/archive/`. One decision per entry, newest f
 that is not here does not exist. Format: date · id · who decided · the decision · why · what it
 changes. Only the lead edits this file, from the "Board and log" section of merged PRs.
 
+## 2026-10-20 · D-022 · Director · Go faster: later phases run in parallel
+His words, on a 13-21 agent-hour estimate: "thats absurd. do it faster", then "faster!". Asked
+which phases start; answer "Two now, Skeleton next". Changes: Phase 5 Sprites mode A and Phase 9
+Prompt generator start now beside the Phase 2 fixes; Phase 3 Skeleton (humanoid + four-legged)
+starts when PR #9 merges. Critic gates stay; reviews are batched.
+
+## 2026-10-20 · D-021 · Lead · Model front is glTF +Z (Blender -Y)
+Why: Godot 4's model front (MODEL_FRONT) is +Z in glTF, which is Blender -Y; design 5.2 said
+"+Y forward" and the clean step faced literal +Y. Changes: clean.py faces Blender -Y before export
+(test in PR #9); design 5.2 Step 2 corrected there. Default heights (humanoid 1.8 m, monster
+2.0 m, animal 0.5 m) stay editable per asset.
+
+## 2026-10-20 · D-020 · Director · Prompt generator ("Expand my idea")
+His words: "roadmap item: add a prompt generator". Changes: ROADMAP Phase 9; a local model writes
+the full image prompt from a few words, shown to edit before generating. Built with Qwen3-1.7B
+(Apache-2.0, PR #12).
+
+## 2026-10-20 · D-019 · Director · Step 1 menu: Hi3DGen, then TripoSG
+Asked which bake-off passers go on the Step 1 menu and in what order (PR #6). Answer: Hi3DGen
+first (preselected), then TripoSG. Step1X-3D and TripoSR are off the menu.
+
 ## 2026-10-20 · D-018 · Director · A generator menu on every run
 Asked how the app should offer the generators that pass the bake-off: a default plus "try
 another", choose every time, or one only. Answer: "Choose every time". Changes: Step 1 shows a
