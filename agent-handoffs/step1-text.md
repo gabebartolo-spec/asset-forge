@@ -1,5 +1,5 @@
 # step1-text builder handoff (2026-10-20)
-## State: working (screenshots + PR in progress)
+## State: PR #14 open, CI + critic pending
 
 ## Task
 Wire the text path into Step 1 Generate: text box + "Expand my idea" (Qwen3-1.7B on the GPU queue),
@@ -20,7 +20,7 @@ claude/step1-text, worktree asset-forge-wt/step1-text (own .venv, gitignored). P
 - tests/test_text_path.py (new, 13) + one updated test in test_app_api.py.
 
 ## Evidence so far
-72 unit tests pass, ruff clean (local). Screenshots: side-session-notes/local_f6b2f763.../step1_text/.
+72 unit tests pass, ruff clean. Real Qwen run via the page: expand 29 s cold (incl. load), reroll 1.2 s warm. Shots in step1_text/ (real_* = faked 3D makers + real Qwen; mock_* = mock drawer draw/re-roll flow). TripoSG card is partly below the fold at 1366 (panel scrolls).
 
 ## Open decisions / flagged for lead
 - With a picture AND words, the 3D run uses the picture only (generators take images); the words are
