@@ -5,7 +5,13 @@ from __future__ import annotations
 import numpy as np
 from PIL import Image
 
-from asset_forge.sprites.post import add_outline, fit_to_canvas, reduce_palette, remove_background
+from asset_forge.sprites.post import (
+    add_outline,
+    fill_holes,
+    fit_to_canvas,
+    reduce_palette,
+    remove_background,
+)
 from asset_forge.sprites.presets import Preset
 
 BODY = (200, 90, 40)
@@ -21,19 +27,28 @@ def _ellipse(h, w, cy, cx, ry, rx):
 def native_creature(view: str = "front", n: int = 128) -> np.ndarray:
     """RGB pixel art, one array pixel per art pixel, on a white background."""
     img = np.full((n, n, 3), 255, dtype=np.uint8)
-    if view == "front":  # wide body, head to the right, four legs
+    if view == "front":  # facing the viewer: round head over a wide body, four legs
+        img[_ellipse(n, n, 74, 64, 22, 28)] = BODY
+        img[_ellipse(n, n, 80, 64, 12, 18)] = BELLY
+        img[_ellipse(n, n, 46, 64, 15, 17)] = BODY
+        for x in (40, 50, 72, 82):
+            img[92:108, x : x + 7] = BODY
+        img[42:46, 56:60] = SPOT
+        img[42:46, 68:72] = SPOT
+    elif view == "side":  # a profile: wide body, head to the right, four legs
         img[_ellipse(n, n, 70, 60, 22, 36)] = BODY
         img[_ellipse(n, n, 76, 60, 10, 24)] = BELLY
         img[_ellipse(n, n, 52, 100, 14, 14)] = BODY
         for x in (36, 48, 72, 84):
             img[88:108, x : x + 7] = BODY
         img[48:52, 104:108] = SPOT
-    else:  # tall shape seen from behind: narrow, with two ears and a tail going up
-        img[_ellipse(n, n, 64, 64, 40, 18)] = BODY
-        img[_ellipse(n, n, 70, 64, 24, 8)] = SPOT
-        img[10:30, 44:52] = BODY
-        img[10:30, 76:84] = BODY
-        img[96:122, 62:68] = BELLY
+    else:  # rounder shape seen from behind: two ears, a spot down the back, a tail below
+        img[_ellipse(n, n, 64, 64, 28, 34)] = BODY
+        img[_ellipse(n, n, 68, 64, 18, 10)] = SPOT
+        img[_ellipse(n, n, 76, 64, 8, 20)] = BELLY
+        img[24:42, 44:52] = BODY
+        img[24:42, 76:84] = BODY
+        img[88:102, 62:68] = BELLY
     return img
 
 
@@ -54,7 +69,7 @@ def good_sprite(preset: Preset, view: str = "front") -> np.ndarray:
     rgba = remove_background(native_creature(view))
     sprite = fit_to_canvas(rgba, preset.art_size)
     sprite = reduce_palette(sprite, preset.max_colours - 1)
-    return add_outline(sprite)
+    return fill_holes(add_outline(fill_holes(sprite)))
 
 
 class FakeDrawer:
@@ -62,9 +77,16 @@ class FakeDrawer:
 
     def __init__(self, back_like_front: bool = False, noise: int = 0):
         self.calls: list[tuple[str, int]] = []
+        self.inits: list[object] = []  # init image of each draw (None = from text)
+        self.batches: list[int] = []
         self.back_like_front, self.noise = back_like_front, noise
 
-    def draw(self, subject: str, view: str, seed: int) -> Image.Image:
+    def draw_batch(self, subject, view, seeds, init=None) -> list[Image.Image]:
+        self.batches.append(len(seeds))
+        return [self.draw(subject, view, s, init) for s in seeds]
+
+    def draw(self, subject: str, view: str, seed: int, init=None) -> Image.Image:
         self.calls.append((view, seed))
+        self.inits.append(init)
         shown = "front" if (view == "front" or self.back_like_front) else "back"
         return raw_generated(shown, noise=self.noise)

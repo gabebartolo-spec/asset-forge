@@ -10,11 +10,14 @@ import numpy as np
 from PIL import Image
 
 from .draw import Drawer
-from .post import process
+from .post import finish, isolated_share, prepare
 from .presets import Preset, get_preset
-from .qa import check_back_view, check_sprite
+from .qa import check_back_view, check_front_faces_viewer, check_same_creature, check_sprite
 
 MAX_ATTEMPTS = 6
+FRONT_FIRST_BATCH = 1  # the first front usually passes; later fronts are drawn 3 at a time
+FRONT_BATCH = 3
+BACK_BATCH = 3  # back candidates per call; the first that passes every check wins
 
 
 class SpriteFailed(Exception):
@@ -41,24 +44,72 @@ def to_image(rgba: np.ndarray) -> Image.Image:
     return Image.fromarray(rgba, "RGBA")
 
 
-def _attempt(drawer, subject, view, seed, preset, front=None, keep_raw=None):
+def _batches(seeds: list[int], first: int, rest: int):
+    """Seeds in draw batches: `first` for the opening call, `rest` for later ones."""
+    i, size = 0, first
+    while i < len(seeds):
+        yield seeds[i : i + size]
+        i += size
+        size = rest
+
+
+def _save_raw(keep_raw: Path | None, view: str, seed: int, raw: Image.Image) -> None:
+    if keep_raw is not None:
+        keep_raw.mkdir(parents=True, exist_ok=True)
+        raw.save(keep_raw / f"{view}_seed{seed}.png")
+
+
+def _draw_front(drawer, subject, seed, preset, keep_raw, times):
+    """First front that passes the sprite QA. Returns (raw, prepared, sprite, seed, meta)."""
     failures: list[list[str]] = []
-    for k in range(MAX_ATTEMPTS):
-        s = seed + k
-        raw = drawer.draw(subject, view, s)
-        if keep_raw is not None:
-            keep_raw.mkdir(parents=True, exist_ok=True)
-            raw.save(keep_raw / f"{view}_seed{s}.png")
-        sprite, meta = process(raw, preset)
-        problems = check_sprite(sprite, preset)
-        overlap: dict = {}
-        if view == "back" and front is not None:
-            extra, overlap = check_back_view(front, sprite)
-            problems += extra
-        if not problems:
-            return sprite, s, {**meta, **overlap, "tries": k + 1}
-        failures.append(problems)
-    raise SpriteFailed(view, failures)
+    tried = 0
+    seeds = [seed + k for k in range(MAX_ATTEMPTS)]
+    for group in _batches(seeds, FRONT_FIRST_BATCH, FRONT_BATCH):
+        t = time.perf_counter()
+        raws = drawer.draw_batch(subject, "front", group)
+        times["draw_front"] = times.get("draw_front", 0.0) + time.perf_counter() - t
+        for s, raw in zip(group, raws, strict=True):
+            tried += 1
+            _save_raw(keep_raw, "front", s, raw)
+            t = time.perf_counter()
+            pre, meta = prepare(raw, preset)
+            sprite = finish([pre], preset)[0]
+            problems = check_sprite(sprite, preset)
+            face_problems, face = check_front_faces_viewer(sprite)
+            problems += face_problems
+            times["post"] = times.get("post", 0.0) + time.perf_counter() - t
+            if not problems:
+                return raw, pre, s, {**meta, **face, "candidates_tried": tried}
+            failures.append(problems)
+    raise SpriteFailed("front", failures)
+
+
+def _draw_back(drawer, subject, front_raw, front_pre, seed, preset, keep_raw, times):
+    """First back drawn from the front that passes every check, as a pair with the front.
+
+    Returns (front, back, seed, meta)."""
+    failures: list[list[str]] = []
+    tried = 0
+    seeds = [seed + k for k in range(MAX_ATTEMPTS)]
+    for group in _batches(seeds, BACK_BATCH, BACK_BATCH):
+        t = time.perf_counter()
+        raws = drawer.draw_batch(subject, "back", group, init=front_raw)
+        times["draw_back"] = times.get("draw_back", 0.0) + time.perf_counter() - t
+        for s, raw in zip(group, raws, strict=True):
+            tried += 1
+            _save_raw(keep_raw, "back", s, raw)
+            t = time.perf_counter()
+            pre, meta = prepare(raw, preset)
+            front, back = finish([front_pre, pre], preset)  # one palette for the pair
+            problems = check_sprite(front, preset) + check_sprite(back, preset)
+            extra_view, overlap = check_back_view(front, back)
+            extra_same, same = check_same_creature(front, back)
+            problems += extra_view + extra_same
+            times["post"] = times.get("post", 0.0) + time.perf_counter() - t
+            if not problems:
+                return front, back, s, {**meta, **overlap, **same, "candidates_tried": tried}
+            failures.append(problems)
+    raise SpriteFailed("back", failures)
 
 
 def make_pair(
@@ -68,18 +119,25 @@ def make_pair(
     seed: int = 1,
     keep_raw: Path | None = None,
 ) -> SpriteResult:
-    """Draw a front and a real back view and return QA-clean sprites (not yet written)."""
+    """Draw a front, then a back from that front, and return QA-clean sprites (not yet written)."""
     p = get_preset(preset) if isinstance(preset, str) else preset
     t0 = time.perf_counter()
-    front, fs, fm = _attempt(drawer, subject, "front", seed, p, keep_raw=keep_raw)
-    back, bs, bm = _attempt(drawer, subject, "back", seed + 1000, p, front=front, keep_raw=keep_raw)
+    times: dict[str, float] = {}
+    raw, pre, fs, fm = _draw_front(drawer, subject, seed, p, keep_raw, times)
+    front, back, bs, bm = _draw_back(drawer, subject, raw, pre, seed + 1000, p, keep_raw, times)
+    total = time.perf_counter() - t0
     return SpriteResult(
         preset=p.key,
         front=front,
         back=back,
         seeds={"front": fs, "back": bs},
-        metrics={"front": fm, "back": bm},
-        seconds=time.perf_counter() - t0,
+        metrics={
+            "front": fm,
+            "back": bm,
+            "speckle": {"front": isolated_share(front), "back": isolated_share(back)},
+            "seconds": {k: round(v, 2) for k, v in times.items()},
+        },
+        seconds=total,
     )
 
 
@@ -110,6 +168,7 @@ def export_pair(result: SpriteResult, name: str, out_dir: Path) -> list[Path]:
     p = get_preset(result.preset)
     problems = check_sprite(result.front, p) + check_sprite(result.back, p)
     problems += check_back_view(result.front, result.back)[0]
+    problems += check_same_creature(result.front, result.back)[0]
     if problems:
         raise SpriteFailed("pair", [problems])
     out_dir = Path(out_dir)

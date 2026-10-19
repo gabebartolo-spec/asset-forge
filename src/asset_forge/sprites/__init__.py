@@ -2,7 +2,7 @@
 
 from .pipeline import SpriteFailed, SpriteResult, export_pair, grid_preview, make_pair
 from .presets import DEFAULT_PRESET, PRESETS, Preset, get_preset
-from .qa import check_back_view, check_sprite
+from .qa import check_back_view, check_same_creature, check_sprite
 
 __all__ = [
     "DEFAULT_PRESET",
@@ -11,6 +11,7 @@ __all__ = [
     "SpriteFailed",
     "SpriteResult",
     "check_back_view",
+    "check_same_creature",
     "check_sprite",
     "export_pair",
     "get_preset",

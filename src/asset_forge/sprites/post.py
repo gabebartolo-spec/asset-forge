@@ -13,7 +13,17 @@ from .presets import EDGE_MARGIN_PX, OUTLINE_COLOUR, OUTLINE_LUMA_MAX, Preset
 POCKET_MIN_PX = 24  # an enclosed background-coloured area this big is not part of the sprite
 MAX_HOLE_PX = 12  # smaller see-through pockets are filled; bigger ones fail the QA instead
 SHADOW_MIN_PX = 20
+SHADOW_SAT = 0.12  # a shadow is nearly colourless
+SHADOW_MATCH = 16.0  # RGB distance to a proven shadow colour that counts as the same shadow
+SHADOW_MAX_FRAC = 0.08  # a same-grey piece bigger than this share of the sprite is not shadow
 SHADOW_FLATNESS = 0.35  # a shadow is at most this tall compared to its width
+ACCENT_SLOTS = 3  # palette slots reserved for small saturated colours (eyes, flames)
+ACCENT_MIN_SAT = 0.35
+ACCENT_MIN_ERR = 45.0  # RGB distance from the base palette that makes a colour an outlier
+ACCENT_MIN_PX = 2
+ACCENT_LONE_PX = 4  # an accent colour with this few pixels is never speckle-cleaned
+SPECKLE_TARGET = 0.02  # clean until this share of pixels is isolated (the skill limit is 3%)
+SPECKLE_PASSES = 6
 SECOND_BODY_FRAC = 0.25  # a separate piece this big, relative to the biggest, is a second body
 N4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
 N8 = N4 + ((1, 1), (1, -1), (-1, 1), (-1, -1))
@@ -86,20 +96,40 @@ def remove_background(rgb: np.ndarray, tolerance: float = 48.0) -> np.ndarray:
     return out
 
 
-def _ground_shadow(rgb: np.ndarray, is_bg: np.ndarray) -> np.ndarray:
-    """Flat, wide, grey patches on the background: a drawn ground shadow, not the sprite."""
+def _saturation(rgb: np.ndarray) -> np.ndarray:
     f = rgb.astype(np.float64)
-    sat = (f.max(axis=2) - f.min(axis=2)) / np.maximum(f.max(axis=2), 1.0)
-    grey = (sat < 0.12) & (luma(rgb) > 80) & (luma(rgb) < 235) & ~is_bg
+    return (f.max(axis=2) - f.min(axis=2)) / np.maximum(f.max(axis=2), 1.0)
+
+
+def _ground_shadow(rgb: np.ndarray, is_bg: np.ndarray) -> np.ndarray:
+    """The generator's drawn ground shadow: flat grey beside the background, and the same grey
+    anywhere else it was left (enclosed under a belly or along a tail). Never a grey creature:
+    nothing is removed unless a flat grey patch touching the background proves a shadow exists."""
+    grey = (_saturation(rgb) < SHADOW_SAT) & (luma(rgb) > 80) & (luma(rgb) < 235) & ~is_bg
     labels, n = label(grey)
     pad = np.pad(is_bg, 1, constant_values=False)
     near_bg = pad[:-2, 1:-1] | pad[2:, 1:-1] | pad[1:-1, :-2] | pad[1:-1, 2:]
     out = np.zeros_like(is_bg)
+    seeds = []
     for k in range(1, n + 1):
         region = labels == k
         ys, xs = np.nonzero(region)
         h, w = ys.max() - ys.min() + 1, xs.max() - xs.min() + 1
         if len(ys) >= SHADOW_MIN_PX and h <= SHADOW_FLATNESS * w and (region & near_bg).any():
+            out |= region
+            seeds.append(rgb[region].mean(axis=0))
+    if not seeds:
+        return out
+    f = rgb.astype(np.float64)
+    like = np.zeros_like(is_bg)
+    for c in seeds:
+        like |= np.linalg.norm(f - c, axis=2) <= SHADOW_MATCH
+    like &= grey
+    labels, n = label(like, eight=True)
+    area = max(int((~is_bg).sum()), 1)
+    for k in range(1, n + 1):
+        region = labels == k
+        if region.sum() <= SHADOW_MAX_FRAC * area:
             out |= region
     return out
 
@@ -131,10 +161,10 @@ def keep_main_bodies(rgba: np.ndarray, frac: float = SECOND_BODY_FRAC) -> np.nda
 
 
 def fill_holes(rgba: np.ndarray) -> np.ndarray:
-    """Fill small pockets enclosed by the sprite with their neighbours' common colour."""
+    """Fill small pockets enclosed by the sprite (4-connectivity) with their neighbours' colour."""
     out = rgba.copy()
     h, w, _ = out.shape
-    labels, n = label(~opaque(out), eight=True)
+    labels, n = label(~opaque(out))  # 4-connected: a corner-only gap to the outside is a hole
     edge = _border_labels(labels)
     for k in range(1, n + 1):
         if k in edge:
@@ -190,19 +220,145 @@ def fit_to_canvas(rgba: np.ndarray, size: int, margin: int = EDGE_MARGIN_PX + 1)
     return canvas
 
 
-def reduce_palette(rgba: np.ndarray, colours: int) -> np.ndarray:
-    """Median-cut the opaque pixels to at most `colours`: no dithering, alpha untouched."""
+def _accent_colours(px: np.ndarray, pal: np.ndarray, slots: int) -> list[np.ndarray]:
+    """Small, saturated colour clusters the base palette misses, best by area x saturation."""
+    if slots <= 0:
+        return []
+    d = np.sqrt(((px[:, None, :].astype(np.int32) - pal[None].astype(np.int32)) ** 2).sum(axis=2))
+    err = d.min(axis=1)
+    sat = _saturation(px.reshape(-1, 1, 3)).ravel()
+    cand = np.nonzero((sat >= ACCENT_MIN_SAT) & (err >= ACCENT_MIN_ERR))[0]
+    if len(cand) == 0:
+        return []
+    keys = (px[cand] >> 5).astype(np.int32)
+    keys = (keys[:, 0] << 6) | (keys[:, 1] << 3) | keys[:, 2]
+    bins = []
+    for key in np.unique(keys):
+        members = cand[keys == key]
+        if len(members) >= ACCENT_MIN_PX:
+            score = len(members) * float(sat[members].mean()) * float(err[members].mean())
+            bins.append((score, px[members].mean(axis=0)))
+    chosen: list[np.ndarray] = []
+    for _, colour in sorted(bins, key=lambda t: -t[0]):
+        others = [*chosen, *pal]
+        if all(np.linalg.norm(colour - o) > ACCENT_MIN_ERR for o in others):
+            chosen.append(colour)
+        if len(chosen) == slots:
+            break
+    return chosen
+
+
+def shared_palette(sprites: list[np.ndarray], colours: int) -> tuple[np.ndarray, np.ndarray]:
+    """One palette for all sprites: median cut plus reserved slots for small saturated accents.
+
+    Returns (palette, accent colours)."""
+    px = np.concatenate([s[opaque(s)][:, :3] for s in sprites])
+    if len(px) == 0:
+        return np.zeros((0, 3), np.uint8), np.zeros((0, 3), np.uint8)
+    uniq = np.unique(px, axis=0)
+    if len(uniq) <= colours:
+        return uniq, np.zeros((0, 3), np.uint8)
+    reserve = min(ACCENT_SLOTS, colours // 5)
+    q = Image.fromarray(px.reshape(-1, 1, 3), "RGB").quantize(
+        colors=colours - reserve, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE
+    )
+    pal = np.array(q.getpalette()[: 3 * (colours - reserve)], dtype=np.uint8).reshape(-1, 3)
+    acc = _accent_colours(px, pal, reserve)
+    acc_a = np.array([np.round(c) for c in acc], dtype=np.uint8).reshape(-1, 3)
+    return np.concatenate([pal, acc_a]), acc_a
+
+
+def apply_palette(rgba: np.ndarray, pal: np.ndarray) -> np.ndarray:
     out = rgba.copy()
     mask = opaque(out)
     px = out[mask][:, :3]
-    if len(px) == 0 or len(np.unique(px, axis=0)) <= colours:
-        return out
-    q = Image.fromarray(px.reshape(-1, 1, 3), "RGB").quantize(
-        colors=colours, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE
-    )
-    pal = np.array(q.getpalette()[: 3 * colours], dtype=np.uint8).reshape(-1, 3)
-    d = ((px[:, None, :].astype(np.int32) - pal[None, :, :].astype(np.int32)) ** 2).sum(axis=2)
-    out[mask, :3] = pal[d.argmin(axis=1)]
+    if len(px) and len(pal):
+        d = ((px[:, None, :].astype(np.int32) - pal[None].astype(np.int32)) ** 2).sum(axis=2)
+        out[mask, :3] = pal[d.argmin(axis=1)]
+    return out
+
+
+def reduce_palette_shared(sprites: list[np.ndarray], colours: int) -> list[np.ndarray]:
+    """Reduce several sprites (a front and back pair) to one shared palette of `colours`."""
+    pal, _ = shared_palette(sprites, colours)
+    return [apply_palette(s, pal) for s in sprites]
+
+
+def reduce_palette(rgba: np.ndarray, colours: int) -> np.ndarray:
+    """Median-cut the opaque pixels to at most `colours`, keeping small saturated accents."""
+    return reduce_palette_shared([rgba], colours)[0]
+
+
+def _same_neighbour(rgba: np.ndarray) -> np.ndarray:
+    """Opaque pixels with an opaque 4-neighbour of exactly the same colour."""
+    solid = opaque(rgba)
+    rgb = rgba[..., :3]
+    same = np.zeros(solid.shape, bool)
+    h, w = solid.shape
+    for dy, dx in N4:
+        ok = np.zeros((h, w), bool)
+        ys = slice(max(dy, 0), h + min(dy, 0))
+        yt = slice(max(-dy, 0), h + min(-dy, 0))
+        xs = slice(max(dx, 0), w + min(dx, 0))
+        xt = slice(max(-dx, 0), w + min(-dx, 0))
+        ok[yt, xt] = solid[ys, xs] & (rgb[ys, xs] == rgb[yt, xt]).all(axis=2)
+        same |= ok
+    return same & solid
+
+
+def _isolated(rgba: np.ndarray) -> np.ndarray:
+    return opaque(rgba) & ~_same_neighbour(rgba)
+
+
+def isolated_share(rgba: np.ndarray) -> float:
+    """Share of opaque pixels with no 4-neighbour of the same colour (slop_scan's measure)."""
+    solid = opaque(rgba)
+    return float(_isolated(rgba).sum() / solid.sum()) if solid.any() else 0.0
+
+
+def clean_speckle(
+    rgba: np.ndarray, protect: np.ndarray | None = None, target: float = SPECKLE_TARGET
+) -> np.ndarray:
+    """Interior pixels with no same-coloured 4-neighbour take their neighbours' majority colour.
+
+    The outline, the edge and protected accent colours are never touched; alpha never changes."""
+    out = rgba.copy()
+    line = (out[..., :3] == OUTLINE_COLOUR).all(axis=2)  # only the drawn outline, not dark shades
+    keep = edge_pixels(out) | line
+    if protect is not None:
+        for c in protect:
+            of_colour = (out[..., :3] == c).all(axis=2) & opaque(out)
+            if of_colour.sum() <= ACCENT_LONE_PX:  # a lone eye or highlight is kept as drawn;
+                keep |= of_colour  # a bigger spread of the colour is texture, and gets cleaned
+    dark = line
+    h, w, _ = out.shape
+    for _ in range(SPECKLE_PASSES):
+        iso = _isolated(out) & ~keep
+        if not iso.any() or isolated_share(out) < target:
+            break
+        changed = False
+        for y, x in zip(*np.nonzero(iso), strict=True):
+            me = tuple(int(v) for v in out[y, x, :3])
+            votes: dict[tuple, int] = {}
+            near: list[tuple] = []
+            for dy, dx in N8:
+                yy, xx = y + dy, x + dx
+                if 0 <= yy < h and 0 <= xx < w and out[yy, xx, 3] and not dark[yy, xx]:
+                    c = tuple(int(v) for v in out[yy, xx, :3])
+                    votes[c] = votes.get(c, 0) + 1
+                    if (dy, dx) in N4:
+                        near.append(c)
+            if me in near or not near:
+                continue  # it has a twin by now (an earlier fix next to it), or nothing to join
+            # join a 4-neighbour: the commonest colour around, then the closest to its own
+            best = min(
+                set(near),
+                key=lambda c: (-votes[c], sum((a - b) ** 2 for a, b in zip(c, me, strict=True))),
+            )
+            out[y, x, :3] = best
+            changed = True
+        if not changed:
+            break
     return out
 
 
@@ -231,19 +387,33 @@ def add_outline(rgba: np.ndarray) -> np.ndarray:
     return out
 
 
-def process(raw: Image.Image, preset: Preset) -> tuple[np.ndarray, dict]:
-    """Raw generated image -> pixel-perfect RGBA sprite at the preset's art size."""
+def prepare(raw: Image.Image, preset: Preset) -> tuple[np.ndarray, dict]:
+    """Raw generated image -> cut-out sprite on the art canvas, before palette and outline."""
     rgb = np.asarray(raw.convert("RGB"))
     info = detect_grid(rgb)
     native = downsample_on_grid(rgb, info)
     sprite = keep_main_bodies(remove_strays(remove_background(native)))
     sprite = fit_to_canvas(sprite, preset.art_size)
-    sprite = reduce_palette(sprite, preset.max_colours - 1)
-    sprite = fill_holes(remove_strays(sprite))
-    sprite = add_outline(sprite)
     meta = {
         "grid_pitch": info.pitch,
         "grid_found": info.found,
         "grid_confidence": round(info.confidence, 3),
     }
     return sprite, meta
+
+
+def finish(prepared: list[np.ndarray], preset: Preset) -> list[np.ndarray]:
+    """Shared palette, clean-up, outline and speckle pass for one sprite or a front/back pair."""
+    pal, accents = shared_palette(prepared, preset.max_colours - 1)
+    out = []
+    for sprite in prepared:
+        s = fill_holes(remove_strays(apply_palette(sprite, pal)))
+        s = fill_holes(add_outline(s))  # the outline ring can close a notch into a hole
+        out.append(clean_speckle(s, accents))
+    return out
+
+
+def process(raw: Image.Image, preset: Preset) -> tuple[np.ndarray, dict]:
+    """Raw generated image -> pixel-perfect RGBA sprite at the preset's art size."""
+    sprite, meta = prepare(raw, preset)
+    return finish([sprite], preset)[0], meta
