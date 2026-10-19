@@ -1,5 +1,5 @@
 # Asset Forge lead handoff (2026-10-20, session 3, handing off at 203k)
-## State: working (bake-off: env builders finishing; successor runs the candidates)
+## State: available (all env builders reported; successor runs the candidates)
 
 ## Task
 STATUS item 3, generator bake-off (design 5.2 + section 9 bar: fits 12 GB, commercial licence,
@@ -17,7 +17,7 @@ one AskUserQuestion to the director to pick, decision logged.
   DECISIONS D-011 SF3D skipped (director), D-012 per-model envs (lead), D-013 UI clean+intuitive,
   D-014 non-technical users / only on his PC / VRAM shown, D-015 optional local-AI QA (Phase 7,
   design 5.6), D-016 Claude MCP server (Phase 8, design 5.7); design section 6 UI gate; ROADMAP 7-8.
-- Envs MAIN/models/envs/<name>, src MAIN/models/src/<name>, weights MAIN/models/hf (gitignored). Committed on claude/bakeoff (WIP, not pushed); adapters/ and make_refs.py are builders' files, commit once they report.
+- Envs MAIN/models/envs/<name>, src MAIN/models/src/<name>, weights MAIN/models/hf (gitignored).
   Torch standard: 2.14.1+cu130 (download.pytorch.org/whl/cu130); PyPI torch on Windows is CPU-only.
 - Builder rules: C:\Users\DANTE\AppData\Roaming\Claude\side-session-notes\local_b118c49f-c304-49df-91fd-c598a7a48c30\bakeoff_builder_rules.md
 - Builder reports land in that notes folder as builder_reports.md (old session relays them).
@@ -30,7 +30,7 @@ fox s1 (side, facing left), bird s5 (side, facing left). BRUTE MISSING: SDXL dre
 stronger prompt; if still no six arms, report it as a front-end finding and ask the director
 (supply an image, or test with the best 2-arm brute). SDXL: ~9.3 s/image, 10.9 GB torch peak.
 
-## Builders (subagents of the old session; their reports go to notes/builder_reports.md)
+## Builders: all reported - read notes builder_reports.md (D3D-S2 20 GB / 833 s and Hi3DGen 13 GB need one low-VRAM try each).
 triposg (had CPU torch; told to fix), triposr, hi3dgen, direct3d_s2, step1x3d. sf3d + refs done.
 
 ## Next steps
