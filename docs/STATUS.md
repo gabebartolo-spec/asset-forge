@@ -11,7 +11,7 @@ Current phase: **1 — Generator bake-off**. Phase 0 gate met 2026-10-20
 
 | Agent | State | Item | Branch / PR | Since |
 |-------|-------|------|-------------|-------|
-| Lead | awaiting director | item 3 (Hunyuan in or out of the bake-off) | — | 2026-10-20 |
+| Lead | available | item 3 bake-off next (Hunyuan out, D-010) | — | 2026-10-20 |
 
 States: working · running a check · awaiting director · blocked · available.
 
@@ -21,7 +21,7 @@ States: working · running a check · awaiting director · blocked · available.
 1. DONE 2026-10-20. Lead: prove the gate with throwaway PRs, each closed unmerged after it goes red: a failing
    unit test, a ruff error, a planted `FORGE_TEST_SECRET_` + 16 characters. Record run ids in
    `docs/audits/kickoff_gate.md`.
-2. DONE 2026-10-20 (Hunyuan HELD for the director). Lead: `docs/LICENCES.md` rows for every candidate generator, checkpoint and LoRA already on
+2. DONE 2026-10-20 (Hunyuan dropped, D-010). Lead: `docs/LICENCES.md` rows for every candidate generator, checkpoint and LoRA already on
    the machine (design section 4), with licence and verdict.
 
 ### Phase 1 — Generator bake-off (design 5.2; result goes to the director before anything else)

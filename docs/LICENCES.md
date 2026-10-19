@@ -9,8 +9,8 @@ HF model cards); VRAM is from READMEs until the bake-off measures it. Not legal 
 
 | Item | Kind | Licence | Verdict | Notes |
 |---|---|---|---|---|
-| Hunyuan3D 2.0 / 2mv (`hunyuan3d-dit-v2-mv`) / 2mini | image-to-3D | Tencent Hunyuan 3D 2.0 Community | HELD | §5(c): no use or distribution of Output outside the Territory (world minus EU, UK, South Korea); >1M MAU needs a grant; outputs may not train other models; Tencent claims no rights in outputs (§6d). Shape ~6 GB |
-| Hunyuan3D 2.1 | image-to-3D | Tencent Hunyuan 3D 2.1 Community | HELD | same terms as 2.0; shape ~10 GB, texture ~21 GB (needs a separate pass on 12 GB) |
+| Hunyuan3D 2.0 / 2mv (`hunyuan3d-dit-v2-mv`) / 2mini | image-to-3D | Tencent Hunyuan 3D 2.0 Community | BANNED (D-010) | §5(c): no use or distribution of Output outside the Territory (world minus EU, UK, South Korea); >1M MAU needs a grant; outputs may not train other models; Tencent claims no rights in outputs (§6d). Shape ~6 GB |
+| Hunyuan3D 2.1 | image-to-3D | Tencent Hunyuan 3D 2.1 Community | BANNED (D-010) | same terms as 2.0; shape ~10 GB, texture ~21 GB (needs a separate pass on 12 GB) |
 | TripoSG (VAST-AI) | image-to-3D | MIT | CLEARED | ≥8 GB; geometry only; replace its default RMBG-1.4 matting with BiRefNet |
 | TripoSR | image-to-3D | MIT | CLEARED | ~6 GB; older, coarse |
 | Hi3DGen / Stable3DGen | image-to-3D | MIT | CLEARED (provisional) | TRELLIS fork with the non-commercial deps removed; geometry only; recheck HF weights licence before use |
@@ -38,7 +38,7 @@ HF model cards); VRAM is from READMEs until the bake-off measures it. Not legal 
 | Godot 4.7.2 | tool | MIT | CLEARED | export checks only |
 | BiRefNet | matting model | MIT | CLEARED | |
 | kaolin | library | Apache-2.0 | CLEARED | |
-| ComfyUI-Hunyuan3DWrapper (kijai) | node pack | Tencent Hunyuan 3D 2.0 Community | HELD | follows Hunyuan; confirm no pip dep pulls nvdiffrast |
+| ComfyUI-Hunyuan3DWrapper (kijai) | node pack | Tencent Hunyuan 3D 2.0 Community | BANNED (D-010) | follows Hunyuan; confirm no pip dep pulls nvdiffrast |
 | ComfyUI-3D-Pack | node pack | MIT, aggregates non-commercial deps | BANNED | |
 | ComfyUI-IF_Trellis, ComfyUI-Trellis2 / TRELLIS2 | node pack | MIT + non-commercial deps | BANNED | |
 | nvdiffrast, nvdiffrec | library | NVIDIA Source Code (non-commercial) | BANNED | §3.3 |
