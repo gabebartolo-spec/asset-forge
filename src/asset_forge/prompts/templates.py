@@ -14,14 +14,16 @@ _SUBJECT_RULES = (
     "at most 35 words, in plain English: who or what it is, body shape, clothing or colours, "
     "and one or two distinctive features. Keep every feature the user names (counts of arms, "
     "legs, heads, eyes included). Do not mention camera, pose, background, style or lighting. "
+    "Do not invent extra body parts, and do not copy the example. "
     "No quotes, no lists, no preamble."
 )
 
 SYSTEM = {
-    "humanoid": _SUBJECT_RULES + " The subject is a two-legged humanoid character.",
+    "humanoid": _SUBJECT_RULES
+    + " The subject is a humanoid with two arms and two legs unless the idea says otherwise.",
     "monster": _SUBJECT_RULES + " The subject is a monster or creature; keep its limb count exact.",
     "animal": _SUBJECT_RULES
-    + " The subject is a real-world style animal with a simple low-poly friendly look.",
+    + " The subject is a real animal with its natural body (legs, wings, tail as in life).",
     "sprite": _SUBJECT_RULES
     + " The subject is a single creature or character for a pixel-art sprite.",
 }
@@ -43,9 +45,9 @@ SUFFIX = {
 
 FEWSHOT = {
     "humanoid": (
-        "a space pirate",
-        "A lean space pirate in a patched red coat and a brass breathing mask, with a robotic "
-        "left hand and heavy boots.",
+        "desert nomad",
+        "A weathered desert nomad in a sand-coloured hooded cloak and a blue face scarf, "
+        "carrying a curved knife and a water flask.",
     ),
     "monster": (
         "six-armed brute",
@@ -53,12 +55,11 @@ FEWSHOT = {
         "torn leather loincloth.",
     ),
     "animal": (
-        "robin",
-        "A small round robin with an orange-red breast, brown back, thin legs and a short "
-        "dark beak.",
+        "red panda",
+        "A red panda with rusty-red fur, a white-marked face, dark legs and a long ringed tail.",
     ),
     "sprite": (
-        "fire fox",
-        "A small fox with an ember-orange coat, a flame-tipped tail and bright yellow eyes.",
+        "moss turtle",
+        "A small turtle with a mossy green shell, short stubby legs and calm round eyes.",
     ),
 }

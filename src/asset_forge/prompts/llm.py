@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import tempfile
 from pathlib import Path
 
 from .templates import FEWSHOT
 
 MODEL_ID = "Qwen/Qwen3-1.7B"  # Apache-2.0, see docs/LICENCES.md
-TIMEOUT_S = 120
 LAST_STATS: dict[str, float] = {}  # load_s, gen_s, vram_mb of the latest call (for the CLI)
 
 
@@ -49,38 +49,72 @@ def generate(system: str, idea: str, asset_type: str) -> str:
             f"torch and transformers into it, and download {MODEL_ID} into models/hf "
             "(steps in docs/LICENCES.md and the prompts module docstring)."
         )
-    job = {
-        "model": MODEL_ID,
-        "messages": build_messages(system, idea, asset_type),
-        "max_new_tokens": 90,
-    }
+    job = {"messages": build_messages(system, idea, asset_type), "max_new_tokens": 90}
+    try:
+        proc = _worker(py)
+        proc.stdin.write(json.dumps(job) + "\n")
+        proc.stdin.flush()
+        line = proc.stdout.readline()
+        if not line:
+            raise BrokenPipeError(_stderr_tail(proc))
+        data = json.loads(line)
+        LAST_STATS.update({k: data[k] for k in ("load_s", "gen_s", "vram_mb")})
+        return data["text"]
+    except (OSError, ValueError, KeyError) as exc:
+        stop()
+        raise PromptGenError(
+            f"The prompt writer failed ({str(exc)[:160] or 'no detail'}). Check that {MODEL_ID} "
+            "is downloaded into models/hf and the GPU is free."
+        ) from exc
+
+
+_proc: subprocess.Popen[str] | None = None
+_errlog = tempfile.TemporaryFile(mode="w+")  # worker stderr, read only on failure
+
+
+def _stderr_tail(proc: subprocess.Popen[str]) -> str:
+    try:
+        proc.wait(timeout=2)
+        _errlog.seek(0)
+        tail = _errlog.read().strip().splitlines()[-1:]
+        return tail[0] if tail else "worker exited"
+    except (subprocess.TimeoutExpired, OSError):
+        return "worker exited"
+
+
+def _worker(py: Path) -> subprocess.Popen[str]:
+    """Start the resident worker once; later calls reuse it (about 1 s instead of 15 s)."""
+    global _proc
+    if _proc is not None and _proc.poll() is None:
+        return _proc
     env = {
         **os.environ,
         "PYTHONPATH": str(Path(__file__).resolve().parents[2]),
         "HF_HOME": str(models_dir() / "hf"),
         "HF_HUB_OFFLINE": "1",
     }
-    try:
-        done = subprocess.run(
-            [str(py), "-m", "asset_forge.prompts.worker"],
-            input=json.dumps(job),
-            text=True,
-            capture_output=True,
-            timeout=TIMEOUT_S,
-            env=env,
-            check=False,
-        )
-    except subprocess.TimeoutExpired as exc:
-        raise PromptGenError("The prompt writer took too long. Try again.") from exc
-    if done.returncode != 0:
-        tail = (done.stderr or "").strip().splitlines()[-1:] or ["no detail"]
-        raise PromptGenError(
-            f"The prompt writer failed ({tail[0][:160]}). Check that {MODEL_ID} is downloaded "
-            "into models/hf and the GPU is free."
-        )
-    try:
-        data = json.loads(done.stdout.strip().splitlines()[-1])
-        LAST_STATS.update({k: data[k] for k in ("load_s", "gen_s", "vram_mb")})
-        return data["text"]
-    except (ValueError, KeyError, IndexError) as exc:
-        raise PromptGenError("The prompt writer gave an unreadable answer. Try again.") from exc
+    _proc = subprocess.Popen(
+        [str(py), "-m", "asset_forge.prompts.worker", MODEL_ID],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=_errlog,
+        text=True,
+        env=env,
+    )
+    ready = _proc.stdout.readline()
+    if not ready:
+        raise BrokenPipeError(_stderr_tail(_proc))
+    LAST_STATS["load_s"] = json.loads(ready)["load_s"]
+    return _proc
+
+
+def stop() -> None:
+    """Free the GPU: end the resident worker (call when the app closes or the GPU is needed)."""
+    global _proc
+    if _proc is not None:
+        try:
+            _proc.stdin.close()
+            _proc.wait(timeout=10)
+        except (OSError, subprocess.TimeoutExpired):
+            _proc.kill()
+    _proc = None

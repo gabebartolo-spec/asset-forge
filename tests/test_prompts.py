@@ -1,3 +1,4 @@
+import io
 import json
 import subprocess
 
@@ -75,26 +76,45 @@ def test_deterministic(monkeypatch):
     assert first == prompts.expand("six-armed brute", "monster")
 
 
-def test_worker_failure_is_plain_words(monkeypatch, tmp_path):
+class FakeProc:
+    def __init__(self, lines, code=None):
+        self.stdin = io.StringIO()
+        self.stdout = io.StringIO("".join(line + "\n" for line in lines))
+        self.code = code
+
+    def poll(self):
+        return self.code
+
+    def wait(self, timeout=None):
+        return self.code
+
+
+def _install(monkeypatch, tmp_path, proc):
     py = tmp_path / "envs" / "promptgen" / "Scripts" / "python.exe"
     py.parent.mkdir(parents=True)
     py.write_text("")
     monkeypatch.setenv("FORGE_MODELS_DIR", str(tmp_path))
-    done = subprocess.CompletedProcess([], 1, stdout="", stderr="boom\nCUDA out of memory")
-    monkeypatch.setattr(subprocess, "run", lambda *a, **k: done)
+    monkeypatch.setattr(llm, "_proc", None)
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: proc)
+
+
+def test_worker_failure_is_plain_words(monkeypatch, tmp_path):
+    llm._errlog.seek(0)
+    llm._errlog.truncate()
+    llm._errlog.write("boom\nCUDA out of memory")
+    _install(monkeypatch, tmp_path, FakeProc([], code=1))
     with pytest.raises(PromptGenError, match="CUDA out of memory"):
         prompts.expand("robin", "animal")
 
 
-def test_worker_answer_is_parsed(monkeypatch, tmp_path):
-    py = tmp_path / "envs" / "promptgen" / "Scripts" / "python.exe"
-    py.parent.mkdir(parents=True)
-    py.write_text("")
-    monkeypatch.setenv("FORGE_MODELS_DIR", str(tmp_path))
-    payload = json.dumps({"text": "A robin.", "load_s": 1, "gen_s": 1, "vram_mb": 3})
-    done = subprocess.CompletedProcess([], 0, stdout="warn\n" + payload, stderr="")
-    monkeypatch.setattr(subprocess, "run", lambda *a, **k: done)
+def test_worker_answer_is_parsed_and_reused(monkeypatch, tmp_path):
+    ready = json.dumps({"ready": True, "load_s": 3})
+    reply = json.dumps({"text": "A robin.", "load_s": 3, "gen_s": 1, "vram_mb": 3})
+    proc = FakeProc([ready, reply, reply])
+    _install(monkeypatch, tmp_path, proc)
     assert prompts.expand("robin", "animal").startswith("A robin, ")
+    assert prompts.expand("robin", "animal").startswith("A robin, ")
+    assert proc.stdin.getvalue().count("\n") == 2  # one resident worker, two jobs
 
 
 def test_messages_carry_system_and_example():
