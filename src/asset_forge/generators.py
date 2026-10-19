@@ -173,8 +173,8 @@ class TripoSG(SubprocessGenerator):
     name = "TripoSG"
     label = "Most detail"
     blurb = "Follows your picture. Bigger file, slower in a game."
-    typical_time = "2 to 5 minutes"  # measured 166 s warm, 288 s first run (fox.png)
-    vram = "uses about 8 GB of video memory (VRAM)"
+    typical_time = "2 to 5 minutes"  # fox.png: 92 s free GPU; 166-288 s shared
+    vram = "uses about 5 GB of video memory (VRAM)"
 
 
 GENERATOR_CLASSES: dict[str, type[SubprocessGenerator]] = {
