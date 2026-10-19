@@ -17,4 +17,4 @@ once PR #6 lands, never rebase).
   real clicks, Hi3DGen on fox.png through the queue; shots in `scratchpad/run/shots`.
 
 ## Left
-Nothing for me. Evidence: real Hi3DGen run on fox.png through the queue, 70 s and 73 s, 6.15 GB VRAM peak.
+Nothing for me. LIVE run 2026-10-20 on final page: Hi3DGen 81 s / 6.14 GiB, TripoSG 92 s / 4.88 GiB; TripoSG card VRAM fixed 8 -> 5 GB; shots in side-session-notes local_d40f4221.../pr8_live (shots.md). Earlier evidence: real Hi3DGen run on fox.png through the queue, 70 s and 73 s, 6.15 GB VRAM peak.
