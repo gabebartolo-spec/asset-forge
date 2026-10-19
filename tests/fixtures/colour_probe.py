@@ -5,6 +5,8 @@ dumps measurements as JSON. Args after --: MODE CLEAN_PY OUT
 
     head     humanoid-like figure; the reference draws the head left of centre with a red face disc
     headtiny same, but the reference head is a fifth as wide as the model head (must not be used)
+    headoff  like head, but a trapezius hump on the right keeps the outline centred over the body
+             while the head (the highest mass) and its face are drawn left of centre
     animal   side-projected animal; reference has a dark eye on the near flank (camera +X)
     rim      tall body; reference has a dark shadow strip down its left edge
 """
@@ -65,6 +67,19 @@ def figure_ref(head_r, face_r):
     return img
 
 
+def offset_ref():
+    """Head disc left of centre (the highest mass), a shoulder hump on its right, a wide bar below:
+    the outline centre of the head rows sits on the body axis, the face does not."""
+    img = blank(128, 256)
+    img[0:215, 30:98] = (0.2, 0.3, 0.8, 1.0)
+    img[0:232, 70:98] = (0.2, 0.3, 0.8, 1.0)
+    cx, cy = 40, 228
+    yy, xx = np.mgrid[:256, :128]
+    img[(xx - cx) ** 2 + (yy - cy) ** 2 <= 14 ** 2] = (0.8, 0.7, 0.5, 1.0)
+    disc(img, cx, cy, 7, (0.9, 0.1, 0.1))
+    return img
+
+
 def luma(c):
     return c[..., 0] * 0.2126 + c[..., 1] * 0.7152 + c[..., 2] * 0.0722
 
@@ -79,10 +94,11 @@ def sel(info, **kw):
 
 
 res = {}
-if mode in ("head", "headtiny"):
+if mode in ("head", "headtiny", "headoff"):
     # Body ellipsoid 0.3 x 0.15 x 0.9, head sphere r 0.12 centred (the generator centred it).
     obj = build([((0, 0, 0.9), (0.3, 0.15, 0.9)), ((0, 0, 1.78), (0.12, 0.12, 0.12))])
-    ref = figure_ref(10, 6) if mode == "head" else figure_ref(2, 1)
+    ref = {"head": lambda: figure_ref(10, 6), "headtiny": lambda: figure_ref(2, 1),
+           "headoff": offset_ref}[mode]()
     img, stats, info = clean.bake_colour(obj, ref, (0.0, -1.0, 0.0), 256)
     m = sel(info, x=(-0.03, 0.03), z=(1.7, 1.95), w=(0.8, 1.0))
     col = info["colour"][m]

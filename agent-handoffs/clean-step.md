@@ -1,19 +1,18 @@
-# Handoff: clean-step (PR #9, builder), rewritten 2026-10-20 (second colour-fix round)
-State: second colour-fix round pushed; waiting on CI and the lead's fresh fidelity check.
-Branch claude/clean-step, worktree asset-forge-wt/clean-step. PR body Evidence updated (A to E).
-Done in blender/clean.py (bake_colour rewritten):
-- A: Registration class (bbox scale per axis + smoothed per-row shift of outline centres); head-band
-  width-ratio gate HEAD_WIDTH_RATIO (0.4, 2.0): outside it the head is low-frequency, no face.
-- B: fill = normalised diffusion over the mesh edge graph, per vertex, interpolated over triangles;
-  seam feather 5% of height by graph diffusion (alpha 0 at the seam).
-- C: fill sources skip cos < 0.34 (70 deg) and pixels < 0.55 x band median (8 bands); in report.json.
-- D: side views (camera +X) mirror left-right only (x -> 2cx - x, snapped to nearest surface).
-- E: albedo was true; lit sheet fixed with Standard view transform, no specular, SHEET_EXPOSURE 1.1 EV.
-  albedo_vs_reference per height band in report.json; run_all.py adds lit_vs_reference to summary.json.
-- Tests: tests/test_clean_colour.py + tests/fixtures/colour_probe.py (5), all failed first on the old
-  script except the luma assert of the albedo test (only its missing key failed).
-- Godot headless check: 4 of 10 clean.glb IMPORT_CHECK_OK (hi3dgen humanoid/fox/bird, triposg brute).
-  config.local.toml (gitignored) in the worktree holds the Godot and Blender paths.
-Left / open: lead's fresh fidelity check of the 10 sheets; humanoid albedo saturation 0.65-0.87;
- fox chest grey-brown; head gate lower bound 0.4 is my call (0.5 lost the hi3dgen spider face).
-Scratch: C:/Users/DANTE/AppData/Local/Temp/claude/.../scratchpad (one.py runs one model).
+# Handoff: clean-step (PR #9, builder round 3), 2026-10-20
+State: round-3 pushed (head-to-head registration + fox fixes); waiting on CI and the lead's fresh fidelity check.
+Done in blender/clean.py:
+- Head-to-head (humanoid/monster only): ref head = highest compact mass of the silhouette (smoothed top
+  contour); model head = centre of top 8% of the mesh. Head rows (top 18%, fade to 34%) of the picture are
+  shifted so the two meet. Independent gate: darkest facial features of the picture vs the model's most
+  forward blob after the shift; > 0.25 head width => head low-frequency, no face (HEAD_AGREE).
+  report.json colour_route.registration.head_to_head. hi3dgen brute gates out (0.387), triposg brute paints
+  (0.20), humanoids/spiders shift ~0 (0.00-0.01) and pass.
+- Foxes: pale sources x2.5 in fill (animals only; x5 whitened humanoid steel and legs), fill specks dropped
+  (SPECK_SCALE 8), texels not facing the camera limited to 0.10 luma from the fill, mirrored points that land
+  > 2% height off the surface give no specks (turned head => the extra eye spot is gone; robin keeps 2 eyes).
+- Tests: tests/test_clean_colour.py::test_face_is_registered_head_to_head_when_the_outline_is_centred
+  (fixture mode headoff). Fails on the c00428c script (red-green 0.017), passes now; 6 colour tests pass.
+- Sheets regenerated (docs/audits/clean), Godot import check 10/10 IMPORT_CHECK_OK.
+Open: hi3dgen fox front legs pink-grey (ref black); triposg fox chest smooth pale grey, not white faceted;
+ cue B (face features) is my call and is noisy on three-quarter faces.
+Scratch: scratchpad/one.py cand prompt [--sheets] runs one model.

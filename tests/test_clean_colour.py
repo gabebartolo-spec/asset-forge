@@ -31,6 +31,15 @@ def test_face_drawn_left_of_centre_lands_on_the_centred_head(tmp_path):
     assert red - green > 0.2  # the red face disc (r-g 0.8), not tan head (0.1) or blue body
 
 
+def test_face_is_registered_head_to_head_when_the_outline_is_centred(tmp_path):
+    """The picture's outline is centred over the body (shoulder hump) but its face is not; the
+    face must still land on the model's head, found by the highest mass, not by the outline."""
+    r = probe("headoff", tmp_path)
+    assert r["n"] > 10
+    red, green, _ = r["mean_rgb"]
+    assert red - green > 0.2
+
+
 def test_head_that_does_not_match_the_picture_gets_no_face(tmp_path):
     r = probe("headtiny", tmp_path)
     assert r["stats"]["registration"]["head_painted_from_reference"] is False

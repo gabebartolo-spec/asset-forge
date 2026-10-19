@@ -20,6 +20,11 @@ What it does, in order (every number is in report.json):
     Origin at the feet (centre of the footprint, lowest point on z = 0), real-world scale.
  4. Decimate (collapse) to the type's triangle budget, smart UV unwrap.
  5. Colour (generators here are geometry only), all in bake_colour:
+    - Head-to-head (humanoid/monster): the picture's head (highest compact mass) is shifted onto the
+      model's head (top slice of the mesh); a second cue pair (darkest facial features vs the most
+      forward blob) must then agree within HEAD_AGREE head widths, else no face (low frequency).
+    - Animals: specks (eye, nose, white patch) never seed the fill, and mirrored sources that land
+      off the surface (turned head) or texels facing away from the camera get no specks.
     - Registration: the reference outline is fitted to the model's outline seen from the reference
       camera (bbox scale per axis, then a smoothed per-row sideways shift), so a head drawn off
       centre lands on the geometric head. If the model's head band and the picture's differ too
@@ -309,6 +314,26 @@ HEAD_BAND = 0.16    # top fraction of the height treated as the head for the reg
 HEAD_WIDTH_RATIO = (0.4, 2.0)
 FEATHER = 0.05      # projected-to-fill seam width, as a fraction of the height (surface distance)
 REG_ROWS = 64
+# Head-to-head registration (humanoid/monster front projection). The head is found in the picture
+# and on the model by features, not by outline: reference = the highest compact mass of the
+# silhouette, model = the top slice of the mesh; a second, independent pair (the darkest facial
+# features in the picture, the most forward blob of the model's upper body) must agree after the
+# shift, within HEAD_AGREE head widths, or no face is painted.
+HEAD_TOP_SLICE = 0.08     # model: top fraction of the height whose centre is the head's centre
+HEAD_FULL = 0.18          # rows (from the top, of the height) shifted fully onto the head
+HEAD_FADE = 0.34          # ... fading back to the outline fit by here (shoulders, torso)
+HEAD_WIDTH_OF_H = 0.16    # nominal head width as a fraction of the figure height
+HEAD_AGREE = 0.25         # allowed cue disagreement after registration, in head widths
+PALE_BOOST = 1.5     # fill: pale (white/grey, low saturation) sources count this much more
+PALE_LUMA = (0.45, 0.65)   # luma ramp for "pale"
+PALE_SAT = (0.30, 0.12)    # saturation ramp (below the first = 0, below the second = full)
+SPECK_CAP = 0.10     # texels not well facing the camera may differ from the fill by this luma only
+SPECK_SCALE = 8      # fill: iterations of the local-colour estimate for speck removal (animals)
+SPECK_DARK = 0.6     # ... a source darker than this x the local luma is a speck
+SPECK_WHITE = 0.30   # ... or whiter than the local luma by this
+MIRROR_SNAP = 0.02   # mirrored source must land within this x height of the surface for specks
+SPECK_FULL = (0.5, 0.7)    # facing cos from which the cap lifts completely
+HEAD_DARK = 0.04          # picture: darkest fraction of the head box taken as the face features
 MIRROR_DIRS = ((1.0, 0.0, 0.0),)  # camera directions that are side views (animals)
 
 
@@ -357,7 +382,7 @@ class Registration:
     (a smoothed shear), so a head that the generator centred but the picture drew left of centre
     still lands on the geometric head."""
 
-    def __init__(self, P_all, right, ref):
+    def __init__(self, P_all, right, ref, depth_dir=None):
         s, z = P_all @ right, P_all[:, 2]
         self.s0, self.sw = s.min(), max(np.ptp(s), 1e-9)
         self.z0, self.zh = z.min(), max(np.ptp(z), 1e-9)
@@ -377,10 +402,71 @@ class Registration:
         ok = bool(wr and np.isfinite(wr) and wr > 0)
         self.head_width_ratio = float(wm / wr) if ok else float("nan")
         self.head_shift = float(np.mean(self.shift[h0:]))
+        self.head_cues = None
+        if depth_dir is not None:
+            self.register_head(P_all, s, z, depth_dir, ref, mask_xy=(xs, ys))
+
+    def head_weight(self, vn):
+        return np.clip((HEAD_FADE - (1 - vn)) / (HEAD_FADE - HEAD_FULL), 0, 1)
+
+    def register_head(self, P_all, s, z, depth_dir, ref, mask_xy):
+        """Shift the head rows of the reference sideways so the head found in the picture lands on
+        the head found on the model (both in outline-normalised coordinates), then measure how far
+        the independent second cue pair is from agreeing."""
+        xs, ys = mask_xy
+        rw, rh = self.rx1 - 1 - self.rx0, self.ry1 - 1 - self.ry0
+        # picture, cue A: highest compact mass of the silhouette (smoothed top contour)
+        m = ref_mask(ref)
+        cols = np.arange(self.rx0, self.rx1)
+        topc = np.array([np.nonzero(m[:, c])[0].max() if m[:, c].any() else -1 for c in cols],
+                        float)
+        k = max(3, int(0.02 * len(cols))) | 1
+        tops = np.convolve(np.pad(topc, k // 2, mode="edge"), np.ones(k) / k, mode="valid")
+        near = tops >= tops.max() - 0.01 * rh
+        ref_a = float(cols[near].mean())
+        # picture, cue B: centroid of the darkest facial features inside the head box
+        hw = 0.5 * HEAD_WIDTH_OF_H * rh * 1.25
+        y_lo = self.ry1 - 1 - 0.20 * rh
+        colx = np.arange(m.shape[1])[None, :]
+        rowy = np.arange(m.shape[0])[:, None]
+        inbox = m & (colx >= ref_a - hw) & (colx <= ref_a + hw) & (rowy >= y_lo)
+        by, bx = np.nonzero(inbox)
+        lum = luma(ref[by, bx, :3])
+        dark = lum <= np.quantile(lum, HEAD_DARK)
+        ref_b = (float(bx[dark].mean()), float(by[dark].mean()))
+        # model, cue A: centre of the top slice of the mesh
+        zn = (z - self.z0) / self.zh
+        sn = (s - self.s0) / self.sw
+        model_a = float(sn[zn >= 1 - HEAD_TOP_SLICE].mean())
+        # model, cue B: the most forward blob of the upper body
+        up = zn > 0.75
+        depth = P_all @ np.array(depth_dir, float)
+        fwd = up & (depth >= np.quantile(depth[up], 0.85))
+        model_b = (float(sn[fwd].mean()), float(zn[fwd].mean()))
+        ref_a_n = (ref_a - self.rx0) / max(rw, 1)
+        head_shift = ref_a_n - model_a
+        w = self.head_weight(self.rows_v)
+        self.shift = self.shift * (1 - w) + head_shift * w
+        # agreement of the second pair after the shift, in head widths (reference pixels)
+        px, py = self.to_ref(np.array([model_b[0] * self.sw + self.s0]),
+                             np.array([model_b[1] * self.zh + self.z0]))
+        head_w = HEAD_WIDTH_OF_H * rh
+        self.head_cues = {
+            "reference_head_x": round(ref_a_n, 4), "model_head_x": round(model_a, 4),
+            "head_shift_applied": round(float(head_shift), 4),
+            "feature_offset_px": [round(float(px[0] - ref_b[0]), 1),
+                                  round(float(py[0] - ref_b[1]), 1)],
+            "head_width_px": round(head_w, 1),
+            "disagreement_head_widths": round(float(abs(px[0] - ref_b[0]) / head_w), 3),
+        }
+
+    def head_agrees(self):
+        return self.head_cues is None or self.head_cues["disagreement_head_widths"] <= HEAD_AGREE
 
     def head_ok(self):
         lo, hi = HEAD_WIDTH_RATIO
-        return bool(np.isfinite(self.head_width_ratio) and lo <= self.head_width_ratio <= hi)
+        return bool(np.isfinite(self.head_width_ratio) and lo <= self.head_width_ratio <= hi
+                    and self.head_agrees())
 
     def to_ref(self, sv, z):
         """(s along camera right, z) of source points -> reference pixel coordinates."""
@@ -498,14 +584,14 @@ def bake_colour(obj, ref, d0, size):
     f = -d_arr
     right = np.cross(f, [0, 0, 1.0])
     right /= np.linalg.norm(right)
-    reg = Registration(co, right, ref)
+    mirror = tuple(round(x, 3) for x in d0) in MIRROR_DIRS
+    reg = Registration(co, right, ref, None if mirror else d0)
     height = max(np.ptp(co[:, 2]), 1e-9)
     mask = ref_mask(ref, erode=3)
     rh, rw = ref.shape[:2]
     bvh = bvhtree.BVHTree.FromObject(obj, bpy.context.evaluated_depsgraph_get())
     eps = max(np.ptp(co, axis=0)) * 1e-3
     d_vec = Vector(d0)
-    mirror = tuple(round(x, 3) for x in d0) in MIRROR_DIRS
     cx = 0.0
     if mirror:  # sagittal plane: the body's mid-length slice (the head and tail may be turned)
         yv = co[:, 1]
@@ -518,6 +604,7 @@ def bake_colour(obj, ref, d0, size):
         (side views) for the far flank its left-right mirror image across the sagittal plane
         (x -> 2 cx - x only, never front-to-back) snapped to the nearest surface."""
         Q, WQ, NQ = Pp.copy(), w.copy(), Nn.copy()
+        snap = np.zeros(len(Pp))
         if mirror:
             for k in np.nonzero(w < -MIN_FACING)[0]:
                 m = Vector((2 * cx - Pp[k, 0], Pp[k, 1], Pp[k, 2]))
@@ -525,11 +612,13 @@ def bake_colour(obj, ref, d0, size):
                 if loc is not None:
                     Q[k], NQ[k] = (loc.x, loc.y, loc.z), (nrm.x, nrm.y, nrm.z)
                     WQ[k] = nrm.dot(d_vec)
+                    snap[k] = _d
                     n_mirrored[0] += 1
         seen = np.zeros(len(Pp), bool)
         for k in np.nonzero(WQ >= MIN_FACING)[0]:
             if bvh.ray_cast(Vector(Q[k] + NQ[k] * eps), d_vec)[0] is None:
                 seen[k] = True
+        sources.snap = snap
         return Q, WQ, seen
 
     def sample(Q, img):
@@ -560,6 +649,25 @@ def bake_colour(obj, ref, d0, size):
     s_fill = np.where(shadow, 0.0, a0)
     edges = mesh_edges(vi)
     deg = np.bincount(edges[:, 0], minlength=nv).astype(np.float64)
+    # Pale sources (a white chest next to an orange shoulder) count more: a fill that averages
+    # them with their neighbours turns white into grey-mauve.
+    if mirror:
+        # Specks (eye, nose, ear tip, a white patch) must not seed the fill: a source that is much
+        # darker (or whiter) than the weighted colour around it at SPECK_SCALE iterations goes.
+        xs_ = diffuse(np.concatenate([vcol * s_fill[:, None], s_fill[:, None]], axis=1), edges,
+                      deg, SPECK_SCALE)
+        loc = xs_[:, :3] / np.maximum(xs_[:, 3:4], 1e-9)
+        l_loc, l_v = luma(loc), lum_v
+        speck = (s_fill > 0) & (xs_[:, 3] > 1e-3) & ((l_v < SPECK_DARK * l_loc)
+                                                      | (l_v > l_loc + SPECK_WHITE))
+        s_fill = np.where(speck, 0.0, s_fill)
+        n_speck_v = int(speck.sum())
+    else:
+        n_speck_v = 0
+    sv_ = sat(vcol)
+    pale = (np.clip((lum_v - PALE_LUMA[0]) / (PALE_LUMA[1] - PALE_LUMA[0]), 0, 1)
+            * np.clip((PALE_SAT[0] - sv_) / (PALE_SAT[0] - PALE_SAT[1]), 0, 1))
+    s_fill = s_fill * (1 + (PALE_BOOST * pale if mirror else 0.0))  # animals only
     fill_v = fill_colour(vcol, s_fill, edges, deg)
     # Seam feather: diffuse the trust over a surface distance of FEATHER x height.
     mean_edge = float(np.linalg.norm(co[edges[:, 0]] - co[edges[:, 1]], axis=1).mean())
@@ -572,6 +680,7 @@ def bake_colour(obj, ref, d0, size):
     alpha_t = np.einsum("mk,mk->m", bw, a_vert[vi[tt]])
     colour = fill_t.copy()
     known = np.zeros(len(tt), bool)
+    n_speck = [0]
     cand = np.nonzero(alpha_t > 0.01)[0]
     if len(cand):
         Q, WQ, seen = sources(p[cand], wt[cand], n[cand])
@@ -579,7 +688,19 @@ def bake_colour(obj, ref, d0, size):
         ok = seen & inside
         kk = cand[ok]
         known[kk] = True
-        colour[kk] = alpha_t[kk, None] * pc[ok] + (1 - alpha_t[kk, None]) * fill_t[kk]
+        # Dark or white specks (eye, nose, ear tip) only on texels well facing the camera: elsewhere
+        # the picture may differ from the fill by SPECK_CAP in luma, no more.
+        lift = np.clip((WQ[ok] - SPECK_FULL[0]) / (SPECK_FULL[1] - SPECK_FULL[0]), 0, 1)
+        # a mirrored point that lands off the surface (a turned head is not symmetric about the
+        # body plane) is not the other eye: no specks from it
+        lift = lift * (sources.snap[ok] <= MIRROR_SNAP * height)
+        dev = pc[ok] - fill_t[kk]
+        dl = luma(dev)
+        cap = SPECK_CAP + (1 - SPECK_CAP) * lift  # luma allowed, 1.0 = anything
+        scale = np.minimum(1.0, cap / np.maximum(np.abs(dl), 1e-6))
+        n_speck[0] = int((scale < 1).sum())
+        pc_used = fill_t[kk] + dev * scale[:, None]
+        colour[kk] = alpha_t[kk, None] * pc_used + (1 - alpha_t[kk, None]) * fill_t[kk]
     alpha_used = np.where(known, alpha_t, 0.0)
     painted = int((alpha_used > 0.5).sum())
 
@@ -617,12 +738,15 @@ def bake_colour(obj, ref, d0, size):
             "head_width_ratio_allowed": list(HEAD_WIDTH_RATIO),
             "head_painted_from_reference": head_ok,
             "max_row_shift": round(float(np.abs(reg.shift).max()), 4),
+            "head_to_head": reg.head_cues,
         },
         "fill": {
             "min_facing_cos": MIN_FACING, "full_facing_cos": FULL_FACING,
             "shadow_rel_to_band_median": SHADOW_REL, "shadow_bands": BANDS,
             "shadow_vertices_ignored": int(shadow.sum()),
             "method": "normalised vertex-graph diffusion, interpolated across triangles",
+            "pale_boost": PALE_BOOST, "speck_cap_luma": SPECK_CAP,
+            "texels_speck_limited": n_speck[0], "fill_specks_dropped": n_speck_v,
             "seam_feather_height_frac": FEATHER, "seam_feather_iterations": iters,
         },
     }

@@ -48,9 +48,9 @@
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\humanoid.png",
       "texels_covered": 307852,
-      "texels_projected": 19068,
+      "texels_projected": 19272,
       "texels_projected_full_trust": 0,
-      "texels_low_frequency": 288784,
+      "texels_low_frequency": 288580,
       "mirrored_far_side": false,
       "mirrored_left_right": false,
       "mirrored_points": 0,
@@ -64,15 +64,30 @@
           2.0
         ],
         "head_painted_from_reference": true,
-        "max_row_shift": 0.1471
+        "max_row_shift": 0.1471,
+        "head_to_head": {
+          "reference_head_x": 0.5025,
+          "model_head_x": 0.5014,
+          "head_shift_applied": 0.0011,
+          "feature_offset_px": [
+            -17.3,
+            -50.4
+          ],
+          "head_width_px": 136.2,
+          "disagreement_head_widths": 0.127
+        }
       },
       "fill": {
         "min_facing_cos": 0.34,
         "full_facing_cos": 0.7,
         "shadow_rel_to_band_median": 0.55,
         "shadow_bands": 8,
-        "shadow_vertices_ignored": 92,
+        "shadow_vertices_ignored": 95,
         "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "pale_boost": 1.5,
+        "speck_cap_luma": 0.1,
+        "texels_speck_limited": 2189,
+        "fill_specks_dropped": 0,
         "seam_feather_height_frac": 0.05,
         "seam_feather_iterations": 10
       }
@@ -89,52 +104,52 @@
       },
       {
         "band": 1,
-        "albedo_luma": 0.2698,
+        "albedo_luma": 0.27,
         "ref_luma": 0.231,
-        "albedo_sat": 0.1633,
+        "albedo_sat": 0.1638,
         "ref_sat": 0.1994,
-        "luma_ratio": 1.168,
-        "sat_ratio": 0.819
+        "luma_ratio": 1.169,
+        "sat_ratio": 0.821
       },
       {
         "band": 2,
-        "albedo_luma": 0.317,
+        "albedo_luma": 0.3177,
         "ref_luma": 0.2888,
-        "albedo_sat": 0.169,
+        "albedo_sat": 0.17,
         "ref_sat": 0.2179,
-        "luma_ratio": 1.098,
-        "sat_ratio": 0.776
+        "luma_ratio": 1.1,
+        "sat_ratio": 0.78
       },
       {
         "band": 3,
-        "albedo_luma": 0.4184,
+        "albedo_luma": 0.4157,
         "ref_luma": 0.4177,
-        "albedo_sat": 0.095,
+        "albedo_sat": 0.1077,
         "ref_sat": 0.1456,
-        "luma_ratio": 1.002,
-        "sat_ratio": 0.652
+        "luma_ratio": 0.995,
+        "sat_ratio": 0.74
       }
     ],
     "timings_s": {
-      "import_and_weld": 1.15,
-      "voxel_remesh": 0.35,
+      "import_and_weld": 0.77,
+      "voxel_remesh": 0.22,
       "orient_scale": 0.01,
-      "decimate": 1.91,
-      "uv_unwrap": 0.1,
-      "colour_bake": 1.56,
-      "silhouette": 1.23,
-      "sheets": 0.52,
-      "export": 1.07,
-      "total": 7.54
+      "decimate": 1.37,
+      "uv_unwrap": 0.06,
+      "colour_bake": 1.05,
+      "silhouette": 0.9,
+      "sheets": 0.41,
+      "export": 0.75,
+      "total": 5.27
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.291,
       "lit_luma": 0.278,
-      "luma_ratio": 0.957,
+      "luma_ratio": 0.955,
       "ref_sat": 0.192,
-      "lit_sat": 0.151,
-      "sat_ratio": 0.783
+      "lit_sat": 0.154,
+      "sat_ratio": 0.8
     }
   },
   "hi3dgen/spider": {
@@ -186,9 +201,9 @@
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\spider.png",
       "texels_covered": 276182,
-      "texels_projected": 6560,
-      "texels_projected_full_trust": 139,
-      "texels_low_frequency": 269622,
+      "texels_projected": 7028,
+      "texels_projected_full_trust": 56,
+      "texels_low_frequency": 269154,
       "mirrored_far_side": false,
       "mirrored_left_right": false,
       "mirrored_points": 0,
@@ -202,15 +217,30 @@
           2.0
         ],
         "head_painted_from_reference": true,
-        "max_row_shift": 0.0311
+        "max_row_shift": 0.0251,
+        "head_to_head": {
+          "reference_head_x": 0.4924,
+          "model_head_x": 0.5011,
+          "head_shift_applied": -0.0087,
+          "feature_offset_px": [
+            17.2,
+            -22.3
+          ],
+          "head_width_px": 123.5,
+          "disagreement_head_widths": 0.139
+        }
       },
       "fill": {
         "min_facing_cos": 0.34,
         "full_facing_cos": 0.7,
         "shadow_rel_to_band_median": 0.55,
         "shadow_bands": 8,
-        "shadow_vertices_ignored": 51,
+        "shadow_vertices_ignored": 45,
         "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "pale_boost": 1.5,
+        "speck_cap_luma": 0.1,
+        "texels_speck_limited": 1017,
+        "fill_specks_dropped": 0,
         "seam_feather_height_frac": 0.05,
         "seam_feather_iterations": 4
       }
@@ -218,61 +248,61 @@
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.3683,
+        "albedo_luma": 0.3485,
         "ref_luma": 0.1684,
-        "albedo_sat": 0.3055,
+        "albedo_sat": 0.303,
         "ref_sat": 0.1624,
-        "luma_ratio": 2.187,
-        "sat_ratio": 1.881
+        "luma_ratio": 2.069,
+        "sat_ratio": 1.866
       },
       {
         "band": 1,
-        "albedo_luma": 0.3674,
+        "albedo_luma": 0.3479,
         "ref_luma": 0.2187,
-        "albedo_sat": 0.3062,
+        "albedo_sat": 0.3038,
         "ref_sat": 0.2204,
-        "luma_ratio": 1.68,
-        "sat_ratio": 1.389
+        "luma_ratio": 1.591,
+        "sat_ratio": 1.378
       },
       {
         "band": 2,
-        "albedo_luma": 0.3674,
+        "albedo_luma": 0.3473,
         "ref_luma": 0.2912,
-        "albedo_sat": 0.3076,
+        "albedo_sat": 0.3043,
         "ref_sat": 0.2803,
-        "luma_ratio": 1.262,
-        "sat_ratio": 1.097
+        "luma_ratio": 1.193,
+        "sat_ratio": 1.086
       },
       {
         "band": 3,
-        "albedo_luma": 0.4102,
+        "albedo_luma": 0.3832,
         "ref_luma": 0.3878,
-        "albedo_sat": 0.3206,
+        "albedo_sat": 0.3154,
         "ref_sat": 0.307,
-        "luma_ratio": 1.058,
-        "sat_ratio": 1.044
+        "luma_ratio": 0.988,
+        "sat_ratio": 1.027
       }
     ],
     "timings_s": {
-      "import_and_weld": 0.65,
+      "import_and_weld": 0.62,
       "voxel_remesh": 0.17,
       "orient_scale": 0.01,
-      "decimate": 1.1,
-      "uv_unwrap": 0.05,
-      "colour_bake": 1.25,
-      "silhouette": 1.04,
-      "sheets": 0.42,
-      "export": 0.9,
-      "total": 5.3
+      "decimate": 1.03,
+      "uv_unwrap": 0.04,
+      "colour_bake": 0.95,
+      "silhouette": 0.84,
+      "sheets": 0.38,
+      "export": 0.71,
+      "total": 4.47
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.314,
-      "lit_luma": 0.317,
-      "luma_ratio": 1.009,
+      "lit_luma": 0.298,
+      "luma_ratio": 0.949,
       "ref_sat": 0.278,
-      "lit_sat": 0.312,
-      "sat_ratio": 1.122
+      "lit_sat": 0.309,
+      "sat_ratio": 1.112
     }
   },
   "hi3dgen/brute": {
@@ -324,9 +354,9 @@
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\brute.png",
       "texels_covered": 360331,
-      "texels_projected": 48521,
+      "texels_projected": 37129,
       "texels_projected_full_trust": 1309,
-      "texels_low_frequency": 311810,
+      "texels_low_frequency": 323202,
       "mirrored_far_side": false,
       "mirrored_left_right": false,
       "mirrored_points": 0,
@@ -339,16 +369,31 @@
           0.4,
           2.0
         ],
-        "head_painted_from_reference": true,
-        "max_row_shift": 0.2553
+        "head_painted_from_reference": false,
+        "max_row_shift": 0.2553,
+        "head_to_head": {
+          "reference_head_x": 0.4321,
+          "model_head_x": 0.471,
+          "head_shift_applied": -0.0389,
+          "feature_offset_px": [
+            52.7,
+            -9.4
+          ],
+          "head_width_px": 136.2,
+          "disagreement_head_widths": 0.387
+        }
       },
       "fill": {
         "min_facing_cos": 0.34,
         "full_facing_cos": 0.7,
         "shadow_rel_to_band_median": 0.55,
         "shadow_bands": 8,
-        "shadow_vertices_ignored": 199,
+        "shadow_vertices_ignored": 171,
         "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "pale_boost": 1.5,
+        "speck_cap_luma": 0.1,
+        "texels_speck_limited": 2444,
+        "fill_specks_dropped": 0,
         "seam_feather_height_frac": 0.05,
         "seam_feather_iterations": 7
       }
@@ -356,61 +401,61 @@
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.2831,
+        "albedo_luma": 0.2826,
         "ref_luma": 0.3163,
-        "albedo_sat": 0.1327,
+        "albedo_sat": 0.132,
         "ref_sat": 0.1473,
-        "luma_ratio": 0.895,
-        "sat_ratio": 0.901
+        "luma_ratio": 0.893,
+        "sat_ratio": 0.896
       },
       {
         "band": 1,
-        "albedo_luma": 0.3062,
+        "albedo_luma": 0.2914,
         "ref_luma": 0.2664,
-        "albedo_sat": 0.138,
+        "albedo_sat": 0.1363,
         "ref_sat": 0.133,
-        "luma_ratio": 1.149,
-        "sat_ratio": 1.038
+        "luma_ratio": 1.094,
+        "sat_ratio": 1.025
       },
       {
         "band": 2,
-        "albedo_luma": 0.3589,
+        "albedo_luma": 0.3465,
         "ref_luma": 0.3237,
-        "albedo_sat": 0.1435,
+        "albedo_sat": 0.1459,
         "ref_sat": 0.1597,
-        "luma_ratio": 1.109,
-        "sat_ratio": 0.899
+        "luma_ratio": 1.07,
+        "sat_ratio": 0.914
       },
       {
         "band": 3,
-        "albedo_luma": 0.4908,
+        "albedo_luma": 0.4072,
         "ref_luma": 0.4771,
-        "albedo_sat": 0.1533,
+        "albedo_sat": 0.1622,
         "ref_sat": 0.1844,
-        "luma_ratio": 1.029,
-        "sat_ratio": 0.831
+        "luma_ratio": 0.853,
+        "sat_ratio": 0.88
       }
     ],
     "timings_s": {
-      "import_and_weld": 2.39,
-      "voxel_remesh": 0.51,
-      "orient_scale": 0.01,
-      "decimate": 2.78,
-      "uv_unwrap": 0.05,
-      "colour_bake": 1.58,
-      "silhouette": 1.04,
-      "sheets": 0.49,
-      "export": 0.89,
-      "total": 9.39
+      "import_and_weld": 1.94,
+      "voxel_remesh": 0.55,
+      "orient_scale": 0.02,
+      "decimate": 2.29,
+      "uv_unwrap": 0.04,
+      "colour_bake": 1.14,
+      "silhouette": 0.89,
+      "sheets": 0.46,
+      "export": 0.8,
+      "total": 7.8
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.358,
-      "lit_luma": 0.321,
-      "luma_ratio": 0.895,
+      "lit_luma": 0.301,
+      "luma_ratio": 0.839,
       "ref_sat": 0.16,
-      "lit_sat": 0.145,
-      "sat_ratio": 0.908
+      "lit_sat": 0.148,
+      "sat_ratio": 0.927
     }
   },
   "hi3dgen/fox": {
@@ -483,7 +528,8 @@
           2.0
         ],
         "head_painted_from_reference": true,
-        "max_row_shift": 0.1223
+        "max_row_shift": 0.1223,
+        "head_to_head": null
       },
       "fill": {
         "min_facing_cos": 0.34,
@@ -492,6 +538,10 @@
         "shadow_bands": 8,
         "shadow_vertices_ignored": 15,
         "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "pale_boost": 1.5,
+        "speck_cap_luma": 0.1,
+        "texels_speck_limited": 3379,
+        "fill_specks_dropped": 37,
         "seam_feather_height_frac": 0.05,
         "seam_feather_iterations": 4
       }
@@ -499,61 +549,61 @@
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.2192,
+        "albedo_luma": 0.4174,
         "ref_luma": 0.1841,
-        "albedo_sat": 0.5669,
+        "albedo_sat": 0.5544,
         "ref_sat": 0.4034,
-        "luma_ratio": 1.191,
-        "sat_ratio": 1.405
+        "luma_ratio": 2.267,
+        "sat_ratio": 1.374
       },
       {
         "band": 1,
-        "albedo_luma": 0.4035,
+        "albedo_luma": 0.4788,
         "ref_luma": 0.3336,
-        "albedo_sat": 0.5563,
+        "albedo_sat": 0.5471,
         "ref_sat": 0.6492,
-        "luma_ratio": 1.21,
-        "sat_ratio": 0.857
+        "luma_ratio": 1.435,
+        "sat_ratio": 0.843
       },
       {
         "band": 2,
-        "albedo_luma": 0.5095,
+        "albedo_luma": 0.5424,
         "ref_luma": 0.5655,
-        "albedo_sat": 0.4971,
+        "albedo_sat": 0.5035,
         "ref_sat": 0.4708,
-        "luma_ratio": 0.901,
-        "sat_ratio": 1.056
+        "luma_ratio": 0.959,
+        "sat_ratio": 1.069
       },
       {
         "band": 3,
-        "albedo_luma": 0.5045,
+        "albedo_luma": 0.5296,
         "ref_luma": 0.4675,
-        "albedo_sat": 0.4935,
+        "albedo_sat": 0.4876,
         "ref_sat": 0.5127,
-        "luma_ratio": 1.079,
-        "sat_ratio": 0.963
+        "luma_ratio": 1.133,
+        "sat_ratio": 0.951
       }
     ],
     "timings_s": {
-      "import_and_weld": 0.81,
-      "voxel_remesh": 0.29,
+      "import_and_weld": 0.83,
+      "voxel_remesh": 0.28,
       "orient_scale": 0.02,
-      "decimate": 2.38,
-      "uv_unwrap": 0.01,
-      "colour_bake": 0.51,
-      "silhouette": 1.01,
-      "sheets": 0.52,
-      "export": 1.03,
-      "total": 6.19
+      "decimate": 2.02,
+      "uv_unwrap": 0.02,
+      "colour_bake": 0.4,
+      "silhouette": 1.07,
+      "sheets": 0.4,
+      "export": 0.73,
+      "total": 5.49
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.417,
-      "lit_luma": 0.324,
-      "luma_ratio": 0.777,
+      "lit_luma": 0.386,
+      "luma_ratio": 0.924,
       "ref_sat": 0.527,
-      "lit_sat": 0.483,
-      "sat_ratio": 0.917
+      "lit_sat": 0.463,
+      "sat_ratio": 0.879
     }
   },
   "hi3dgen/bird": {
@@ -626,7 +676,8 @@
           2.0
         ],
         "head_painted_from_reference": true,
-        "max_row_shift": 0.0821
+        "max_row_shift": 0.0821,
+        "head_to_head": null
       },
       "fill": {
         "min_facing_cos": 0.34,
@@ -635,6 +686,10 @@
         "shadow_bands": 8,
         "shadow_vertices_ignored": 92,
         "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "pale_boost": 1.5,
+        "speck_cap_luma": 0.1,
+        "texels_speck_limited": 3643,
+        "fill_specks_dropped": 4,
         "seam_feather_height_frac": 0.05,
         "seam_feather_iterations": 4
       }
@@ -642,61 +697,61 @@
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.393,
+        "albedo_luma": 0.4164,
         "ref_luma": 0.2824,
-        "albedo_sat": 0.3772,
+        "albedo_sat": 0.3198,
         "ref_sat": 0.5034,
-        "luma_ratio": 1.392,
-        "sat_ratio": 0.749
+        "luma_ratio": 1.475,
+        "sat_ratio": 0.635
       },
       {
         "band": 1,
-        "albedo_luma": 0.4074,
+        "albedo_luma": 0.4196,
         "ref_luma": 0.3986,
-        "albedo_sat": 0.1525,
+        "albedo_sat": 0.137,
         "ref_sat": 0.199,
-        "luma_ratio": 1.022,
-        "sat_ratio": 0.766
+        "luma_ratio": 1.053,
+        "sat_ratio": 0.688
       },
       {
         "band": 2,
-        "albedo_luma": 0.393,
+        "albedo_luma": 0.3999,
         "ref_luma": 0.3598,
-        "albedo_sat": 0.4671,
+        "albedo_sat": 0.4519,
         "ref_sat": 0.5195,
-        "luma_ratio": 1.092,
-        "sat_ratio": 0.899
+        "luma_ratio": 1.111,
+        "sat_ratio": 0.87
       },
       {
         "band": 3,
-        "albedo_luma": 0.4241,
+        "albedo_luma": 0.4256,
         "ref_luma": 0.4121,
-        "albedo_sat": 0.4519,
+        "albedo_sat": 0.449,
         "ref_sat": 0.4334,
-        "luma_ratio": 1.029,
-        "sat_ratio": 1.043
+        "luma_ratio": 1.033,
+        "sat_ratio": 1.036
       }
     ],
     "timings_s": {
-      "import_and_weld": 1.22,
-      "voxel_remesh": 0.26,
-      "orient_scale": 0.02,
-      "decimate": 1.19,
+      "import_and_weld": 1.29,
+      "voxel_remesh": 0.28,
+      "orient_scale": 0.01,
+      "decimate": 1.02,
       "uv_unwrap": 0.0,
-      "colour_bake": 0.69,
-      "silhouette": 1.03,
-      "sheets": 0.43,
-      "export": 0.82,
-      "total": 5.38
+      "colour_bake": 0.57,
+      "silhouette": 0.89,
+      "sheets": 0.41,
+      "export": 0.75,
+      "total": 4.95
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.378,
-      "lit_luma": 0.419,
-      "luma_ratio": 1.109,
+      "lit_luma": 0.421,
+      "luma_ratio": 1.113,
       "ref_sat": 0.426,
-      "lit_sat": 0.502,
-      "sat_ratio": 1.179
+      "lit_sat": 0.486,
+      "sat_ratio": 1.14
     }
   },
   "triposg/humanoid": {
@@ -748,9 +803,9 @@
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\humanoid.png",
       "texels_covered": 244653,
-      "texels_projected": 5461,
+      "texels_projected": 5450,
       "texels_projected_full_trust": 0,
-      "texels_low_frequency": 239192,
+      "texels_low_frequency": 239203,
       "mirrored_far_side": false,
       "mirrored_left_right": false,
       "mirrored_points": 0,
@@ -764,15 +819,30 @@
           2.0
         ],
         "head_painted_from_reference": true,
-        "max_row_shift": 0.1767
+        "max_row_shift": 0.1767,
+        "head_to_head": {
+          "reference_head_x": 0.5025,
+          "model_head_x": 0.5027,
+          "head_shift_applied": -0.0002,
+          "feature_offset_px": [
+            -11.4,
+            -34.9
+          ],
+          "head_width_px": 136.2,
+          "disagreement_head_widths": 0.084
+        }
       },
       "fill": {
         "min_facing_cos": 0.34,
         "full_facing_cos": 0.7,
         "shadow_rel_to_band_median": 0.55,
         "shadow_bands": 8,
-        "shadow_vertices_ignored": 79,
+        "shadow_vertices_ignored": 81,
         "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "pale_boost": 1.5,
+        "speck_cap_luma": 0.1,
+        "texels_speck_limited": 787,
+        "fill_specks_dropped": 0,
         "seam_feather_height_frac": 0.05,
         "seam_feather_iterations": 10
       }
@@ -780,61 +850,61 @@
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.3011,
+        "albedo_luma": 0.3004,
         "ref_luma": 0.2383,
-        "albedo_sat": 0.1327,
+        "albedo_sat": 0.1367,
         "ref_sat": 0.1688,
-        "luma_ratio": 1.264,
-        "sat_ratio": 0.786
+        "luma_ratio": 1.261,
+        "sat_ratio": 0.81
       },
       {
         "band": 1,
-        "albedo_luma": 0.2879,
+        "albedo_luma": 0.2875,
         "ref_luma": 0.231,
-        "albedo_sat": 0.157,
+        "albedo_sat": 0.1595,
         "ref_sat": 0.1994,
-        "luma_ratio": 1.246,
-        "sat_ratio": 0.787
+        "luma_ratio": 1.245,
+        "sat_ratio": 0.8
       },
       {
         "band": 2,
-        "albedo_luma": 0.3093,
+        "albedo_luma": 0.3098,
         "ref_luma": 0.2888,
-        "albedo_sat": 0.183,
+        "albedo_sat": 0.1882,
         "ref_sat": 0.2179,
-        "luma_ratio": 1.071,
-        "sat_ratio": 0.84
+        "luma_ratio": 1.073,
+        "sat_ratio": 0.864
       },
       {
         "band": 3,
-        "albedo_luma": 0.3679,
+        "albedo_luma": 0.3658,
         "ref_luma": 0.4177,
-        "albedo_sat": 0.127,
+        "albedo_sat": 0.1348,
         "ref_sat": 0.1456,
-        "luma_ratio": 0.881,
-        "sat_ratio": 0.872
+        "luma_ratio": 0.876,
+        "sat_ratio": 0.926
       }
     ],
     "timings_s": {
-      "import_and_weld": 2.22,
-      "voxel_remesh": 0.66,
+      "import_and_weld": 2.11,
+      "voxel_remesh": 0.61,
       "orient_scale": 0.01,
-      "decimate": 1.68,
-      "uv_unwrap": 0.11,
-      "colour_bake": 1.13,
-      "silhouette": 1.07,
-      "sheets": 0.58,
-      "export": 0.99,
-      "total": 8.01
+      "decimate": 1.35,
+      "uv_unwrap": 0.09,
+      "colour_bake": 0.94,
+      "silhouette": 0.98,
+      "sheets": 0.69,
+      "export": 1.09,
+      "total": 7.3
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.291,
-      "lit_luma": 0.286,
-      "luma_ratio": 0.985,
+      "lit_luma": 0.285,
+      "luma_ratio": 0.982,
       "ref_sat": 0.192,
-      "lit_sat": 0.153,
-      "sat_ratio": 0.793
+      "lit_sat": 0.158,
+      "sat_ratio": 0.819
     }
   },
   "triposg/spider": {
@@ -902,15 +972,30 @@
           2.0
         ],
         "head_painted_from_reference": true,
-        "max_row_shift": 0.0278
+        "max_row_shift": 0.0278,
+        "head_to_head": {
+          "reference_head_x": 0.4924,
+          "model_head_x": 0.4921,
+          "head_shift_applied": 0.0003,
+          "feature_offset_px": [
+            9.2,
+            23.2
+          ],
+          "head_width_px": 123.5,
+          "disagreement_head_widths": 0.074
+        }
       },
       "fill": {
         "min_facing_cos": 0.34,
         "full_facing_cos": 0.7,
         "shadow_rel_to_band_median": 0.55,
         "shadow_bands": 8,
-        "shadow_vertices_ignored": 59,
+        "shadow_vertices_ignored": 57,
         "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "pale_boost": 1.5,
+        "speck_cap_luma": 0.1,
+        "texels_speck_limited": 653,
+        "fill_specks_dropped": 0,
         "seam_feather_height_frac": 0.05,
         "seam_feather_iterations": 7
       }
@@ -918,61 +1003,61 @@
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.2929,
+        "albedo_luma": 0.2927,
         "ref_luma": 0.1684,
-        "albedo_sat": 0.2941,
+        "albedo_sat": 0.2944,
         "ref_sat": 0.1624,
-        "luma_ratio": 1.739,
-        "sat_ratio": 1.811
+        "luma_ratio": 1.738,
+        "sat_ratio": 1.813
       },
       {
         "band": 1,
-        "albedo_luma": 0.3222,
+        "albedo_luma": 0.3216,
         "ref_luma": 0.2187,
-        "albedo_sat": 0.305,
+        "albedo_sat": 0.306,
         "ref_sat": 0.2204,
-        "luma_ratio": 1.473,
-        "sat_ratio": 1.384
+        "luma_ratio": 1.471,
+        "sat_ratio": 1.388
       },
       {
         "band": 2,
         "albedo_luma": 0.3334,
         "ref_luma": 0.2912,
-        "albedo_sat": 0.3105,
+        "albedo_sat": 0.3138,
         "ref_sat": 0.2803,
         "luma_ratio": 1.145,
-        "sat_ratio": 1.108
+        "sat_ratio": 1.12
       },
       {
         "band": 3,
-        "albedo_luma": 0.362,
+        "albedo_luma": 0.3598,
         "ref_luma": 0.3878,
-        "albedo_sat": 0.3094,
+        "albedo_sat": 0.3112,
         "ref_sat": 0.307,
-        "luma_ratio": 0.933,
-        "sat_ratio": 1.008
+        "luma_ratio": 0.928,
+        "sat_ratio": 1.014
       }
     ],
     "timings_s": {
-      "import_and_weld": 1.3,
-      "voxel_remesh": 0.4,
+      "import_and_weld": 1.34,
+      "voxel_remesh": 0.39,
       "orient_scale": 0.01,
-      "decimate": 1.11,
-      "uv_unwrap": 0.02,
-      "colour_bake": 1.15,
-      "silhouette": 1.0,
-      "sheets": 0.47,
-      "export": 0.9,
-      "total": 6.02
+      "decimate": 1.23,
+      "uv_unwrap": 0.03,
+      "colour_bake": 1.08,
+      "silhouette": 0.91,
+      "sheets": 0.45,
+      "export": 0.78,
+      "total": 5.9
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.314,
-      "lit_luma": 0.314,
-      "luma_ratio": 1.0,
+      "lit_luma": 0.309,
+      "luma_ratio": 0.983,
       "ref_sat": 0.278,
-      "lit_sat": 0.3,
-      "sat_ratio": 1.078
+      "lit_sat": 0.303,
+      "sat_ratio": 1.088
     }
   },
   "triposg/brute": {
@@ -1024,9 +1109,9 @@
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\brute.png",
       "texels_covered": 410460,
-      "texels_projected": 52291,
-      "texels_projected_full_trust": 1866,
-      "texels_low_frequency": 358169,
+      "texels_projected": 50206,
+      "texels_projected_full_trust": 1902,
+      "texels_low_frequency": 360254,
       "mirrored_far_side": false,
       "mirrored_left_right": false,
       "mirrored_points": 0,
@@ -1040,15 +1125,30 @@
           2.0
         ],
         "head_painted_from_reference": true,
-        "max_row_shift": 0.2782
+        "max_row_shift": 0.2782,
+        "head_to_head": {
+          "reference_head_x": 0.4321,
+          "model_head_x": 0.4834,
+          "head_shift_applied": -0.0512,
+          "feature_offset_px": [
+            27.3,
+            -13.1
+          ],
+          "head_width_px": 136.2,
+          "disagreement_head_widths": 0.2
+        }
       },
       "fill": {
         "min_facing_cos": 0.34,
         "full_facing_cos": 0.7,
         "shadow_rel_to_band_median": 0.55,
         "shadow_bands": 8,
-        "shadow_vertices_ignored": 181,
+        "shadow_vertices_ignored": 196,
         "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "pale_boost": 1.5,
+        "speck_cap_luma": 0.1,
+        "texels_speck_limited": 5466,
+        "fill_specks_dropped": 0,
         "seam_feather_height_frac": 0.05,
         "seam_feather_iterations": 7
       }
@@ -1056,61 +1156,61 @@
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.3592,
+        "albedo_luma": 0.3492,
         "ref_luma": 0.3163,
-        "albedo_sat": 0.1376,
+        "albedo_sat": 0.141,
         "ref_sat": 0.1473,
-        "luma_ratio": 1.136,
-        "sat_ratio": 0.934
+        "luma_ratio": 1.104,
+        "sat_ratio": 0.957
       },
       {
         "band": 1,
-        "albedo_luma": 0.2951,
+        "albedo_luma": 0.294,
         "ref_luma": 0.2664,
-        "albedo_sat": 0.1294,
+        "albedo_sat": 0.1296,
         "ref_sat": 0.133,
-        "luma_ratio": 1.108,
-        "sat_ratio": 0.973
+        "luma_ratio": 1.104,
+        "sat_ratio": 0.974
       },
       {
         "band": 2,
-        "albedo_luma": 0.3633,
+        "albedo_luma": 0.3593,
         "ref_luma": 0.3237,
-        "albedo_sat": 0.1465,
+        "albedo_sat": 0.1488,
         "ref_sat": 0.1597,
-        "luma_ratio": 1.122,
-        "sat_ratio": 0.917
+        "luma_ratio": 1.11,
+        "sat_ratio": 0.932
       },
       {
         "band": 3,
-        "albedo_luma": 0.5152,
+        "albedo_luma": 0.4907,
         "ref_luma": 0.4771,
-        "albedo_sat": 0.1466,
+        "albedo_sat": 0.1525,
         "ref_sat": 0.1844,
-        "luma_ratio": 1.08,
-        "sat_ratio": 0.795
+        "luma_ratio": 1.029,
+        "sat_ratio": 0.827
       }
     ],
     "timings_s": {
-      "import_and_weld": 3.11,
-      "voxel_remesh": 0.83,
+      "import_and_weld": 2.77,
+      "voxel_remesh": 0.78,
       "orient_scale": 0.01,
-      "decimate": 2.57,
-      "uv_unwrap": 0.02,
-      "colour_bake": 1.53,
-      "silhouette": 1.13,
-      "sheets": 0.68,
-      "export": 1.09,
-      "total": 10.47
+      "decimate": 2.37,
+      "uv_unwrap": 0.03,
+      "colour_bake": 1.19,
+      "silhouette": 0.98,
+      "sheets": 0.61,
+      "export": 0.96,
+      "total": 9.23
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.358,
-      "lit_luma": 0.345,
-      "luma_ratio": 0.963,
+      "lit_luma": 0.341,
+      "luma_ratio": 0.952,
       "ref_sat": 0.16,
-      "lit_sat": 0.143,
-      "sat_ratio": 0.894
+      "lit_sat": 0.145,
+      "sat_ratio": 0.909
     }
   },
   "triposg/fox": {
@@ -1183,7 +1283,8 @@
           2.0
         ],
         "head_painted_from_reference": true,
-        "max_row_shift": 0.0861
+        "max_row_shift": 0.0861,
+        "head_to_head": null
       },
       "fill": {
         "min_facing_cos": 0.34,
@@ -1192,6 +1293,10 @@
         "shadow_bands": 8,
         "shadow_vertices_ignored": 81,
         "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "pale_boost": 1.5,
+        "speck_cap_luma": 0.1,
+        "texels_speck_limited": 12497,
+        "fill_specks_dropped": 55,
         "seam_feather_height_frac": 0.05,
         "seam_feather_iterations": 4
       }
@@ -1199,61 +1304,61 @@
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.2787,
+        "albedo_luma": 0.4042,
         "ref_luma": 0.1841,
-        "albedo_sat": 0.4775,
+        "albedo_sat": 0.5069,
         "ref_sat": 0.4034,
-        "luma_ratio": 1.514,
-        "sat_ratio": 1.184
+        "luma_ratio": 2.196,
+        "sat_ratio": 1.257
       },
       {
         "band": 1,
-        "albedo_luma": 0.4097,
+        "albedo_luma": 0.4699,
         "ref_luma": 0.3336,
-        "albedo_sat": 0.5709,
+        "albedo_sat": 0.5331,
         "ref_sat": 0.6492,
-        "luma_ratio": 1.228,
-        "sat_ratio": 0.879
+        "luma_ratio": 1.409,
+        "sat_ratio": 0.821
       },
       {
         "band": 2,
-        "albedo_luma": 0.5716,
+        "albedo_luma": 0.591,
         "ref_luma": 0.5655,
-        "albedo_sat": 0.4421,
+        "albedo_sat": 0.4126,
         "ref_sat": 0.4708,
-        "luma_ratio": 1.011,
-        "sat_ratio": 0.939
+        "luma_ratio": 1.045,
+        "sat_ratio": 0.876
       },
       {
         "band": 3,
-        "albedo_luma": 0.5435,
+        "albedo_luma": 0.5537,
         "ref_luma": 0.4675,
-        "albedo_sat": 0.483,
+        "albedo_sat": 0.4499,
         "ref_sat": 0.5127,
-        "luma_ratio": 1.163,
-        "sat_ratio": 0.942
+        "luma_ratio": 1.184,
+        "sat_ratio": 0.878
       }
     ],
     "timings_s": {
-      "import_and_weld": 1.67,
-      "voxel_remesh": 0.49,
+      "import_and_weld": 1.73,
+      "voxel_remesh": 0.42,
       "orient_scale": 0.02,
-      "decimate": 1.32,
-      "uv_unwrap": 0.01,
-      "colour_bake": 0.64,
-      "silhouette": 1.04,
-      "sheets": 0.49,
-      "export": 0.9,
-      "total": 6.22
+      "decimate": 1.17,
+      "uv_unwrap": 0.0,
+      "colour_bake": 0.47,
+      "silhouette": 0.9,
+      "sheets": 0.45,
+      "export": 0.78,
+      "total": 5.7
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.417,
-      "lit_luma": 0.398,
-      "luma_ratio": 0.955,
+      "lit_luma": 0.443,
+      "luma_ratio": 1.063,
       "ref_sat": 0.527,
-      "lit_sat": 0.437,
-      "sat_ratio": 0.83
+      "lit_sat": 0.381,
+      "sat_ratio": 0.723
     }
   },
   "triposg/bird": {
@@ -1326,7 +1431,8 @@
           2.0
         ],
         "head_painted_from_reference": true,
-        "max_row_shift": 0.0502
+        "max_row_shift": 0.0502,
+        "head_to_head": null
       },
       "fill": {
         "min_facing_cos": 0.34,
@@ -1335,6 +1441,10 @@
         "shadow_bands": 8,
         "shadow_vertices_ignored": 48,
         "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "pale_boost": 1.5,
+        "speck_cap_luma": 0.1,
+        "texels_speck_limited": 4759,
+        "fill_specks_dropped": 4,
         "seam_feather_height_frac": 0.05,
         "seam_feather_iterations": 4
       }
@@ -1342,61 +1452,61 @@
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.3158,
+        "albedo_luma": 0.3292,
         "ref_luma": 0.2824,
-        "albedo_sat": 0.4644,
+        "albedo_sat": 0.4269,
         "ref_sat": 0.5034,
-        "luma_ratio": 1.118,
-        "sat_ratio": 0.923
+        "luma_ratio": 1.166,
+        "sat_ratio": 0.848
       },
       {
         "band": 1,
-        "albedo_luma": 0.4327,
+        "albedo_luma": 0.4381,
         "ref_luma": 0.3986,
-        "albedo_sat": 0.2045,
+        "albedo_sat": 0.1905,
         "ref_sat": 0.199,
-        "luma_ratio": 1.086,
-        "sat_ratio": 1.028
+        "luma_ratio": 1.099,
+        "sat_ratio": 0.957
       },
       {
         "band": 2,
-        "albedo_luma": 0.4056,
+        "albedo_luma": 0.4078,
         "ref_luma": 0.3598,
-        "albedo_sat": 0.475,
+        "albedo_sat": 0.4636,
         "ref_sat": 0.5195,
-        "luma_ratio": 1.127,
-        "sat_ratio": 0.914
+        "luma_ratio": 1.133,
+        "sat_ratio": 0.892
       },
       {
         "band": 3,
-        "albedo_luma": 0.4258,
+        "albedo_luma": 0.4275,
         "ref_luma": 0.4121,
-        "albedo_sat": 0.4417,
+        "albedo_sat": 0.4379,
         "ref_sat": 0.4334,
-        "luma_ratio": 1.033,
-        "sat_ratio": 1.019
+        "luma_ratio": 1.037,
+        "sat_ratio": 1.01
       }
     ],
     "timings_s": {
-      "import_and_weld": 1.69,
-      "voxel_remesh": 0.49,
+      "import_and_weld": 1.67,
+      "voxel_remesh": 0.46,
       "orient_scale": 0.02,
-      "decimate": 1.26,
+      "decimate": 1.1,
       "uv_unwrap": 0.01,
-      "colour_bake": 0.64,
-      "silhouette": 1.03,
-      "sheets": 0.49,
-      "export": 0.91,
-      "total": 6.18
+      "colour_bake": 0.51,
+      "silhouette": 0.9,
+      "sheets": 0.47,
+      "export": 0.79,
+      "total": 5.59
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.378,
-      "lit_luma": 0.412,
-      "luma_ratio": 1.091,
+      "lit_luma": 0.41,
+      "luma_ratio": 1.085,
       "ref_sat": 0.426,
-      "lit_sat": 0.509,
-      "sat_ratio": 1.196
+      "lit_sat": 0.503,
+      "sat_ratio": 1.181
     }
   }
 }
