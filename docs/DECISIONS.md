@@ -4,6 +4,13 @@ Cap: 400 lines; oldest roll to `docs/archive/`. One decision per entry, newest f
 that is not here does not exist. Format: date · id · who decided · the decision · why · what it
 changes. Only the lead edits this file, from the "Board and log" section of merged PRs.
 
+## 2026-10-20 · D-018 · Director · A generator menu on every run
+Asked how the app should offer the generators that pass the bake-off: a default plus "try
+another", choose every time, or one only. Answer: "Choose every time". Changes: Step 1 shows a
+generator menu on every run listing every candidate that passes the bar (top one preselected);
+every listed generator must pass the Clean-step tests (design 5.2, roadmap Phase 2). The bake-off
+question becomes which passing models go on the menu and in what order (D-019).
+
 ## 2026-10-20 · D-017 · Director · Direct3D-S2 dropped; Hi3DGen gets one low-VRAM try
 Asked (to go faster): drop Hi3DGen (13 GB peak) and Direct3D-S2 (20 GB, ~14 min a model), both
 over the 12 GB card in testing? Answer: "drop direct 3d only". Changes: Direct3D-S2 leaves the

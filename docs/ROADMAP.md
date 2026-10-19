@@ -9,12 +9,16 @@ Deliverables: scaffold green on main; CI proven red on planted defects; licence 
 Gate: STATUS Phase 0 done.
 
 ## Phase 1 — Generator bake-off
-Deliverables: bake-off report (design 5.2 bar). Gate: the director's pick in DECISIONS.md.
+Deliverables: bake-off report (design 5.2 bar). Gate: the director's menu (which passing
+generators, in what order; D-018, D-019) in DECISIONS.md.
 
 ## Phase 2 — 3D: Generate and Clean, end to end
-Deliverables: app shell (step screens, viewer, job store, one GPU queue); Generate; Clean
+Deliverables: app shell (step screens, viewer, job store, one GPU queue); Generate with the
+generator menu (every generator on the D-019 menu behind one interface, top preselected; D-018);
+Clean
 (rebuild, decimate, UV, bake); five-view inspection sheet; export gate; headless Godot import
-check. Gate: three prompts (humanoid, monster, animal) export inside budget; director sees them.
+check. Gate: three prompts (humanoid, monster, animal) export inside budget through every
+generator on the menu (each passes the Clean-step tests); director sees them.
 
 ## Phase 3 — Skeleton
 Deliverables: humanoid template (SkeletonProfileHumanoid names), four-legged template, monster

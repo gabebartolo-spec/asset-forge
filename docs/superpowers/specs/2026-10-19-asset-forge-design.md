@@ -106,6 +106,10 @@ rejected even if it works.
   newer). The report gives time per model, peak VRAM, licence, and a labelled five-view render of
   each result. **The director picks the winner.** Keep the generator behind one interface so it
   can be swapped later.
+- **Generator menu (director, 2026-10-20, D-018: "Choose every time"):** Step 1 shows a menu of
+  every generator that passed the bake-off, on every run, in the order the director set (D-019);
+  the top one is preselected. Each entry shows its typical time and VRAM in plain words. Every
+  listed generator must pass the Clean-step tests (Step 2) before it is listed.
 
 **Step 2. Clean (Blender, headless)**
 - Always rebuild; never just tidy. The raw mesh is dense and messy. Remesh or retopologise to a

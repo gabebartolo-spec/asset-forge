@@ -1,48 +1,39 @@
-# Asset Forge lead handoff (2026-10-20, session 3, handing off at 203k)
-## State: available (all env builders reported; successor runs the candidates)
+# Asset Forge lead handoff (2026-10-20, session 4)
+## State: available (candidates all run; successor does sheets, QC, report, PR, director question)
 
 ## Task
 STATUS item 3, generator bake-off (design 5.2 + section 9 bar: fits 12 GB, commercial licence,
-<=3 min/model, five-view pass on >=3 of 5). Done = script + report (time, peak VRAM, licence,
-labelled five-view sheets per candidate), lead QC (art-qa-critic, fresh realism-critic per board),
-one AskUserQuestion to the director to pick, decision logged.
+<=3 min/model, five-view pass on >=3 of 5). Done = report docs/audits/bakeoff_2026-10-20.md (time,
+peak VRAM, licence, labelled sheets), lead QC (art-qa-critic + fresh realism-critic per board), PR
+per forge-pr, ONE AskUserQuestion: which passing models go on the generator menu and in what order
+(top = preselected) -> log D-019 (D-018 menu ruling already logged).
 
 ## Where things are
-- Repo C:\Users\DANTE\Documents\GitHub\asset-forge (MAIN), main ecdf66c, no open PRs.
-- Worktree MAIN/../asset-forge-wt/bakeoff, branch claude/bakeoff, NOTHING COMMITTED YET:
-  tools/bakeoff/{prompts.toml, gpu_lock.py, run_candidate.py (adapter contract in docstring),
-  render_views.py (Blender 6 views clay+colour + stats, tested), sheets.py (labelled sheets +
-  per-prompt boards, tested), make_refs.py (refs builder), adapters/<name>.py (builders)}.
-  Docs edits (LF endings; write files with bytes, Python write_text makes CRLF on Windows):
-  DECISIONS D-011 SF3D skipped (director), D-012 per-model envs (lead), D-013 UI clean+intuitive,
-  D-014 non-technical users / only on his PC / VRAM shown, D-015 optional local-AI QA (Phase 7,
-  design 5.6), D-016 Claude MCP server (Phase 8, design 5.7); D-017 Direct3D-S2 dropped by director, Hi3DGen one low-VRAM try; pick = D-018; design section 6 UI gate; ROADMAP 7-8.
-- Envs MAIN/models/envs/<name>, src MAIN/models/src/<name>, weights MAIN/models/hf (gitignored).
-  Torch standard: 2.14.1+cu130 (download.pytorch.org/whl/cu130); PyPI torch on Windows is CPU-only.
-- Builder rules: C:\Users\DANTE\AppData\Roaming\Claude\side-session-notes\local_b118c49f-c304-49df-91fd-c598a7a48c30\bakeoff_builder_rules.md
-- Builder reports land in that notes folder as builder_reports.md (old session relays them).
-
-## Refs (MAIN/models/bakeoff/refs, picked by lead from ref_candidates/*_sheet.png)
-humanoid s5 (closest to A-pose, front, no sword), spider s7 (8 legs; s1 has ~12, rejected),
-fox s1 (side, facing left), bird s5 (side, facing left). BRUTE MISSING: SDXL drew two arms on all
-8 seeds (six-arm prompt fails; s4/s5 greyscale, s0 turnaround). Next: rerun
-`models/envs/sdxl/Scripts/python tools/bakeoff/make_refs.py --only brute --seeds 8-23` with a
-stronger prompt; if still no six arms, report it as a front-end finding and ask the director
-(supply an image, or test with the best 2-arm brute). SDXL: ~9.3 s/image, 10.9 GB torch peak.
-
-## Builders: all reported - read notes builder_reports.md (D3D-S2 20 GB / 833 s and Hi3DGen 13 GB need one low-VRAM try each).
-triposg (had CPU torch; told to fix), triposr, hi3dgen, direct3d_s2, step1x3d. sf3d + refs done.
+- MAIN = C:/Users/DANTE/Documents/GitHub/asset-forge (main ecdf66c, no open PRs).
+- Worktree MAIN/../asset-forge-wt/bakeoff, branch claude/bakeoff, HEAD 91fad14 (D-017). Committed in session 4:
+  LICENCES rows (diso BANNED, CUDA runtime, torchmcubes MPL, DINOv2/DINO v1, HF cards confirmed,
+  Hi3DGen + Direct3D-S2 now CLEARED, BiRefNet pinned), D-018 in DECISIONS + design 5.2 + ROADMAP,
+  make_refs.py (--seed-start/--text/--tag, BiRefNet pinned), adapters/. uv.lock left untracked (from uv run; not ours to add).
+- Candidates: triposr, step1x3d, hi3dgen, triposg (Direct3D-S2 OUT, D-017; SF3D OUT, D-011).
+  Run log MAIN/models/bakeoff/run_all.log; outputs MAIN/models/bakeoff/out/<name>/run.json.
+- Hi3DGen low-VRAM fix (builder, adapter only): StableNormal first then freed, Hi3DGen sub-models
+  on GPU one stage at a time: torch peak 13.15 -> 5.22 GB, gen 14.2 s, same quality settings.
+- Brute ref: SDXL cannot draw six arms (24 seeds, 2 prompts). Director chose A = two-armed colour
+  brute (ref_candidates/brute_s6_rgba.png -> refs/brute.png), 2026-10-20. Record in report.
 
 ## Next steps
-1. Read builder_reports.md; fix/finish any candidate that is not runnable (fresh builder per fix).
-2. Brute ref (above). 3. Run each: `python tools/bakeoff/run_candidate.py <name>` (serial, lock).
-4. `uv run --with pillow python tools/bakeoff/sheets.py [name=yawdeg]` -> models/bakeoff/sheets.
-5. QC each board (fresh realism-critic), write docs/audits/bakeoff_2026-10-20.md (+ sheets copied
-   to docs/audits/bakeoff/), PR per forge-pr, ask the director, log D-017 pick.
-6. Note for report: geometry-only winners need a colour route (project the ref in Blender).
+1. DONE: all 4 ran rc 0, no item errors, 5 refs each. Per model gen s / torch GB / GPU GB:
+   TripoSR 1.1-1.5 / 4.14 / 5.39 (load 10 s); Step1X-3D 16-18 / 4.8 / 5.8 (wall 128 s for 5);
+   Hi3DGen 12-14 / 5.22 / 4.5-6.8 (load 26 s); TripoSG 29-33 / 5.3 / 5.8-6.3 (wall 185 s for 5).
+   All fit 12 GB and 3 min; the five-view pass decides the bar.
+2. `uv run --with pillow python tools/bakeoff/sheets.py` (fix facing with name=yawdeg).
+3. QC boards (art-qa-critic; fresh realism-critic per prompt board); write report + copy sheets to
+   docs/audits/bakeoff/; note Step1X-3D adapter cleanup, Hi3DGen offload, colour route for
+   geometry-only models (only TripoSR has vertex colour).
+4. Commit by name, PR per forge-pr, ask director (menu + order), log D-019.
 
 ## Open questions for the director
-None pending (answered: SF3D skip; only his PC; local-AI QA later; MCP on roadmap).
+None pending.
 
 ## Gotchas
 - glTF splits verts on seams: render_views welds before counting parts.
