@@ -41,7 +41,7 @@ def build_messages(system: str, idea: str, asset_type: str) -> list[dict[str, st
     ]
 
 
-def generate(system: str, idea: str, asset_type: str) -> str:
+def generate(system: str, idea: str, asset_type: str, seed: int | None = None) -> str:
     py = env_python()
     if not py.exists():
         raise PromptGenError(
@@ -50,6 +50,8 @@ def generate(system: str, idea: str, asset_type: str) -> str:
             "(steps in docs/LICENCES.md and the prompts module docstring)."
         )
     job = {"messages": build_messages(system, idea, asset_type), "max_new_tokens": 90}
+    if seed is not None:  # a re-roll: sample instead of greedy
+        job["seed"] = seed
     try:
         proc = _worker(py)
         proc.stdin.write(json.dumps(job) + "\n")

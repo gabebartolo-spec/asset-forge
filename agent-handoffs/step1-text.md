@@ -1,0 +1,31 @@
+# step1-text builder handoff (2026-10-20)
+## State: working (screenshots + PR in progress)
+
+## Task
+Wire the text path into Step 1 Generate: text box + "Expand my idea" (Qwen3-1.7B on the GPU queue),
+text-only run path (draw reference -> check/re-roll -> image-to-3D) behind a mocked drawer, and the two
+PR #8 nits (queued footer, hide spin hint while working).
+
+## Branch and commit
+claude/step1-text, worktree asset-forge-wt/step1-text (own .venv, gitignored). PYTHONPATH=src.
+
+## What changed
+- src/asset_forge/draw.py: ReferenceDrawer interface, UnavailableDrawer (default, TODO PR #11),
+  MockDrawer (tests/screenshots). api.py: POST /api/expand (job on the GPU queue), POST
+  /api/assets/from-text, POST /api/assets/{id}/draw (re-roll = call again); /api/menu has text_draw.
+- prompts: optional seed = sampled re-roll (greedy has no variation). Idea writer is stopped
+  (llm.stop) before every draw/3D job so its 4.2 GB VRAM is not held.
+- web: textarea, Expand my idea, Try another version, reference shown in viewer, Draw a picture button,
+  footer "Waiting for the graphics card..." while queued, spin hint hidden while working.
+- tests/test_text_path.py (new, 13) + one updated test in test_app_api.py.
+
+## Evidence so far
+72 unit tests pass, ruff clean (local). Screenshots: side-session-notes/local_f6b2f763.../step1_text/.
+
+## Open decisions / flagged for lead
+- With a picture AND words, the 3D run uses the picture only (generators take images); the words are
+  not used. Say if the design wants otherwise.
+- Expanded prompt contains the fixed view words ("T-pose", "plain white background") by design of the back end.
+
+## Rules learnt the hard way
+- GPU lock is often held by other agents; any app job (even a faked one) waits for it.

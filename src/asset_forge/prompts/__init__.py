@@ -55,17 +55,20 @@ def fallback(idea: str, asset_type: str, target: str = "front") -> str:
 
 
 def expand(
-    idea: str, asset_type: str, target: str = "front", *, allow_fallback: bool = False
+    idea: str, asset_type: str, target: str = "front", *, allow_fallback: bool = False,
+    seed: int | None = None,
 ) -> str:
     """Return one full prompt for `idea`. Deterministic (greedy decoding).
 
     asset_type: humanoid, monster, animal or sprite. target: front, or back (sprites only).
     If the local model is not installed this raises PromptGenError naming the fix; with
-    allow_fallback=True it returns the plain template prompt instead.
+    allow_fallback=True it returns the plain template prompt instead. With a `seed` the model
+    samples (a re-roll: another version of the idea); without one it is deterministic.
     """
     idea, asset_type, target = _check(idea, asset_type, target)
     try:
-        subject = llm.generate(SYSTEM[asset_type], idea, asset_type)
+        kw = {} if seed is None else {"seed": seed}
+        subject = llm.generate(SYSTEM[asset_type], idea, asset_type, **kw)
     except PromptGenError:
         if allow_fallback:
             return _assemble(idea, asset_type, target)

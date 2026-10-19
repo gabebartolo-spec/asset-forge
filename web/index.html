@@ -34,7 +34,7 @@
   <section class="stage">
     <div id="viewer" aria-label="3D viewer">
       <div id="viewer-msg" class="viewer-msg"><span>Your model will appear here.<br>
-        Pick a picture on the right, then press<br>Make 3D model, bottom right.</span></div>
+        Pick a picture or describe it on the right,<br>then press Make 3D model, bottom right.</span></div>
     </div>
     <div id="viewer-hint" class="viewer-hint hidden">Drag to spin. Scroll to zoom.</div>
   </section>
@@ -43,12 +43,19 @@
     <h2>Make your model</h2>
 
     <div class="block">
-      <h3>1. Pick a picture</h3>
+      <h3>1. Pick a picture, or describe it</h3>
       <label class="drop" id="drop" for="file">
         <img id="preview" class="hidden" alt="Your picture">
-        <span id="drop-text">Click to choose a picture<br><small>One character on a plain background (PNG or JPG).<br>Describing it in words is coming next.</small></span>
+        <span id="drop-text">Click to choose a picture<br><small>One character on a plain background (PNG or JPG).</small></span>
       </label>
       <input type="file" id="file" accept="image/png,image/jpeg,image/webp" class="hidden">
+      <label class="lbl" for="idea">Or describe your model</label>
+      <textarea id="idea" rows="3" maxlength="600" placeholder="A few words are enough, like: a six-armed brute"></textarea>
+      <div class="row">
+        <button type="button" class="secondary small" id="expand" disabled>Expand my idea</button>
+        <button type="button" class="secondary small hidden" id="reroll">Try another version</button>
+      </div>
+      <p class="hint" id="idea-hint" role="status"></p>
     </div>
 
     <div class="block">
