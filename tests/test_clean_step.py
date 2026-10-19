@@ -57,7 +57,7 @@ def test_humanoid_is_rebuilt_scaled_and_one_part(humanoid):
     assert rep["height_m"] == pytest.approx(1.8, abs=0.01)
     assert rep["loose_parts"]["floaters_deleted"] >= 1  # the floating speck
     assert rep["loose_parts"]["after_clean"] == 1
-    assert rep["forward"] == "+Y"
+    assert rep["forward"].startswith("-Y")
     assert rep["triangles"] < rep["voxel_remesh_triangles"]
 
 
@@ -77,7 +77,7 @@ def test_animal_gets_the_small_budget_and_texture(tmp_path):
     rep = run_clean(tmp_path, "beast.obj", "beast_ref.png", "animal")
     assert rep["triangles"] <= 2000
     assert rep["texture"]["width"] == 512
-    assert rep["orientation"]["turn_deg"] == 0  # already faces +Y; outline match keeps it
+    assert rep["orientation"]["turn_deg"] == 180  # the fixture beast faces +Y: turned to -Y
     assert check(rep, "animal") == []
 
 

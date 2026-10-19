@@ -24,6 +24,8 @@ from gpu_lock import _models_dir  # noqa: E402
 MODELS = _models_dir()
 TYPES = {"humanoid": "humanoid", "spider": "monster", "brute": "monster", "fox": "animal",
          "bird": "animal"}
+# Real-world height per prompt (m), None = the type's editable default (--height).
+HEIGHTS = {"humanoid": 1.8, "spider": None, "brute": None, "fox": 0.40, "bird": 0.14}
 VIEWS = ["front", "three_quarter", "left", "back", "right", "top"]
 TILE = 256
 
@@ -50,7 +52,9 @@ def run(cand: str, prompt: str) -> Path:
     ref = MODELS / "bakeoff" / "refs" / f"{prompt}.png"
     cmd = [sys.executable, str(ROOT / "tools/bakeoff/gpu_lock.py"), "run", "clean", "--",
            blender_exe(), "-b", "--factory-startup", "-P", str(ROOT / "blender/clean.py"), "--",
-           str(raw), str(out), "--type", TYPES[prompt], "--ref", str(ref)]
+           str(raw), str(out), "--type", TYPES[prompt], "--ref", str(ref), "--generator", cand]
+    if HEIGHTS[prompt]:
+        cmd += ["--height", str(HEIGHTS[prompt])]
     done = subprocess.run(cmd, capture_output=True, text=True)
     if done.returncode or not (out / "report.json").exists():
         raise SystemExit(f"clean failed for {cand}/{prompt}:\n{done.stdout[-1500:]}")
@@ -80,7 +84,8 @@ def sheet(cand: str, prompt: str, out: Path, dest: Path):
     w, h = rows[0].size
     img = Image.new("RGB", (w, h * 3 + 28), (255, 255, 255))
     ImageDraw.Draw(img).text((6, 6), f"{cand} / {prompt}   columns: reference, front, 3/4, left, "
-                             "back, right, top", fill=(0, 0, 0), font=font(15))
+                             "back, right, top; before and after share one camera", fill=(0, 0, 0),
+                             font=font(15))
     for i, r in enumerate(rows):
         img.paste(r, (0, 28 + h * i))
     img.save(dest, quality=88)

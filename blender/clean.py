@@ -3,7 +3,7 @@ game-ready model: one surface, on budget, one material, one texture.
 
     blender -b --factory-startup -P blender/clean.py -- RAW.glb OUT_DIR
         --type humanoid|monster|animal --ref REF.png [--height M] [--budget TRIS]
-        [--texture PX] [--turn DEG] [--no-sheets]
+        [--texture PX] [--generator hi3dgen|triposg] [--turn DEG] [--no-sheets]
 
 Writes OUT_DIR/clean.glb, clean.blend, texture.png, report.json and (unless --no-sheets)
 OUT_DIR/before/ and OUT_DIR/after/ six-view renders (tools/bakeoff/render_views.py).
@@ -11,23 +11,25 @@ OUT_DIR/before/ and OUT_DIR/after/ six-view renders (tools/bakeoff/render_views.
 What it does, in order (every number is in report.json):
  1. Import, weld, delete floating specks (parts under 1% of the biggest part's faces).
  2. Rebuild: voxel remesh (fuses touching parts into one watertight skin), consistent normals.
- 3. Orient: the raw mesh is turned about Z so the creature faces +Y (design: +Y forward), by
-    matching its outline to the reference's outline (front outline for humanoid/monster, side
-    outline for animal; a front/back tie keeps the raw default). Origin at the feet (centre of
-    the footprint, lowest point on z = 0), real-world scale (humanoid 1.8 m tall).
+ 3. Orient: the model is turned about Z to face Blender -Y, which exports as glTF +Z, Godot's
+    model front (D-021). Humanoid/monster: the generator's own convention decides (both
+    generators output the model with the reference view as its front, which is -Y in Blender
+    after the glTF import; GENERATOR_FRONT_YAW below, measured once from the bake-off meshes), the
+    outline is never used for front vs back. Animal: the reference is a side view, so only the
+    turn that puts the head toward -Y is chosen, by outline, and it must win by a clear margin.
+    Origin at the feet (centre of the footprint, lowest point on z = 0), real-world scale.
  4. Decimate (collapse) to the type's triangle budget, smart UV unwrap.
- 5. Colour (generators here are geometry only): the reference is projected onto the mesh along
-    the camera it was drawn from (humanoid/monster: from the front; animal: from the creature's
-    left side) with a ray-cast test so hidden texels do not get paint. The opposite side is the
-    same picture mirrored through the body (the back copies the front, the right side copies the
-    left). Texels facing neither camera (edges, under-sides) take the colour of the nearest
-    painted point in 3D. The result is padded and written to ONE texture on ONE material.
+ 5. Colour (generators here are geometry only): the reference is projected onto the surfaces that
+    face the camera it was drawn from (humanoid/monster: the front, -Y; animal: the creature's
+    left side, +X), with a ray-cast test so hidden texels get no paint. Nothing is mirrored. Every
+    other texel (back, far side, grazing edges, under-sides) gets a low-frequency colour: a
+    normal-weighted Gaussian blend of the projected colour in 3D, never a copy of the picture.
+    The result is padded and written to ONE texture on ONE material.
  6. Silhouette check: 1 - IoU of the filled outline against the raw mesh from front, side, top.
 """
 
 import json
 import math
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -35,13 +37,20 @@ from pathlib import Path
 import bmesh
 import bpy
 import numpy as np
-from mathutils import Vector, bvhtree, kdtree
+from mathutils import Vector, bvhtree
 
 BUDGETS = {  # type: (triangles, texture px, default height m, projection direction toward camera)
-    "humanoid": (8000, 1024, 1.8, (0.0, 1.0, 0.0)),
-    "monster": (8000, 1024, 2.0, (0.0, 1.0, 0.0)),
-    "animal": (2000, 512, 0.5, (-1.0, 0.0, 0.0)),
+    "humanoid": (8000, 1024, 1.8, (0.0, -1.0, 0.0)),
+    "monster": (8000, 1024, 2.0, (0.0, -1.0, 0.0)),
+    "animal": (2000, 512, 0.5, (1.0, 0.0, 0.0)),
 }
+# Where each generator puts the front of a humanoid/monster (the reference view), as the yaw about
+# Z that turns the raw mesh to face Blender -Y (glTF +Z). Measured once on the bake-off meshes
+# (docs/audits/clean, 2026-10-20): hi3dgen and triposg humanoid and brute meshes all face -Y, so 0.
+GENERATOR_FRONT_YAW = {"hi3dgen": 0.0, "triposg": 0.0}
+ANIMAL_MARGIN = 0.10  # best outline turn must beat the second best by this much
+GRID = 64  # colour-blend grid cells along the longest side
+BLUR_SIGMAS = (3, 6, 12, 24, 48)  # in grid cells; the smallest level that has data is used
 SIL_THRESHOLD = 0.08  # silhouette difference (1 - IoU) allowed per view
 SIL_RES = 256
 FLOATER_FRACTION = 0.01
@@ -61,6 +70,10 @@ def parse():
     opts["budget"] = get("--budget", int)
     opts["texture"] = get("--texture", int)
     opts["turn"] = get("--turn", float)
+    opts["generator"] = get("--generator", default="triposg")
+    if opts["generator"] not in GENERATOR_FRONT_YAW:
+        raise SystemExit(f"--generator must be one of {sorted(GENERATOR_FRONT_YAW)}; measure a new "
+                         "generator's front once and add it to GENERATOR_FRONT_YAW")
     opts["voxel_div"] = get("--voxel-div", float, 220.0)
     if opts["type"] not in BUDGETS:
         raise SystemExit(f"--type must be one of {sorted(BUDGETS)}")
@@ -206,8 +219,10 @@ def iou(a, b):
     return float(np.logical_and(a, b).sum() / u) if u else 0.0
 
 
-def pick_yaw(verts, ref, kind):
-    """Yaw (deg, about Z) that makes the creature face +Y. Returns (yaw, table)."""
+def pick_yaw(verts, ref, kind, generator):
+    """Yaw (deg, about Z) that makes the creature face -Y. Returns (yaw, table, how)."""
+    if kind != "animal":
+        return GENERATOR_FRONT_YAW[generator], {}, f"generator convention ({generator})"
     rm = crop_resize(ref_mask(ref), 128)
     table = {}
     for yaw in (0, 90, 180, 270):
@@ -216,18 +231,14 @@ def pick_yaw(verts, ref, kind):
         x = verts[:, 0] * c - verts[:, 1] * s
         y = verts[:, 0] * s + verts[:, 1] * c
         v = np.stack([x, y, verts[:, 2]], axis=1)
-        if kind == "animal":
-            # Camera on -X looking +X: image right = -Y, so a +Y-facing animal's head is left.
-            o = splat_outline(np.stack([-v[:, 1], v[:, 0], v[:, 2]], axis=1), 0)
-        else:
-            # Camera on +Y looking -Y: image right = -X.
-            o = splat_outline(np.stack([-v[:, 0], v[:, 1], v[:, 2]], axis=1), 0)
-        table[yaw] = round(iou(o, rm), 4)
-    default = 180 if kind != "animal" else None
-    best = max(table, key=table.get)
-    if default is not None and table[default] >= table[best] - 0.02:
-        best = default  # front/back outlines tie: keep the raw default (generators face -Y)
-    return best, table
+        # Camera on +X looking -X: image right = +Y, so a -Y-facing animal's head is on the left.
+        side = np.stack([v[:, 1], v[:, 0], v[:, 2]], axis=1)
+        table[yaw] = round(iou(splat_outline(side, 0), rm), 4)
+    ranked = sorted(table.values(), reverse=True)
+    if ranked[0] - ranked[1] < ANIMAL_MARGIN:
+        raise SystemExit(f"animal head direction is ambiguous (outline match {table}); "
+                         "pass --turn DEG")
+    return max(table, key=table.get), table, "side outline (profile, head toward -Y)"
 
 
 # ---------------------------------------------------------------- silhouettes
@@ -279,6 +290,44 @@ def uv_unwrap(obj):
     bpy.ops.mesh.select_all(action="SELECT")
     bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.004)
     bpy.ops.object.mode_set(mode="OBJECT")
+
+
+MIN_FACING = 0.2   # a texel must face the reference camera at least this much to be projected
+FULL_FACING = 0.6  # ...and is fully trusted from here on
+
+
+def gaussian_fft(shape, sigma):
+    ker = 1.0
+    for ax, n in enumerate(shape):
+        f = np.fft.fftfreq(n) if ax < len(shape) - 1 else np.fft.rfftfreq(n)
+        g = np.exp(-2 * np.pi ** 2 * sigma ** 2 * f ** 2)
+        ker = ker * g.reshape([-1 if i == ax else 1 for i in range(len(shape))])
+    return ker
+
+
+def blend_field(p, colour, alpha, co):
+    """Low-frequency colour at every point p: normal-weighted (alpha) Gaussian average of the
+    projected colour in a 3D grid, using the smallest blur that reaches data. Returns (n, 3)."""
+    lo = co.min(axis=0)
+    cell = max(np.ptp(co, axis=0)) / GRID
+    pad = int(BLUR_SIGMAS[-1] * 2)
+    shape = tuple(int(np.ceil(np.ptp(co[:, i]) / cell)) + 1 + 2 * pad for i in range(3))
+    idx = np.clip(((p - lo) / cell).astype(int) + pad, 0, np.array(shape) - 1)
+    flat = np.ravel_multi_index(idx.T, shape)
+    wsum = np.bincount(flat, weights=alpha, minlength=int(np.prod(shape))).reshape(shape)
+    csum = np.stack([np.bincount(flat, weights=alpha * colour[:, c],
+                                 minlength=int(np.prod(shape))).reshape(shape) for c in range(3)])
+    out = np.full((len(p), 3), np.nan)
+    for sg in BLUR_SIGMAS:
+        ker = gaussian_fft(shape, sg)
+        bw = np.fft.irfftn(np.fft.rfftn(wsum) * ker, s=shape)
+        bc = [np.fft.irfftn(np.fft.rfftn(csum[c]) * ker, s=shape) for c in range(3)]
+        wv = bw[tuple(idx.T)]
+        ok = np.isnan(out[:, 0]) & (wv > 0.01 * bw.max())
+        for c in range(3):
+            out[ok, c] = bc[c][tuple(idx.T)][ok] / wv[ok]
+    out[np.isnan(out[:, 0])] = 0.5
+    return out
 
 
 def bake_colour(obj, ref, d0, size):
@@ -340,19 +389,17 @@ def bake_colour(obj, ref, d0, size):
     ty, tx = np.nonzero(cov)
     p = pos[ty, tx]
     n = nrm[ty, tx]
-    w = n @ np.array(d0, float)  # > 0: faces the main camera, < 0: faces the opposite one
-    cand = np.abs(w) >= 0.25
+    w = n @ np.array(d0, float)  # > 0: faces the camera the reference was drawn from
+    cand = w >= MIN_FACING
     bvh = bvhtree.BVHTree.FromObject(obj, bpy.context.evaluated_depsgraph_get())
     eps = max(np.ptp(co, axis=0)) * 1e-3
     colour = np.zeros((len(ty), 4))
     known = np.zeros(len(ty), bool)
     d_vec = Vector(d0)
     for k in np.nonzero(cand)[0]:
-        toward = d_vec if w[k] > 0 else -d_vec
         origin = Vector(p[k] + n[k] * eps)
-        if bvh.ray_cast(origin, toward)[0] is not None:
-            continue  # hidden from that camera
-        known[k] = True
+        if bvh.ray_cast(origin, d_vec)[0] is None:  # not hidden from the camera
+            known[k] = True
     q = p[known]
     u = (q @ right - sv.min()) / max(np.ptp(sv), 1e-9)
     v = (q[:, 2] - zv.min()) / max(np.ptp(zv), 1e-9)
@@ -365,21 +412,13 @@ def bake_colour(obj, ref, d0, size):
     kk = np.nonzero(known)[0]
     colour[kk[inside], :3] = rgb[inside]
     known[kk[~inside]] = False  # outline background: treat as unpainted
+    # Trust in a projected texel falls off towards the silhouette (stretched pixels there).
+    alpha = np.where(known, np.clip((w - MIN_FACING) / (FULL_FACING - MIN_FACING), 0, 1), 0.0)
     painted = int(known.sum())
 
-    # Everything unpainted: nearest painted point in 3D.
-    unknown = np.nonzero(~known)[0]
-    if painted and len(unknown):
-        pk = np.nonzero(known)[0]
-        if len(pk) > 60000:
-            pk = pk[np.random.default_rng(1).choice(len(pk), 60000, replace=False)]
-        kd = kdtree.KDTree(len(pk))
-        for i, k in enumerate(pk):
-            kd.insert(Vector(p[k]), i)
-        kd.balance()
-        for k in unknown:
-            _, i, _ = kd.find(Vector(p[k]))
-            colour[k, :3] = colour[pk[i], :3]
+    # Low-frequency colour for everything else, and under the grazing edges of the painted part.
+    field = blend_field(p, colour[:, :3], alpha, co)
+    colour[:, :3] = alpha[:, None] * colour[:, :3] + (1 - alpha[:, None]) * field
     colour[:, 3] = 1.0
 
     img = np.zeros((size, size, 4), np.float32)
@@ -401,11 +440,12 @@ def bake_colour(obj, ref, d0, size):
     stats = {
         "texels_covered": int(cov.sum()),
         "texels_projected": painted,
-        "texels_filled_nearest": int(len(ty) - painted),
-        "facing_main_camera": int((w > 0).sum()),
-        "facing_opposite_camera": int((w < 0).sum()),
+        "texels_projected_full_trust": int((alpha >= 1).sum()),
+        "texels_low_frequency": int(len(ty) - painted),
+        "mirrored_far_side": False,
     }
-    return img, stats
+    info = {"facing": w, "pos": p, "colour": colour[:, :3], "projected": known}
+    return img, stats, info
 
 
 def make_material(obj, img_array, out_dir, size):
@@ -430,11 +470,62 @@ def make_material(obj, img_array, out_dir, size):
 
 # ---------------------------------------------------------------- main
 
-def render_sheets(mesh_path, out, yaw):
-    exe = bpy.app.binary_path
-    cmd = [exe, "-b", "--factory-startup", "-P", str(HERE.parent / "tools/bakeoff/render_views.py"),
-           "--", str(mesh_path), str(out), "--yaw", str(yaw)]
-    subprocess.run(cmd, check=True, capture_output=True)
+SHEET_VIEWS = {  # name: (azimuth deg around Z from the front, elevation deg)
+    "front": (0, 5), "back": (180, 5), "left": (90, 5), "right": (-90, 5),
+    "three_quarter": (35, 20), "top": (0, 89.5),
+}
+SHEET_RES = 512
+
+
+def export_glb(obj, path):
+    """glTF is Y-up, model front +Z; Blender -Y (where Clean puts the face) maps there."""
+    select_only(obj)
+    bpy.ops.export_scene.gltf(filepath=str(path), export_format="GLB", use_selection=True,
+                              export_yup=True)
+
+
+def render_sheets(raw, clean, out):
+    """Six views of raw (clay) and clean (clay, colour) from ONE camera set: the raw and clean
+    meshes share a world frame, so a part that Clean lost is missing in the same pixels."""
+    scene = bpy.context.scene
+    lo = np.minimum(verts_np(raw).min(axis=0), verts_np(clean).min(axis=0))
+    hi = np.maximum(verts_np(raw).max(axis=0), verts_np(clean).max(axis=0))
+    centre = Vector(((lo + hi) / 2).tolist())
+    scene.render.engine = "BLENDER_WORKBENCH"
+    scene.render.resolution_x = scene.render.resolution_y = SHEET_RES
+    scene.render.film_transparent = False
+    sh = scene.display.shading
+    sh.light = "STUDIO"
+    sh.show_cavity = True
+    sh.cavity_type = "BOTH"
+    sh.show_object_outline = False
+    sh.background_type = "VIEWPORT"
+    sh.background_color = (0.92, 0.92, 0.92)
+    scene.world = bpy.data.worlds.new("sheetworld")
+    cam_data = bpy.data.cameras.new("sheetcam")
+    cam_data.type = "ORTHO"
+    cam_data.ortho_scale = float(max(hi - lo)) * 1.3
+    cam = bpy.data.objects.new("sheetcam", cam_data)
+    scene.collection.objects.link(cam)
+    scene.camera = cam
+    jobs = (("before", raw, "clay", "SINGLE"), ("after", clean, "clay", "SINGLE"),
+            ("after", clean, "colour", "TEXTURE"))
+    for folder, obj, shade, ctype in jobs:
+        for other in (raw, clean):
+            other.hide_render = other is not obj
+        sh.color_type = ctype
+        sh.single_color = (0.75, 0.75, 0.75)
+        (out / folder).mkdir(parents=True, exist_ok=True)
+        for view, (az, el) in SHEET_VIEWS.items():
+            a, e = math.radians(az), math.radians(el)
+            d = Vector((math.sin(a) * math.cos(e), -math.cos(a) * math.cos(e), math.sin(e)))
+            cam.location = centre + d * 20
+            cam.rotation_euler = (-d).to_track_quat("-Z", "Y").to_euler()
+            scene.render.filepath = str(out / folder / f"{view}_{shade}.png")
+            bpy.ops.render.render(write_still=True)
+    for other in (raw, clean):
+        other.hide_render = False
+    bpy.data.objects.remove(cam, do_unlink=True)
 
 
 def main():
@@ -481,7 +572,7 @@ def main():
     # Orientation, scale, feet. The same matrix goes onto the raw copy for the outline check.
     t0 = time.perf_counter()
     v = verts_np(work)
-    yaw, yaw_table = pick_yaw(v, ref, kind)
+    yaw, yaw_table, yaw_how = pick_yaw(v, ref, kind, o["generator"])
     if o["turn"] is not None:
         yaw = o["turn"]
     from mathutils import Matrix
@@ -531,7 +622,7 @@ def main():
     lap("uv_unwrap", t0)
 
     t0 = time.perf_counter()
-    img_arr, bake_stats = bake_colour(work, ref, d0, tex_px)
+    img_arr, bake_stats, _ = bake_colour(work, ref, d0, tex_px)
     img = make_material(work, img_arr, out, tex_px)
     lap("colour_bake", t0)
 
@@ -546,10 +637,14 @@ def main():
 
     # Export.
     t0 = time.perf_counter()
+    # Sheets first: raw and clean still share one world frame here.
+    if o["sheets"]:
+        ts = time.perf_counter()
+        render_sheets(raw, work, out)
+        timings["sheets"] = round(time.perf_counter() - ts, 2)
     bpy.data.objects.remove(raw, do_unlink=True)
     select_only(work)
-    bpy.ops.export_scene.gltf(filepath=str(out / "clean.glb"), export_format="GLB",
-                              use_selection=True, export_yup=True)
+    export_glb(work, out / "clean.glb")
     bpy.ops.wm.save_as_mainfile(filepath=str(out / "clean.blend"))
     lap("export", t0)
 
@@ -570,8 +665,9 @@ def main():
         "dimensions_m": final_dims,
         "height_m": round(work.dimensions[2], 4),
         "origin": "feet (footprint centre, lowest point at z=0)",
-        "forward": "+Y",
-        "orientation": {"turn_deg": yaw, "outline_iou_by_turn": yaw_table},
+        "forward": "-Y (glTF +Z, Godot model front, D-021)",
+        "orientation": {"turn_deg": yaw, "decided_by": yaw_how, "generator": o["generator"],
+                        "outline_iou_by_turn": yaw_table},
         "colour_route": {"camera_toward": list(d0), "reference": o["ref"], **bake_stats},
         "timings_s": timings,
     })
@@ -580,13 +676,6 @@ def main():
     print("REPORT", json.dumps({k: report[k] for k in ("triangles", "materials", "texture",
                                                         "silhouette")}))
 
-    if o["sheets"]:
-        t0 = time.perf_counter()
-        # render_views' front camera is on -Y; turn +Y-facing models 180 so front shows the face.
-        render_sheets(o["raw"], out / "before", yaw + 180)
-        render_sheets(out / "clean.glb", out / "after", 180)
-        report["timings_s"]["sheets"] = round(time.perf_counter() - t0, 2)
-        (out / "report.json").write_text(json.dumps(report, indent=2))
 
-
-main()
+if __name__ == "__main__":
+    main()

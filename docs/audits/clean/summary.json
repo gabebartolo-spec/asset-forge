@@ -22,9 +22,9 @@
     "silhouette": {
       "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
       "threshold": 0.08,
-      "front": 0.0077,
-      "side": 0.0063,
-      "top": 0.0115
+      "front": 0.0073,
+      "side": 0.0059,
+      "top": 0.0099
     },
     "dimensions_m": [
       1.0274,
@@ -33,40 +33,37 @@
     ],
     "height_m": 1.7996,
     "origin": "feet (footprint centre, lowest point at z=0)",
-    "forward": "+Y",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
     "orientation": {
-      "turn_deg": 180,
-      "outline_iou_by_turn": {
-        "0": 0.7616,
-        "90": 0.5435,
-        "180": 0.7598,
-        "270": 0.5358
-      }
+      "turn_deg": 0.0,
+      "decided_by": "generator convention (hi3dgen)",
+      "generator": "hi3dgen",
+      "outline_iou_by_turn": {}
     },
     "colour_route": {
       "camera_toward": [
         0.0,
-        1.0,
+        -1.0,
         0.0
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\humanoid.png",
-      "texels_covered": 305980,
-      "texels_projected": 129765,
-      "texels_filled_nearest": 176215,
-      "facing_main_camera": 148998,
-      "facing_opposite_camera": 156982
+      "texels_covered": 307852,
+      "texels_projected": 67487,
+      "texels_projected_full_trust": 46913,
+      "texels_low_frequency": 240365,
+      "mirrored_far_side": false
     },
     "timings_s": {
-      "import_and_weld": 0.68,
+      "import_and_weld": 0.72,
       "voxel_remesh": 0.21,
       "orient_scale": 0.01,
-      "decimate": 1.2,
+      "decimate": 1.22,
       "uv_unwrap": 0.06,
-      "colour_bake": 1.75,
-      "silhouette": 0.77,
-      "export": 0.31,
-      "total": 5.11,
-      "sheets": 6.22
+      "colour_bake": 16.95,
+      "silhouette": 0.85,
+      "sheets": 0.76,
+      "export": 1.1,
+      "total": 21.23
     },
     "gate_failures": []
   },
@@ -93,9 +90,9 @@
     "silhouette": {
       "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
       "threshold": 0.08,
-      "front": 0.0151,
-      "side": 0.014,
-      "top": 0.0164
+      "front": 0.0159,
+      "side": 0.0138,
+      "top": 0.0182
     },
     "dimensions_m": [
       4.5933,
@@ -104,40 +101,37 @@
     ],
     "height_m": 1.9958,
     "origin": "feet (footprint centre, lowest point at z=0)",
-    "forward": "+Y",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
     "orientation": {
-      "turn_deg": 180,
-      "outline_iou_by_turn": {
-        "0": 0.2931,
-        "90": 0.2195,
-        "180": 0.2932,
-        "270": 0.211
-      }
+      "turn_deg": 0.0,
+      "decided_by": "generator convention (hi3dgen)",
+      "generator": "hi3dgen",
+      "outline_iou_by_turn": {}
     },
     "colour_route": {
       "camera_toward": [
         0.0,
-        1.0,
+        -1.0,
         0.0
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\spider.png",
-      "texels_covered": 276075,
-      "texels_projected": 49921,
-      "texels_filled_nearest": 226154,
-      "facing_main_camera": 137632,
-      "facing_opposite_camera": 138443
+      "texels_covered": 276182,
+      "texels_projected": 27427,
+      "texels_projected_full_trust": 13232,
+      "texels_low_frequency": 248755,
+      "mirrored_far_side": false
     },
     "timings_s": {
-      "import_and_weld": 0.54,
-      "voxel_remesh": 0.16,
+      "import_and_weld": 0.59,
+      "voxel_remesh": 0.18,
       "orient_scale": 0.01,
-      "decimate": 0.8,
+      "decimate": 0.96,
       "uv_unwrap": 0.03,
-      "colour_bake": 1.76,
+      "colour_bake": 13.71,
       "silhouette": 0.78,
-      "export": 0.31,
-      "total": 4.5,
-      "sheets": 6.04
+      "sheets": 0.43,
+      "export": 0.76,
+      "total": 17.16
     },
     "gate_failures": []
   },
@@ -175,40 +169,37 @@
     ],
     "height_m": 1.9987,
     "origin": "feet (footprint centre, lowest point at z=0)",
-    "forward": "+Y",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
     "orientation": {
-      "turn_deg": 0,
-      "outline_iou_by_turn": {
-        "0": 0.7211,
-        "90": 0.543,
-        "180": 0.7008,
-        "270": 0.5095
-      }
+      "turn_deg": 0.0,
+      "decided_by": "generator convention (hi3dgen)",
+      "generator": "hi3dgen",
+      "outline_iou_by_turn": {}
     },
     "colour_route": {
       "camera_toward": [
         0.0,
-        1.0,
+        -1.0,
         0.0
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\brute.png",
       "texels_covered": 360331,
-      "texels_projected": 209338,
-      "texels_filled_nearest": 150993,
-      "facing_main_camera": 180526,
-      "facing_opposite_camera": 179805
+      "texels_projected": 108788,
+      "texels_projected_full_trust": 72355,
+      "texels_low_frequency": 251543,
+      "mirrored_far_side": false
     },
     "timings_s": {
-      "import_and_weld": 1.64,
-      "voxel_remesh": 0.39,
-      "orient_scale": 0.02,
-      "decimate": 1.95,
-      "uv_unwrap": 0.03,
-      "colour_bake": 1.57,
-      "silhouette": 0.8,
-      "export": 0.31,
-      "total": 6.82,
-      "sheets": 7.22
+      "import_and_weld": 1.69,
+      "voxel_remesh": 0.41,
+      "orient_scale": 0.01,
+      "decimate": 2.04,
+      "uv_unwrap": 0.05,
+      "colour_bake": 25.48,
+      "silhouette": 0.82,
+      "sheets": 0.51,
+      "export": 0.84,
+      "total": 31.46
     },
     "gate_failures": []
   },
@@ -235,51 +226,53 @@
     "silhouette": {
       "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
       "threshold": 0.08,
-      "front": 0.0208,
-      "side": 0.0146,
-      "top": 0.0097
+      "front": 0.0181,
+      "side": 0.0149,
+      "top": 0.0114
     },
     "dimensions_m": [
-      0.2043,
-      0.7187,
-      0.5015
+      0.1631,
+      0.5754,
+      0.4012
     ],
-    "height_m": 0.5015,
+    "height_m": 0.4012,
     "origin": "feet (footprint centre, lowest point at z=0)",
-    "forward": "+Y",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
     "orientation": {
-      "turn_deg": 90,
+      "turn_deg": 270,
+      "decided_by": "side outline (profile, head toward -Y)",
+      "generator": "hi3dgen",
       "outline_iou_by_turn": {
-        "0": 0.4693,
-        "90": 0.7769,
-        "180": 0.4482,
-        "270": 0.3401
+        "0": 0.4482,
+        "90": 0.3401,
+        "180": 0.4693,
+        "270": 0.7769
       }
     },
     "colour_route": {
       "camera_toward": [
-        -1.0,
+        1.0,
         0.0,
         0.0
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\fox.png",
-      "texels_covered": 88156,
-      "texels_projected": 34891,
-      "texels_filled_nearest": 53265,
-      "facing_main_camera": 44317,
-      "facing_opposite_camera": 43839
+      "texels_covered": 89032,
+      "texels_projected": 18132,
+      "texels_projected_full_trust": 12614,
+      "texels_low_frequency": 70900,
+      "mirrored_far_side": false
     },
     "timings_s": {
-      "import_and_weld": 0.75,
-      "voxel_remesh": 0.25,
-      "orient_scale": 0.01,
-      "decimate": 1.74,
+      "import_and_weld": 0.77,
+      "voxel_remesh": 0.28,
+      "orient_scale": 0.02,
+      "decimate": 1.8,
       "uv_unwrap": 0.01,
-      "colour_bake": 0.47,
-      "silhouette": 0.81,
-      "export": 0.31,
-      "total": 4.48,
-      "sheets": 6.58
+      "colour_bake": 14.32,
+      "silhouette": 0.82,
+      "sheets": 0.45,
+      "export": 0.79,
+      "total": 18.92
     },
     "gate_failures": []
   },
@@ -306,51 +299,53 @@
     "silhouette": {
       "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
       "threshold": 0.08,
-      "front": 0.0114,
-      "side": 0.0064,
-      "top": 0.0068
+      "front": 0.0104,
+      "side": 0.0071,
+      "top": 0.0082
     },
     "dimensions_m": [
-      0.1973,
-      0.57,
-      0.5004
+      0.0552,
+      0.1596,
+      0.1401
     ],
-    "height_m": 0.5004,
+    "height_m": 0.1401,
     "origin": "feet (footprint centre, lowest point at z=0)",
-    "forward": "+Y",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
     "orientation": {
-      "turn_deg": 180,
+      "turn_deg": 0,
+      "decided_by": "side outline (profile, head toward -Y)",
+      "generator": "hi3dgen",
       "outline_iou_by_turn": {
-        "0": 0.4096,
-        "90": 0.42,
-        "180": 0.7291,
-        "270": 0.4191
+        "0": 0.7291,
+        "90": 0.4191,
+        "180": 0.4096,
+        "270": 0.42
       }
     },
     "colour_route": {
       "camera_toward": [
-        -1.0,
+        1.0,
         0.0,
         0.0
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\bird.png",
-      "texels_covered": 116103,
-      "texels_projected": 68969,
-      "texels_filled_nearest": 47134,
-      "facing_main_camera": 58466,
-      "facing_opposite_camera": 57637
+      "texels_covered": 117582,
+      "texels_projected": 35979,
+      "texels_projected_full_trust": 27082,
+      "texels_low_frequency": 81603,
+      "mirrored_far_side": false
     },
     "timings_s": {
       "import_and_weld": 1.16,
       "voxel_remesh": 0.23,
       "orient_scale": 0.01,
-      "decimate": 0.85,
+      "decimate": 0.9,
       "uv_unwrap": 0.0,
-      "colour_bake": 0.5,
-      "silhouette": 0.75,
-      "export": 0.3,
-      "total": 3.92,
-      "sheets": 6.38
+      "colour_bake": 10.82,
+      "silhouette": 0.8,
+      "sheets": 0.46,
+      "export": 0.8,
+      "total": 14.85
     },
     "gate_failures": []
   },
@@ -377,9 +372,9 @@
     "silhouette": {
       "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
       "threshold": 0.08,
-      "front": 0.0217,
-      "side": 0.0089,
-      "top": 0.0118
+      "front": 0.0214,
+      "side": 0.0106,
+      "top": 0.0132
     },
     "dimensions_m": [
       0.9337,
@@ -388,40 +383,37 @@
     ],
     "height_m": 1.8025,
     "origin": "feet (footprint centre, lowest point at z=0)",
-    "forward": "+Y",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
     "orientation": {
-      "turn_deg": 180,
-      "outline_iou_by_turn": {
-        "0": 0.7905,
-        "90": 0.573,
-        "180": 0.7963,
-        "270": 0.5583
-      }
+      "turn_deg": 0.0,
+      "decided_by": "generator convention (triposg)",
+      "generator": "triposg",
+      "outline_iou_by_turn": {}
     },
     "colour_route": {
       "camera_toward": [
         0.0,
-        1.0,
+        -1.0,
         0.0
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\humanoid.png",
-      "texels_covered": 238224,
-      "texels_projected": 90075,
-      "texels_filled_nearest": 148149,
-      "facing_main_camera": 120741,
-      "facing_opposite_camera": 117483
+      "texels_covered": 244653,
+      "texels_projected": 48985,
+      "texels_projected_full_trust": 32636,
+      "texels_low_frequency": 195668,
+      "mirrored_far_side": false
     },
     "timings_s": {
-      "import_and_weld": 1.78,
-      "voxel_remesh": 0.55,
-      "orient_scale": 0.03,
-      "decimate": 1.08,
-      "uv_unwrap": 0.08,
-      "colour_bake": 1.44,
-      "silhouette": 0.85,
-      "export": 0.31,
-      "total": 6.24,
-      "sheets": 8.21
+      "import_and_weld": 2.44,
+      "voxel_remesh": 0.58,
+      "orient_scale": 0.01,
+      "decimate": 1.33,
+      "uv_unwrap": 0.09,
+      "colour_bake": 20.65,
+      "silhouette": 0.99,
+      "sheets": 0.65,
+      "export": 1.03,
+      "total": 27.24
     },
     "gate_failures": []
   },
@@ -448,9 +440,9 @@
     "silhouette": {
       "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
       "threshold": 0.08,
-      "front": 0.0152,
-      "side": 0.0155,
-      "top": 0.0143
+      "front": 0.0157,
+      "side": 0.0143,
+      "top": 0.0112
     },
     "dimensions_m": [
       2.5941,
@@ -459,40 +451,37 @@
     ],
     "height_m": 1.9956,
     "origin": "feet (footprint centre, lowest point at z=0)",
-    "forward": "+Y",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
     "orientation": {
-      "turn_deg": 180,
-      "outline_iou_by_turn": {
-        "0": 0.348,
-        "90": 0.3058,
-        "180": 0.3998,
-        "270": 0.3239
-      }
+      "turn_deg": 0.0,
+      "decided_by": "generator convention (triposg)",
+      "generator": "triposg",
+      "outline_iou_by_turn": {}
     },
     "colour_route": {
       "camera_toward": [
         0.0,
-        1.0,
+        -1.0,
         0.0
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\spider.png",
-      "texels_covered": 217699,
-      "texels_projected": 54191,
-      "texels_filled_nearest": 163508,
-      "facing_main_camera": 107472,
-      "facing_opposite_camera": 110227
+      "texels_covered": 219275,
+      "texels_projected": 28652,
+      "texels_projected_full_trust": 14029,
+      "texels_low_frequency": 190623,
+      "mirrored_far_side": false
     },
     "timings_s": {
-      "import_and_weld": 1.28,
-      "voxel_remesh": 0.43,
-      "orient_scale": 0.02,
-      "decimate": 0.99,
+      "import_and_weld": 1.24,
+      "voxel_remesh": 0.37,
+      "orient_scale": 0.01,
+      "decimate": 0.9,
       "uv_unwrap": 0.02,
-      "colour_bake": 1.84,
-      "silhouette": 0.88,
-      "export": 0.34,
-      "total": 5.92,
-      "sheets": 7.2
+      "colour_bake": 14.22,
+      "silhouette": 0.83,
+      "sheets": 0.49,
+      "export": 0.81,
+      "total": 18.52
     },
     "gate_failures": []
   },
@@ -530,40 +519,37 @@
     ],
     "height_m": 2.0016,
     "origin": "feet (footprint centre, lowest point at z=0)",
-    "forward": "+Y",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
     "orientation": {
-      "turn_deg": 0,
-      "outline_iou_by_turn": {
-        "0": 0.7189,
-        "90": 0.4235,
-        "180": 0.6976,
-        "270": 0.4364
-      }
+      "turn_deg": 0.0,
+      "decided_by": "generator convention (triposg)",
+      "generator": "triposg",
+      "outline_iou_by_turn": {}
     },
     "colour_route": {
       "camera_toward": [
         0.0,
-        1.0,
+        -1.0,
         0.0
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\brute.png",
       "texels_covered": 410460,
-      "texels_projected": 223629,
-      "texels_filled_nearest": 186831,
-      "facing_main_camera": 204064,
-      "facing_opposite_camera": 206396
+      "texels_projected": 116180,
+      "texels_projected_full_trust": 77249,
+      "texels_low_frequency": 294280,
+      "mirrored_far_side": false
     },
     "timings_s": {
-      "import_and_weld": 2.66,
-      "voxel_remesh": 0.74,
-      "orient_scale": 0.02,
-      "decimate": 2.28,
-      "uv_unwrap": 0.03,
-      "colour_bake": 1.91,
-      "silhouette": 0.91,
-      "export": 0.33,
-      "total": 9.01,
-      "sheets": 9.73
+      "import_and_weld": 2.54,
+      "voxel_remesh": 0.72,
+      "orient_scale": 0.01,
+      "decimate": 1.97,
+      "uv_unwrap": 0.02,
+      "colour_bake": 24.78,
+      "silhouette": 0.93,
+      "sheets": 0.65,
+      "export": 1.0,
+      "total": 32.1
     },
     "gate_failures": []
   },
@@ -591,50 +577,52 @@
       "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
       "threshold": 0.08,
       "front": 0.0035,
-      "side": 0.0039,
-      "top": 0.0034
+      "side": 0.0042,
+      "top": 0.0047
     },
     "dimensions_m": [
-      0.3609,
-      0.6859,
-      0.5009
+      0.2888,
+      0.5487,
+      0.4007
     ],
-    "height_m": 0.5009,
+    "height_m": 0.4007,
     "origin": "feet (footprint centre, lowest point at z=0)",
-    "forward": "+Y",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
     "orientation": {
-      "turn_deg": 270,
+      "turn_deg": 90,
+      "decided_by": "side outline (profile, head toward -Y)",
+      "generator": "triposg",
       "outline_iou_by_turn": {
-        "0": 0.252,
-        "90": 0.3471,
-        "180": 0.4552,
-        "270": 0.8189
+        "0": 0.4552,
+        "90": 0.8189,
+        "180": 0.252,
+        "270": 0.3471
       }
     },
     "colour_route": {
       "camera_toward": [
-        -1.0,
+        1.0,
         0.0,
         0.0
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\fox.png",
-      "texels_covered": 98617,
-      "texels_projected": 64619,
-      "texels_filled_nearest": 33998,
-      "facing_main_camera": 49632,
-      "facing_opposite_camera": 48985
+      "texels_covered": 97354,
+      "texels_projected": 33747,
+      "texels_projected_full_trust": 23525,
+      "texels_low_frequency": 63607,
+      "mirrored_far_side": false
     },
     "timings_s": {
       "import_and_weld": 1.48,
-      "voxel_remesh": 0.42,
+      "voxel_remesh": 0.41,
       "orient_scale": 0.02,
-      "decimate": 1.02,
+      "decimate": 1.01,
       "uv_unwrap": 0.0,
-      "colour_bake": 0.45,
-      "silhouette": 0.84,
-      "export": 0.34,
-      "total": 4.69,
-      "sheets": 7.41
+      "colour_bake": 16.8,
+      "silhouette": 0.86,
+      "sheets": 0.51,
+      "export": 0.86,
+      "total": 21.57
     },
     "gate_failures": []
   },
@@ -661,51 +649,53 @@
     "silhouette": {
       "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
       "threshold": 0.08,
-      "front": 0.0111,
-      "side": 0.0143,
-      "top": 0.0073
+      "front": 0.011,
+      "side": 0.0134,
+      "top": 0.0068
     },
     "dimensions_m": [
-      0.2378,
-      0.5561,
-      0.4994
+      0.0666,
+      0.1558,
+      0.1398
     ],
-    "height_m": 0.4994,
+    "height_m": 0.1398,
     "origin": "feet (footprint centre, lowest point at z=0)",
-    "forward": "+Y",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
     "orientation": {
-      "turn_deg": 270,
+      "turn_deg": 90,
+      "decided_by": "side outline (profile, head toward -Y)",
+      "generator": "triposg",
       "outline_iou_by_turn": {
-        "0": 0.4214,
-        "90": 0.4007,
-        "180": 0.4274,
-        "270": 0.7315
+        "0": 0.4274,
+        "90": 0.7315,
+        "180": 0.4214,
+        "270": 0.4007
       }
     },
     "colour_route": {
       "camera_toward": [
-        -1.0,
+        1.0,
         0.0,
         0.0
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\bird.png",
-      "texels_covered": 116824,
-      "texels_projected": 67092,
-      "texels_filled_nearest": 49732,
-      "facing_main_camera": 56291,
-      "facing_opposite_camera": 60533
+      "texels_covered": 117554,
+      "texels_projected": 36103,
+      "texels_projected_full_trust": 22684,
+      "texels_low_frequency": 81451,
+      "mirrored_far_side": false
     },
     "timings_s": {
-      "import_and_weld": 1.53,
-      "voxel_remesh": 0.46,
-      "orient_scale": 0.01,
-      "decimate": 1.02,
+      "import_and_weld": 1.56,
+      "voxel_remesh": 0.44,
+      "orient_scale": 0.02,
+      "decimate": 1.03,
       "uv_unwrap": 0.01,
-      "colour_bake": 0.57,
-      "silhouette": 0.92,
-      "export": 0.34,
-      "total": 4.99,
-      "sheets": 8.44
+      "colour_bake": 21.73,
+      "silhouette": 0.93,
+      "sheets": 0.5,
+      "export": 0.82,
+      "total": 26.65
     },
     "gate_failures": []
   }
