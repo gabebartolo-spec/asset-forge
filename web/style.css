@@ -115,3 +115,6 @@ button.small:disabled { color: #aab3c2; background: #23272f; }
   .row { margin-top: 3px; }
   #idea-hint { margin-top: 3px; min-height: 0; font-size: 12.5px; }
 }
+.why { align-self: center; color: var(--text); font-size: 14px; }
+.draw-note { margin: 8px 0 0; color: var(--text); font-size: 15px; }
+.row button.small { white-space: nowrap; }

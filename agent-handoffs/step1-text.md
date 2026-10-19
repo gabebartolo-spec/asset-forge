@@ -34,3 +34,6 @@ claude/step1-text, worktree asset-forge-wt/step1-text (own .venv, gitignored). P
 Fixed: box auto-grows to 5+ lines then scrolls, placeholder colour, Try another disabled while writing,
 plain footer copy, 44 px small buttons, "Your picture builds the model; your words are kept as notes.",
 both maker cards fit at 1366x768 (measured scroll 0). Re-shot real_* at both sizes. Left: lead walk-through.
+
+## Round 3 (walk-through fixes, lead-approved)
+Words-path note moved under the words box (shown after Expand or 3+ words, no picture); Redo hidden until a result; "Pick what it is first: Humanoid, Monster or Animal" beside Expand; "3. Choose how to build it". Footer no longer says "Press Draw a picture" when drawing is unavailable. Web-only change (web/app.js, index.html, style.css); no Python logic changed. Re-shot real_* both sizes with a fake idea writer (no GPU) + fake makers, via Playwright on Edge. Left: CI at new head, PR body evidence.

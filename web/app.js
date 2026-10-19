@@ -79,7 +79,7 @@ function render() {
   const pill1 = $("pill1");
   pill1.classList.toggle("clickable", !onStep1);
   pill1.onclick = onStep1 ? null : () => { state.step = 1; render(); };
-  redo.classList.toggle("hidden", !onStep1);
+  redo.classList.toggle("hidden", !onStep1 || !state.asset);
   const hint = $("foot-hint");
   hint.textContent = "";
   const words = $("idea").value.trim();
@@ -95,11 +95,10 @@ function render() {
       const haveInput = state.file || (textOnly && (state.reference || canDraw));
       next.disabled = !haveInput || !state.type || state.busy || state.expanding;
       if (!state.busy && !state.done) {
-        if (textOnly && !canDraw) hint.textContent = state.menu.text_draw.note;
-        else if (!state.file && !words && !state.type) hint.textContent = "Pick a picture or describe your model, and say what it is, then press Make 3D model.";
+        if (!state.file && !words && !state.type) hint.textContent = "Pick a picture or describe your model, and say what it is, then press Make 3D model.";
         else if (!state.file && !words) hint.textContent = "Pick a picture or describe your model first.";
         else if (!state.type) hint.textContent = "Now say what it is (step 2).";
-        else if (needDraw) hint.textContent = "Press Draw a picture. You can check it before the 3D model is made.";
+        else if (needDraw && canDraw) hint.textContent = "Press Draw a picture. You can check it before the 3D model is made.";
       }
     }
     redo.disabled = state.busy || state.expanding || !state.asset;
@@ -108,6 +107,11 @@ function render() {
     next.disabled = true;
   }
   const ih = $("idea-hint");
+  const wordCount = words ? words.split(/\s+/).length : 0;
+  const noDraw = !!(state.menu && !state.menu.text_draw.available);
+  $("draw-note").textContent = noDraw ? state.menu.text_draw.note : "";
+  $("draw-note").classList.toggle("hidden", !(noDraw && !state.file && (state.source || wordCount >= 3)));
+  $("expand-why").classList.toggle("hidden", !(words && !state.type));
   $("expand").disabled = !words || !state.type || state.busy || state.expanding;
   $("expand").textContent = state.expanding ? "Writing..." : "Expand my idea";
   $("reroll").classList.toggle("hidden", !state.source);
@@ -115,7 +119,7 @@ function render() {
   $("idea").disabled = state.busy || state.expanding;
   if (!state.expanding && !ih.classList.contains("error")) {
     ih.textContent = !words ? "Type a few words, then press Expand my idea. You can edit the result."
-      : !state.type ? "Say what it is (step 2) so the description fits."
+      : !state.type ? ""
       : state.file ? "Your picture builds the model; your words are kept as notes."
       : state.source ? "Edit it if you like. Not quite right? Try another version." : "";
   }

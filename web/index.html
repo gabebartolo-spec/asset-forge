@@ -53,9 +53,11 @@
       <textarea id="idea" rows="1" maxlength="600" placeholder="A few words are enough, like: a six-armed brute"></textarea>
       <div class="row">
         <button type="button" class="secondary small" id="expand" disabled>Expand my idea</button>
+        <span class="why hidden" id="expand-why">Pick what it is first: Humanoid, Monster or Animal</span>
         <button type="button" class="secondary small hidden" id="reroll">Try another version</button>
       </div>
       <p class="hint" id="idea-hint" role="status"></p>
+      <p class="draw-note hidden" id="draw-note" role="status"></p>
     </div>
 
     <div class="block">
@@ -65,7 +67,7 @@
     </div>
 
     <div class="block">
-      <h3>3. Choose a maker <span id="same-time"></span></h3>
+      <h3>3. Choose how to build it <span id="same-time"></span></h3>
       <div id="generators" role="radiogroup" aria-label="Generator"></div>
     </div>
   </aside>
