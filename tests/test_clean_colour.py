@@ -5,9 +5,7 @@ import json
 import os
 from pathlib import Path
 
-import numpy as np
 import pytest
-from PIL import Image
 from test_clean_forward import blender
 from test_clean_step import FIX, ROOT
 
@@ -55,6 +53,8 @@ def test_fill_ignores_shadow_dark_reference_pixels(tmp_path):
 
 
 def test_albedo_and_lit_sheet_are_true_to_the_reference(tmp_path):
+    np = pytest.importorskip("numpy")  # local only; CI has neither numpy nor Pillow
+    Image = pytest.importorskip("PIL.Image")
     blender("-P", str(CLEAN), "--", str(FIX / "figure.obj"), str(tmp_path), "--type", "humanoid",
             "--ref", str(FIX / "figure_ref.png"))
     rep = json.loads((tmp_path / "report.json").read_text())
