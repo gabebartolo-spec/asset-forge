@@ -1,0 +1,79 @@
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+// A big spinnable viewer. Shows the raw mesh as grey clay (the generators make shape only).
+export class Viewer {
+  constructor(el) {
+    this.el = el;
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    el.prepend(this.renderer.domElement);
+    this.scene = new THREE.Scene();
+    this.camera = new THREE.PerspectiveCamera(35, 1, 0.01, 100);
+    this.camera.position.set(0, 0.6, 3);
+    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x3a3f4a, 1.6));
+    const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+    sun.position.set(2, 3, 2.5);
+    this.scene.add(sun);
+    const rim = new THREE.DirectionalLight(0x88aaff, 0.9);
+    rim.position.set(-3, 1, -2);
+    this.scene.add(rim);
+    this.grid = new THREE.GridHelper(4, 16, 0x3a404c, 0x2a2f38);
+    this.scene.add(this.grid);
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.enableDamping = true;
+    this.model = null;
+    this.ready = false;
+    new ResizeObserver(() => this.resize()).observe(el);
+    this.resize();
+    this.renderer.setAnimationLoop(() => {
+      this.controls.update();
+      this.renderer.render(this.scene, this.camera);
+    });
+  }
+
+  resize() {
+    const w = this.el.clientWidth, h = this.el.clientHeight;
+    if (!w || !h) return;
+    this.renderer.setSize(w, h, false);
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+  }
+
+  clear() {
+    if (this.model) this.scene.remove(this.model);
+    this.model = null;
+    this.ready = false;
+  }
+
+  async load(url) {
+    const gltf = await new GLTFLoader().loadAsync(url);
+    this.clear();
+    const clay = new THREE.MeshStandardMaterial({ color: 0xc9ccd4, roughness: 0.7, metalness: 0.0 });
+    const root = gltf.scene;
+    root.traverse((o) => {
+      if (o.isMesh) {
+        if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+        o.material = clay;
+      }
+    });
+    // stand it on the grid, centred, about 1.6 units tall
+    const box = new THREE.Box3().setFromObject(root);
+    const size = box.getSize(new THREE.Vector3());
+    const scale = 1.6 / Math.max(size.x, size.y, size.z, 1e-6);
+    root.scale.setScalar(scale);
+    box.setFromObject(root);
+    const c = box.getCenter(new THREE.Vector3());
+    root.position.set(-c.x, -box.min.y, -c.z);
+    const holder = new THREE.Group();
+    holder.add(root);
+    this.scene.add(holder);
+    this.model = holder;
+    const h = box.max.y - box.min.y;
+    this.controls.target.set(0, h / 2, 0);
+    this.camera.position.set(1.6, h * 0.75, 3.0);
+    this.controls.update();
+    this.ready = true;
+  }
+}
