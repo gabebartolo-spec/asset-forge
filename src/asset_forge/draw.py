@@ -17,8 +17,8 @@ from PIL import Image, ImageDraw
 
 from .config import Settings
 
-UNAVAILABLE_NOTE = ("Drawing from text arrives with the sprite update. "
-                    "For now, add a picture.")
+UNAVAILABLE_NOTE = ("Drawing a picture from your words isn't ready yet. "
+                    "Add a picture to make a model.")
 
 
 class DrawError(RuntimeError):

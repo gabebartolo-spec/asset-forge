@@ -29,3 +29,8 @@ claude/step1-text, worktree asset-forge-wt/step1-text (own .venv, gitignored). P
 
 ## Rules learnt the hard way
 - GPU lock is often held by other agents; any app job (even a faked one) waits for it.
+
+## Round 2 (critic + lead)
+Fixed: box auto-grows to 5+ lines then scrolls, placeholder colour, Try another disabled while writing,
+plain footer copy, 44 px small buttons, "Your picture builds the model; your words are kept as notes.",
+both maker cards fit at 1366x768 (measured scroll 0). Re-shot real_* at both sizes. Left: lead walk-through.

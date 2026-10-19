@@ -116,10 +116,18 @@ function render() {
   if (!state.expanding && !ih.classList.contains("error")) {
     ih.textContent = !words ? "Type a few words, then press Expand my idea. You can edit the result."
       : !state.type ? "Say what it is (step 2) so the description fits."
+      : state.file ? "Your picture builds the model; your words are kept as notes."
       : state.source ? "Edit it if you like. Not quite right? Try another version." : "";
   }
+  grow();
   $("viewer-hint").classList.toggle("hidden", !(state.showing === "model" && !state.busy));
   $("panel-1").classList.toggle("busy", state.busy);
+}
+
+function grow() { // the box grows with its text (about 8 lines), then scrolls
+  const t = $("idea");
+  t.style.height = "auto";
+  t.style.height = Math.min(t.scrollHeight + 2, 200) + "px";
 }
 
 function buildMenu(menu) {
@@ -311,6 +319,7 @@ async function expand(again) {
         : "Waiting for the graphics card...";
     });
     $("idea").value = j.result.prompt;
+    grow();
     if (!state.file) newInput();
     if (state.showing === "ref") { showMsg("Your model will appear here."); state.showing = null; }
     ih.textContent = "";

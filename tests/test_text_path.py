@@ -123,14 +123,14 @@ def test_menu_says_whether_drawing_from_text_is_there(parts, settings, fake_regi
         td = c2.get("/api/menu").json()["text_draw"]
     app.state.queue.shutdown()
     assert td == {"available": False, "note": UNAVAILABLE_NOTE}
-    assert "sprite update" in td["note"]
+    assert "isn't ready yet" in td["note"]
 
 
 def test_text_only_without_a_drawer_is_plain_501_not_a_crash(settings, fake_registry):
     app = create_app(settings, fake_registry, expander=Writer(), drawer=UnavailableDrawer())
     with TestClient(app) as c:
         r = c.post("/api/assets/from-text", json={"prompt": "a fox", "type": "animal"})
-        assert r.status_code == 501 and "sprite update" in r.json()["detail"]
+        assert r.status_code == 501 and "isn't ready yet" in r.json()["detail"]
         r = c.post("/api/assets/a-20260101-000000-abcd/draw", json={})
         assert r.status_code == 501
     app.state.queue.shutdown()
