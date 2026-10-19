@@ -11,7 +11,7 @@ EDGE_MARGIN_PX = 2  # director/design: the sprite stays 2 px clear of the canvas
 BACK_IOU_MAX = 0.90  # a back whose outline overlaps the front's (or its mirror) more is rejected
 
 # Same-creature gate (front vs back); calibrated in the PR notes.
-GAP_OK_PX = 40  # an enclosed see-through gap this big is part of the drawing, not a hole
+GAP_OK_FRAC = 0.0035  # an enclosed see-through gap this share of the canvas (32 px at 96) is drawn
 FRONT_SYMMETRY_MIN = 0.55  # a front facing the viewer mirrors onto itself at least this well
 COLOUR_DISTANCE_MAX = 0.65
 ASPECT_RATIO_MAX = 1.6

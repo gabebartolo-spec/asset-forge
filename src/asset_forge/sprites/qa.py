@@ -11,7 +11,7 @@ from .presets import (
     COLOUR_DISTANCE_MAX,
     EDGE_MARGIN_PX,
     FRONT_SYMMETRY_MIN,
-    GAP_OK_PX,
+    GAP_OK_FRAC,
     MASS_RATIO_MAX,
     Preset,
 )
@@ -62,7 +62,9 @@ def check_sprite(rgba: np.ndarray, preset: Preset) -> list[str]:
     sizes = np.bincount(clear_labels.ravel(), minlength=clear_count + 1)
     # a big enclosed gap is a drawn one (a tail loop, between the legs), ringed by the outline;
     # a small one the hole fill could not close is a defect
-    holes = sum(1 for k in range(1, clear_count + 1) if k not in outside and sizes[k] < GAP_OK_PX)
+    holes = sum(
+        1 for k in range(1, clear_count + 1) if k not in outside and sizes[k] < GAP_OK_FRAC * n * n
+    )
     if holes:
         problems.append(f"{holes} holes: see-through gaps fully enclosed by the sprite.")
 

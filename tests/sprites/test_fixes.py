@@ -184,7 +184,7 @@ def test_a_big_drawn_gap_is_allowed_but_a_mid_size_hole_is_not():
     big[48:60, 40:50] = 0  # 120 px gap ringed by sprite: a tail loop
     assert "holes" not in words(check_sprite(big, SC))
     mid = base.copy()
-    mid[48:54, 40:46] = 0  # 36 px
+    mid[48:53, 40:44] = 0  # 20 px
     assert "1 holes" in words(check_sprite(mid, SC))
 
 
