@@ -10,7 +10,7 @@ per forge-pr, ONE AskUserQuestion: which passing models go on the generator menu
 
 ## Where things are
 - MAIN = C:/Users/DANTE/Documents/GitHub/asset-forge (main ecdf66c, no open PRs).
-- Worktree MAIN/../asset-forge-wt/bakeoff, branch claude/bakeoff, HEAD 91fad14 (D-017). Committed in session 4:
+- Worktree MAIN/../asset-forge-wt/bakeoff, branch claude/bakeoff, HEAD f934c46 (not pushed). Committed in session 4:
   LICENCES rows (diso BANNED, CUDA runtime, torchmcubes MPL, DINOv2/DINO v1, HF cards confirmed,
   Hi3DGen + Direct3D-S2 now CLEARED, BiRefNet pinned), D-018 in DECISIONS + design 5.2 + ROADMAP,
   make_refs.py (--seed-start/--text/--tag, BiRefNet pinned), adapters/. uv.lock left untracked (from uv run; not ours to add).
