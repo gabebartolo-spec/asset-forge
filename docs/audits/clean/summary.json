@@ -1,0 +1,712 @@
+{
+  "hi3dgen/humanoid": {
+    "type": "humanoid",
+    "input": "humanoid.glb",
+    "generator_input_only": true,
+    "triangles": 7756,
+    "triangle_budget": 8000,
+    "materials": 1,
+    "texture": {
+      "width": 1024,
+      "height": 1024,
+      "max_px": 1024
+    },
+    "raw_triangles": 272446,
+    "voxel_remesh_triangles": 183364,
+    "loose_parts": {
+      "raw_after_weld": 26,
+      "floaters_deleted": 22,
+      "after_clean": 1,
+      "floaters_deleted_after_decimate": 1
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0077,
+      "side": 0.0063,
+      "top": 0.0115
+    },
+    "dimensions_m": [
+      1.0274,
+      0.4085,
+      1.7996
+    ],
+    "height_m": 1.7996,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "+Y",
+    "orientation": {
+      "turn_deg": 180,
+      "outline_iou_by_turn": {
+        "0": 0.7616,
+        "90": 0.5435,
+        "180": 0.7598,
+        "270": 0.5358
+      }
+    },
+    "colour_route": {
+      "camera_toward": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\humanoid.png",
+      "texels_covered": 305980,
+      "texels_projected": 129765,
+      "texels_filled_nearest": 176215,
+      "facing_main_camera": 148998,
+      "facing_opposite_camera": 156982
+    },
+    "timings_s": {
+      "import_and_weld": 0.68,
+      "voxel_remesh": 0.21,
+      "orient_scale": 0.01,
+      "decimate": 1.2,
+      "uv_unwrap": 0.06,
+      "colour_bake": 1.75,
+      "silhouette": 0.77,
+      "export": 0.31,
+      "total": 5.11,
+      "sheets": 6.22
+    },
+    "gate_failures": []
+  },
+  "hi3dgen/spider": {
+    "type": "monster",
+    "input": "spider.glb",
+    "generator_input_only": true,
+    "triangles": 7760,
+    "triangle_budget": 8000,
+    "materials": 1,
+    "texture": {
+      "width": 1024,
+      "height": 1024,
+      "max_px": 1024
+    },
+    "raw_triangles": 220302,
+    "voxel_remesh_triangles": 140184,
+    "loose_parts": {
+      "raw_after_weld": 12,
+      "floaters_deleted": 11,
+      "after_clean": 1,
+      "floaters_deleted_after_decimate": 0
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0151,
+      "side": 0.014,
+      "top": 0.0164
+    },
+    "dimensions_m": [
+      4.5933,
+      4.7551,
+      1.9958
+    ],
+    "height_m": 1.9958,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "+Y",
+    "orientation": {
+      "turn_deg": 180,
+      "outline_iou_by_turn": {
+        "0": 0.2931,
+        "90": 0.2195,
+        "180": 0.2932,
+        "270": 0.211
+      }
+    },
+    "colour_route": {
+      "camera_toward": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\spider.png",
+      "texels_covered": 276075,
+      "texels_projected": 49921,
+      "texels_filled_nearest": 226154,
+      "facing_main_camera": 137632,
+      "facing_opposite_camera": 138443
+    },
+    "timings_s": {
+      "import_and_weld": 0.54,
+      "voxel_remesh": 0.16,
+      "orient_scale": 0.01,
+      "decimate": 0.8,
+      "uv_unwrap": 0.03,
+      "colour_bake": 1.76,
+      "silhouette": 0.78,
+      "export": 0.31,
+      "total": 4.5,
+      "sheets": 6.04
+    },
+    "gate_failures": []
+  },
+  "hi3dgen/brute": {
+    "type": "monster",
+    "input": "brute.glb",
+    "generator_input_only": true,
+    "triangles": 7760,
+    "triangle_budget": 8000,
+    "materials": 1,
+    "texture": {
+      "width": 1024,
+      "height": 1024,
+      "max_px": 1024
+    },
+    "raw_triangles": 592418,
+    "voxel_remesh_triangles": 276516,
+    "loose_parts": {
+      "raw_after_weld": 16,
+      "floaters_deleted": 14,
+      "after_clean": 1,
+      "floaters_deleted_after_decimate": 0
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0056,
+      "side": 0.0043,
+      "top": 0.0047
+    },
+    "dimensions_m": [
+      2.0068,
+      0.8674,
+      1.9987
+    ],
+    "height_m": 1.9987,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "+Y",
+    "orientation": {
+      "turn_deg": 0,
+      "outline_iou_by_turn": {
+        "0": 0.7211,
+        "90": 0.543,
+        "180": 0.7008,
+        "270": 0.5095
+      }
+    },
+    "colour_route": {
+      "camera_toward": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\brute.png",
+      "texels_covered": 360331,
+      "texels_projected": 209338,
+      "texels_filled_nearest": 150993,
+      "facing_main_camera": 180526,
+      "facing_opposite_camera": 179805
+    },
+    "timings_s": {
+      "import_and_weld": 1.64,
+      "voxel_remesh": 0.39,
+      "orient_scale": 0.02,
+      "decimate": 1.95,
+      "uv_unwrap": 0.03,
+      "colour_bake": 1.57,
+      "silhouette": 0.8,
+      "export": 0.31,
+      "total": 6.82,
+      "sheets": 7.22
+    },
+    "gate_failures": []
+  },
+  "hi3dgen/fox": {
+    "type": "animal",
+    "input": "fox.glb",
+    "generator_input_only": true,
+    "triangles": 1940,
+    "triangle_budget": 2000,
+    "materials": 1,
+    "texture": {
+      "width": 512,
+      "height": 512,
+      "max_px": 512
+    },
+    "raw_triangles": 330788,
+    "voxel_remesh_triangles": 245328,
+    "loose_parts": {
+      "raw_after_weld": 1,
+      "floaters_deleted": 0,
+      "after_clean": 1,
+      "floaters_deleted_after_decimate": 0
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0208,
+      "side": 0.0146,
+      "top": 0.0097
+    },
+    "dimensions_m": [
+      0.2043,
+      0.7187,
+      0.5015
+    ],
+    "height_m": 0.5015,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "+Y",
+    "orientation": {
+      "turn_deg": 90,
+      "outline_iou_by_turn": {
+        "0": 0.4693,
+        "90": 0.7769,
+        "180": 0.4482,
+        "270": 0.3401
+      }
+    },
+    "colour_route": {
+      "camera_toward": [
+        -1.0,
+        0.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\fox.png",
+      "texels_covered": 88156,
+      "texels_projected": 34891,
+      "texels_filled_nearest": 53265,
+      "facing_main_camera": 44317,
+      "facing_opposite_camera": 43839
+    },
+    "timings_s": {
+      "import_and_weld": 0.75,
+      "voxel_remesh": 0.25,
+      "orient_scale": 0.01,
+      "decimate": 1.74,
+      "uv_unwrap": 0.01,
+      "colour_bake": 0.47,
+      "silhouette": 0.81,
+      "export": 0.31,
+      "total": 4.48,
+      "sheets": 6.58
+    },
+    "gate_failures": []
+  },
+  "hi3dgen/bird": {
+    "type": "animal",
+    "input": "bird.glb",
+    "generator_input_only": true,
+    "triangles": 1940,
+    "triangle_budget": 2000,
+    "materials": 1,
+    "texture": {
+      "width": 512,
+      "height": 512,
+      "max_px": 512
+    },
+    "raw_triangles": 339484,
+    "voxel_remesh_triangles": 146892,
+    "loose_parts": {
+      "raw_after_weld": 7,
+      "floaters_deleted": 6,
+      "after_clean": 1,
+      "floaters_deleted_after_decimate": 0
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0114,
+      "side": 0.0064,
+      "top": 0.0068
+    },
+    "dimensions_m": [
+      0.1973,
+      0.57,
+      0.5004
+    ],
+    "height_m": 0.5004,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "+Y",
+    "orientation": {
+      "turn_deg": 180,
+      "outline_iou_by_turn": {
+        "0": 0.4096,
+        "90": 0.42,
+        "180": 0.7291,
+        "270": 0.4191
+      }
+    },
+    "colour_route": {
+      "camera_toward": [
+        -1.0,
+        0.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\bird.png",
+      "texels_covered": 116103,
+      "texels_projected": 68969,
+      "texels_filled_nearest": 47134,
+      "facing_main_camera": 58466,
+      "facing_opposite_camera": 57637
+    },
+    "timings_s": {
+      "import_and_weld": 1.16,
+      "voxel_remesh": 0.23,
+      "orient_scale": 0.01,
+      "decimate": 0.85,
+      "uv_unwrap": 0.0,
+      "colour_bake": 0.5,
+      "silhouette": 0.75,
+      "export": 0.3,
+      "total": 3.92,
+      "sheets": 6.38
+    },
+    "gate_failures": []
+  },
+  "triposg/humanoid": {
+    "type": "humanoid",
+    "input": "humanoid.glb",
+    "generator_input_only": true,
+    "triangles": 7740,
+    "triangle_budget": 8000,
+    "materials": 1,
+    "texture": {
+      "width": 1024,
+      "height": 1024,
+      "max_px": 1024
+    },
+    "raw_triangles": 1041226,
+    "voxel_remesh_triangles": 176628,
+    "loose_parts": {
+      "raw_after_weld": 298,
+      "floaters_deleted": 297,
+      "after_clean": 1,
+      "floaters_deleted_after_decimate": 10
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0217,
+      "side": 0.0089,
+      "top": 0.0118
+    },
+    "dimensions_m": [
+      0.9337,
+      0.4518,
+      1.8025
+    ],
+    "height_m": 1.8025,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "+Y",
+    "orientation": {
+      "turn_deg": 180,
+      "outline_iou_by_turn": {
+        "0": 0.7905,
+        "90": 0.573,
+        "180": 0.7963,
+        "270": 0.5583
+      }
+    },
+    "colour_route": {
+      "camera_toward": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\humanoid.png",
+      "texels_covered": 238224,
+      "texels_projected": 90075,
+      "texels_filled_nearest": 148149,
+      "facing_main_camera": 120741,
+      "facing_opposite_camera": 117483
+    },
+    "timings_s": {
+      "import_and_weld": 1.78,
+      "voxel_remesh": 0.55,
+      "orient_scale": 0.03,
+      "decimate": 1.08,
+      "uv_unwrap": 0.08,
+      "colour_bake": 1.44,
+      "silhouette": 0.85,
+      "export": 0.31,
+      "total": 6.24,
+      "sheets": 8.21
+    },
+    "gate_failures": []
+  },
+  "triposg/spider": {
+    "type": "monster",
+    "input": "spider.glb",
+    "generator_input_only": true,
+    "triangles": 7760,
+    "triangle_budget": 8000,
+    "materials": 1,
+    "texture": {
+      "width": 1024,
+      "height": 1024,
+      "max_px": 1024
+    },
+    "raw_triangles": 674350,
+    "voxel_remesh_triangles": 148076,
+    "loose_parts": {
+      "raw_after_weld": 279,
+      "floaters_deleted": 278,
+      "after_clean": 1,
+      "floaters_deleted_after_decimate": 0
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0152,
+      "side": 0.0155,
+      "top": 0.0143
+    },
+    "dimensions_m": [
+      2.5941,
+      2.7211,
+      1.9956
+    ],
+    "height_m": 1.9956,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "+Y",
+    "orientation": {
+      "turn_deg": 180,
+      "outline_iou_by_turn": {
+        "0": 0.348,
+        "90": 0.3058,
+        "180": 0.3998,
+        "270": 0.3239
+      }
+    },
+    "colour_route": {
+      "camera_toward": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\spider.png",
+      "texels_covered": 217699,
+      "texels_projected": 54191,
+      "texels_filled_nearest": 163508,
+      "facing_main_camera": 107472,
+      "facing_opposite_camera": 110227
+    },
+    "timings_s": {
+      "import_and_weld": 1.28,
+      "voxel_remesh": 0.43,
+      "orient_scale": 0.02,
+      "decimate": 0.99,
+      "uv_unwrap": 0.02,
+      "colour_bake": 1.84,
+      "silhouette": 0.88,
+      "export": 0.34,
+      "total": 5.92,
+      "sheets": 7.2
+    },
+    "gate_failures": []
+  },
+  "triposg/brute": {
+    "type": "monster",
+    "input": "brute.glb",
+    "generator_input_only": true,
+    "triangles": 7760,
+    "triangle_budget": 8000,
+    "materials": 1,
+    "texture": {
+      "width": 1024,
+      "height": 1024,
+      "max_px": 1024
+    },
+    "raw_triangles": 1384846,
+    "voxel_remesh_triangles": 288732,
+    "loose_parts": {
+      "raw_after_weld": 4,
+      "floaters_deleted": 3,
+      "after_clean": 1,
+      "floaters_deleted_after_decimate": 0
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0054,
+      "side": 0.0036,
+      "top": 0.0041
+    },
+    "dimensions_m": [
+      2.0012,
+      1.1586,
+      2.0016
+    ],
+    "height_m": 2.0016,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "+Y",
+    "orientation": {
+      "turn_deg": 0,
+      "outline_iou_by_turn": {
+        "0": 0.7189,
+        "90": 0.4235,
+        "180": 0.6976,
+        "270": 0.4364
+      }
+    },
+    "colour_route": {
+      "camera_toward": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\brute.png",
+      "texels_covered": 410460,
+      "texels_projected": 223629,
+      "texels_filled_nearest": 186831,
+      "facing_main_camera": 204064,
+      "facing_opposite_camera": 206396
+    },
+    "timings_s": {
+      "import_and_weld": 2.66,
+      "voxel_remesh": 0.74,
+      "orient_scale": 0.02,
+      "decimate": 2.28,
+      "uv_unwrap": 0.03,
+      "colour_bake": 1.91,
+      "silhouette": 0.91,
+      "export": 0.33,
+      "total": 9.01,
+      "sheets": 9.73
+    },
+    "gate_failures": []
+  },
+  "triposg/fox": {
+    "type": "animal",
+    "input": "fox.glb",
+    "generator_input_only": true,
+    "triangles": 1940,
+    "triangle_budget": 2000,
+    "materials": 1,
+    "texture": {
+      "width": 512,
+      "height": 512,
+      "max_px": 512
+    },
+    "raw_triangles": 779300,
+    "voxel_remesh_triangles": 162856,
+    "loose_parts": {
+      "raw_after_weld": 2,
+      "floaters_deleted": 0,
+      "after_clean": 2,
+      "floaters_deleted_after_decimate": 0
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0035,
+      "side": 0.0039,
+      "top": 0.0034
+    },
+    "dimensions_m": [
+      0.3609,
+      0.6859,
+      0.5009
+    ],
+    "height_m": 0.5009,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "+Y",
+    "orientation": {
+      "turn_deg": 270,
+      "outline_iou_by_turn": {
+        "0": 0.252,
+        "90": 0.3471,
+        "180": 0.4552,
+        "270": 0.8189
+      }
+    },
+    "colour_route": {
+      "camera_toward": [
+        -1.0,
+        0.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\fox.png",
+      "texels_covered": 98617,
+      "texels_projected": 64619,
+      "texels_filled_nearest": 33998,
+      "facing_main_camera": 49632,
+      "facing_opposite_camera": 48985
+    },
+    "timings_s": {
+      "import_and_weld": 1.48,
+      "voxel_remesh": 0.42,
+      "orient_scale": 0.02,
+      "decimate": 1.02,
+      "uv_unwrap": 0.0,
+      "colour_bake": 0.45,
+      "silhouette": 0.84,
+      "export": 0.34,
+      "total": 4.69,
+      "sheets": 7.41
+    },
+    "gate_failures": []
+  },
+  "triposg/bird": {
+    "type": "animal",
+    "input": "bird.glb",
+    "generator_input_only": true,
+    "triangles": 1940,
+    "triangle_budget": 2000,
+    "materials": 1,
+    "texture": {
+      "width": 512,
+      "height": 512,
+      "max_px": 512
+    },
+    "raw_triangles": 801272,
+    "voxel_remesh_triangles": 164276,
+    "loose_parts": {
+      "raw_after_weld": 88,
+      "floaters_deleted": 87,
+      "after_clean": 1,
+      "floaters_deleted_after_decimate": 0
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0111,
+      "side": 0.0143,
+      "top": 0.0073
+    },
+    "dimensions_m": [
+      0.2378,
+      0.5561,
+      0.4994
+    ],
+    "height_m": 0.4994,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "+Y",
+    "orientation": {
+      "turn_deg": 270,
+      "outline_iou_by_turn": {
+        "0": 0.4214,
+        "90": 0.4007,
+        "180": 0.4274,
+        "270": 0.7315
+      }
+    },
+    "colour_route": {
+      "camera_toward": [
+        -1.0,
+        0.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\bird.png",
+      "texels_covered": 116824,
+      "texels_projected": 67092,
+      "texels_filled_nearest": 49732,
+      "facing_main_camera": 56291,
+      "facing_opposite_camera": 60533
+    },
+    "timings_s": {
+      "import_and_weld": 1.53,
+      "voxel_remesh": 0.46,
+      "orient_scale": 0.01,
+      "decimate": 1.02,
+      "uv_unwrap": 0.01,
+      "colour_bake": 0.57,
+      "silhouette": 0.92,
+      "export": 0.34,
+      "total": 4.99,
+      "sheets": 8.44
+    },
+    "gate_failures": []
+  }
+}
