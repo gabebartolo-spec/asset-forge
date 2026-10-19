@@ -4,6 +4,11 @@ Cap: 400 lines; oldest roll to `docs/archive/`. One decision per entry, newest f
 that is not here does not exist. Format: date · id · who decided · the decision · why · what it
 changes. Only the lead edits this file, from the "Board and log" section of merged PRs.
 
+## 2026-10-20 · D-010 · Director · Hunyuan 3D dropped from the bake-off
+Asked: keep Hunyuan (EU/UK/South Korea output ban) in the bake-off, flagged, or drop it now?
+Answer: drop it now. Why: every asset must ship in any market. Changes: Hunyuan 2.x and the kijai
+wrapper are BANNED; the bake-off uses only worldwide-licensed models.
+
 ## 2026-10-20 · D-009 · Lead · Licence register verdicts; Hunyuan held
 Why: the Hunyuan 3D licence (§5c) bans using or distributing its Output outside the Territory
 (world minus EU, UK, South Korea), so its assets could not ship in a game sold there. This

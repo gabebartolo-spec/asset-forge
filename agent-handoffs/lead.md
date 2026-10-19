@@ -1,5 +1,5 @@
 # Lead handoff, 2026-10-20 (session 2)
-## State: awaiting director (Hunyuan in or out of the bake-off)
+## State: available (Phase 1 bake-off next)
 
 ## Task
 Lead of Asset Forge: local text/image -> game-ready 3D (clean mesh, skeleton, procedural
@@ -13,15 +13,15 @@ file, the design `docs/superpowers/specs/2026-10-19-asset-forge-design.md` (in f
 
 ## Next
 Phase 1 item 3, the bake-off. Candidates that are CLEARED: TripoSG (swap RMBG for BiRefNet),
-TripoSR, SF3D, Hi3DGen, Direct3D-S2, Step1X-3D geometry-only if it fits. Hunyuan 2.x only if the
-director keeps it (HELD, D-009). Text-to-image front end: SDXL + `pixel-art-xl` are cleared, but
+TripoSR, SF3D, Hi3DGen, Direct3D-S2, Step1X-3D geometry-only if it fits. Hunyuan is out
+(director, D-010). Text-to-image front end: SDXL + `pixel-art-xl` are cleared, but
 a non-pixel reference model for 3D input still needs a licence row.
 Blocker to solve first: the Stability Matrix ComfyUI folder was not found (searched C:\Users\DANTE
 and D:\ to depth 3; %APPDATA%\StabilityMatrix has no LibraryDir). Our own `.venv` per model is
 allowed and may be simpler than ComfyUI for TripoSG/SF3D.
 
 ## Open decisions
-- Director: keep Hunyuan in the bake-off despite the EU/UK/South Korea output ban?
+None. (Hunyuan answered 2026-10-20: drop it, D-010.)
 
 ## Running jobs
 None.
