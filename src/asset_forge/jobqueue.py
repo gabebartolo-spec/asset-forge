@@ -130,7 +130,8 @@ def _plain(e: Exception) -> str:
     """Our own errors are already plain words; anything else gets a generic line (the detail
     is in the console and the generator log)."""
     from .generators import GeneratorError
+    from .skeleton import RigFailed
 
-    if isinstance(e, GeneratorError | InterruptedError):
+    if isinstance(e, GeneratorError | InterruptedError | RigFailed):
         return str(e)
     return "Something went wrong. Press Redo to try again."
