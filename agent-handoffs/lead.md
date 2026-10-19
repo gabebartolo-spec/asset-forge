@@ -1,41 +1,44 @@
-# Asset Forge lead handoff (2026-10-20, session 4)
-## State: available (candidates all run; successor does sheets, QC, report, PR, director question)
+# Asset Forge lead handoff (2026-10-20, session 5)
+## State: awaiting director (bake-off PR open; menu + prompt-generator question asked)
 
 ## Task
-STATUS item 3, generator bake-off (design 5.2 + section 9 bar: fits 12 GB, commercial licence,
-<=3 min/model, five-view pass on >=3 of 5). Done = report docs/audits/bakeoff_2026-10-20.md (time,
-peak VRAM, licence, labelled sheets), lead QC (art-qa-critic + fresh realism-critic per board), PR
-per forge-pr, ONE AskUserQuestion: which passing models go on the generator menu and in what order
-(top = preselected) -> log D-019 (D-018 menu ruling already logged).
+STATUS item 3, generator bake-off. Report docs/audits/bakeoff_2026-10-20.md is written: Hi3DGen
+4/5 and TripoSG 4/5 pass the bar; Step1X-3D 2/5, TripoSR 1/5 fail (fresh realism-critic per board
++ lead check). Director question: which passing generators go on the Step 1 menu and in what
+order (D-019), and what the prompt generator should do (D-020). Log both in DECISIONS when he answers.
 
 ## Where things are
-- MAIN = C:/Users/DANTE/Documents/GitHub/asset-forge (main ecdf66c, no open PRs).
-- Worktree MAIN/../asset-forge-wt/bakeoff, branch claude/bakeoff, HEAD f934c46 (not pushed). Committed in session 4:
-  LICENCES rows (diso BANNED, CUDA runtime, torchmcubes MPL, DINOv2/DINO v1, HF cards confirmed,
-  Hi3DGen + Direct3D-S2 now CLEARED, BiRefNet pinned), D-018 in DECISIONS + design 5.2 + ROADMAP,
-  make_refs.py (--seed-start/--text/--tag, BiRefNet pinned), adapters/. uv.lock left untracked (from uv run; not ours to add).
-- Candidates: triposr, step1x3d, hi3dgen, triposg (Direct3D-S2 OUT, D-017; SF3D OUT, D-011).
-  Run log MAIN/models/bakeoff/run_all.log; outputs MAIN/models/bakeoff/out/<name>/run.json.
-- Hi3DGen low-VRAM fix (builder, adapter only): StableNormal first then freed, Hi3DGen sub-models
-  on GPU one stage at a time: torch peak 13.15 -> 5.22 GB, gen 14.2 s, same quality settings.
-- Brute ref: SDXL cannot draw six arms (24 seeds, 2 prompts). Director chose A = two-armed colour
-  brute (ref_candidates/brute_s6_rgba.png -> refs/brute.png), 2026-10-20. Record in report.
+- MAIN = C:/Users/DANTE/Documents/GitHub/asset-forge (main ecdf66c).
+- Worktree MAIN/../asset-forge-wt/bakeoff, branch claude/bakeoff, PR: see `gh pr list`.
+  Session 5 changes: render_views.py camera roll fix (to_track_quat("-Z","Y")), rotation_mode
+  XYZ (glTF import leaves QUATERNION so turns were ignored), --pitch; sheets.py
+  cand[:prompt]=yaw[,pitch] overrides; TripoSR adapter applies upstream to_gradio_3d_orientation;
+  ruff clean-up of every adapter (builder); ROADMAP Phase 9 prompt generator; audit report;
+  docs/audits/bakeoff/*.jpg + summary.json (personal paths stripped). uv.lock untracked: not ours.
+- Saved TripoSR meshes were turned in place with the upstream step; originals in
+  MAIN/models/bakeoff/out/triposr/raw/.
+- Sheets command (facing so "front" = face; renders cached, delete sheets/renders to redo; never
+  leave your shell cwd inside sheets/renders or rm fails "busy"):
+  `uv run --with pillow python tools/bakeoff/sheets.py hi3dgen step1x3d triposg triposr
+  hi3dgen:fox=-90 step1x3d:fox=90 triposg:fox=90 triposg:bird=90 triposr=180 triposr:fox=-90
+  triposr:bird=-90`
+
+## Measurements (gen per model / whole-GPU peak / raw tris)
+Hi3DGen 12-14 s / 6.8 GB / 220k-592k; Step1X-3D 16-18 s / 5.8 / 200k; TripoSG 29-33 s / 6.3 /
+674k-1.38M; TripoSR 1-1.5 s / 5.4 / 42k-116k. Only TripoSR has colour.
+
+## Director said this session (2026-10-20)
+- "roadmap item: add a prompt generator" -> ROADMAP Phase 9, meaning asked (D-020).
+- "hid3gen seems great" (before QC finished).
+- On TripoSR sheets: "weird patterns on all of these" = TripoSR's lumpy surface, a real defect.
 
 ## Next steps
-1. DONE: all 4 ran rc 0, no item errors, 5 refs each. Per model gen s / torch GB / GPU GB:
-   TripoSR 1.1-1.5 / 4.14 / 5.39 (load 10 s); Step1X-3D 16-18 / 4.8 / 5.8 (wall 128 s for 5);
-   Hi3DGen 12-14 / 5.22 / 4.5-6.8 (load 26 s); TripoSG 29-33 / 5.3 / 5.8-6.3 (wall 185 s for 5).
-   All fit 12 GB and 3 min; the five-view pass decides the bar.
-2. `uv run --with pillow python tools/bakeoff/sheets.py` (fix facing with name=yawdeg).
-3. QC boards (art-qa-critic; fresh realism-critic per prompt board); write report + copy sheets to
-   docs/audits/bakeoff/; note Step1X-3D adapter cleanup, Hi3DGen offload, colour route for
-   geometry-only models (only TripoSR has vertex colour).
-4. Commit by name, PR per forge-pr, ask director (menu + order), log D-019.
-
-## Open questions for the director
-None pending.
+1. On his answer: D-019 + D-020 in DECISIONS, STATUS item 3 DONE, design 5.2 menu order; push
+   to this PR (or a board PR after merge). Merge on green at the exact head.
+2. Then wait for the next assigned item (Phase 2 needs a colour route for geometry-only models).
 
 ## Gotchas
+- Generators disagree on which camera the reference faces; check facing per prompt.
+- Critics share the scratchpad: give each its own subfolder (two overwrote each other's grids).
 - glTF splits verts on seams: render_views welds before counting parts.
-- No HF token on this PC; gated weights are out.
-- Playbook: nothing new.
+- No HF token on this PC; gated weights are out. Playbook: nothing new.

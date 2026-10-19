@@ -1,9 +1,10 @@
 """Hi3DGen / Stable3DGen adapter (MIT). Geometry only. See run_candidate.py for the contract.
 
-Pipeline: matted RGBA -> StableNormal turbo (yoso-normal-v1-8-1, normal map, uses the alpha as mask,
-no BiRefNet) -> Hi3DGen (trellis-normal-v0-1: sparse structure flow, SLat flow, mesh decoder) -> mesh.
-Weights resolve through HF_HOME; DINOv2 (Apache-2.0) comes from a local copy of facebookresearch/dinov2
-placed in the torch hub dir, so nothing is fetched from GitHub at run time.
+Pipeline: matted RGBA -> StableNormal turbo (yoso-normal-v1-8-1, normal map, uses the alpha as
+mask, no BiRefNet) -> Hi3DGen (trellis-normal-v0-1: sparse structure flow, SLat flow, mesh
+decoder) -> mesh. Weights resolve through HF_HOME; DINOv2 (Apache-2.0) comes from a local copy of
+facebookresearch/dinov2 placed in the torch hub dir, so nothing is fetched from GitHub at run
+time.
 """
 from __future__ import annotations
 
@@ -19,7 +20,8 @@ os.environ.setdefault("SPCONV_ALGO", "native")
 os.environ.setdefault("ATTN_BACKEND", "xformers")
 
 def _dll_dirs() -> None:
-    """spconv/cumm (cu126 wheel) wants cudart64_12 + nvrtc64_120_0: use the pip nvidia-*-cu12 runtime copies."""
+    """spconv/cumm (cu126 wheel) wants cudart64_12 + nvrtc64_120_0: use the pip nvidia-*-cu12
+    runtime copies."""
     if os.name != "nt":
         return
     base = Path(sys.executable).parent.parent / "Lib" / "site-packages" / "nvidia"
@@ -54,7 +56,7 @@ def main() -> int:
     sys.path.insert(0, str(models / "stablenormal_hub"))
 
     _dll_dirs()
-    import numpy as np
+    import numpy as np  # noqa: F401, I001
     import torch
     from PIL import Image
     from huggingface_hub import snapshot_download
@@ -75,8 +77,9 @@ def main() -> int:
     gen_path = snapshot_download("Stable-X/trellis-normal-v0-1")
     nrm_path = snapshot_download("Stable-X/yoso-normal-v1-8-1")
     import gc
-    # 12 GB fit: Hi3DGen stays on CPU, only the active sub-model is on the GPU; StableNormal runs first
-    # for every input and is freed before Hi3DGen touches the GPU. Same steps/cfg/resolution as before.
+    # 12 GB fit: Hi3DGen stays on CPU, only the active sub-model is on the GPU; StableNormal runs
+    # first for every input and is freed before Hi3DGen touches the GPU. Same steps/cfg/resolution
+    # as before.
     Hi3DGenPipeline.device = property(lambda self: torch.device("cuda"))
     pipe = Hi3DGenPipeline.from_pretrained(gen_path)
     pipe.cpu()
@@ -120,7 +123,8 @@ def main() -> int:
     torch.cuda.empty_cache()
 
     for pid, (normal, normal_s, err) in normals.items():
-        item = {"id": pid, "mesh": None, "gen_s": None, "torch_peak_gb": None, "textured": False, "error": err}
+        item = {"id": pid, "mesh": None, "gen_s": None, "torch_peak_gb": None,
+                "textured": False, "error": err}
         print(f"BEGIN {pid}", flush=True)
         t1 = time.time()
         try:
@@ -134,16 +138,22 @@ def main() -> int:
                 on_gpu("sparse_structure_flow_model")
                 z_s = None
                 flow = pipe.models["sparse_structure_flow_model"]
-                noise = torch.randn(1, flow.in_channels, flow.resolution, flow.resolution, flow.resolution).cuda()
+                noise = torch.randn(
+                    1, flow.in_channels, flow.resolution, flow.resolution, flow.resolution
+                ).cuda()
                 z_s = pipe.sparse_structure_sampler.sample(
                     flow, noise, **cond,
-                    **{**pipe.sparse_structure_sampler_params, "steps": SETTINGS["ss_steps"], "cfg_strength": SETTINGS["ss_cfg"]},
+                    **{**pipe.sparse_structure_sampler_params,
+                       "steps": SETTINGS["ss_steps"], "cfg_strength": SETTINGS["ss_cfg"]},
                     verbose=True)["samples"]
                 on_gpu("sparse_structure_decoder")
-                coords = torch.argwhere(pipe.models["sparse_structure_decoder"](z_s) > 0)[:, [0, 2, 3, 4]].int()
+                decoded = pipe.models["sparse_structure_decoder"](z_s)
+                coords = torch.argwhere(decoded > 0)[:, [0, 2, 3, 4]].int()
                 del z_s, noise
                 on_gpu("slat_flow_model")
-                slat = pipe.sample_slat(cond, coords, {"steps": SETTINGS["slat_steps"], "cfg_strength": SETTINGS["slat_cfg"]})
+                slat = pipe.sample_slat(
+                    cond, coords,
+                    {"steps": SETTINGS["slat_steps"], "cfg_strength": SETTINGS["slat_cfg"]})
                 on_gpu("slat_decoder_mesh")
                 res = pipe.decode_slat(slat, ["mesh"])
             tm = res["mesh"][0].to_trimesh(transform_pose=True)

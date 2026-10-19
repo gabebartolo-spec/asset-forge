@@ -1,6 +1,10 @@
 """Render and label the bake-off inspection sheets, then write the report's data table.
 
-    uv run --with pillow python tools/bakeoff/sheets.py [candidate ...] [--yaw cand=deg]
+    uv run --with pillow python tools/bakeoff/sheets.py [candidate ...] [OVERRIDE ...]
+
+OVERRIDE is cand=yaw[,pitch] or cand:prompt=yaw[,pitch], in degrees. Yaw turns a mesh about Z
+(pitch about X, applied first) so the "front" view shows the creature's face: generators
+disagree on which camera the reference faces, and the animal references are drawn side-on.
 
 For every candidate in models/bakeoff/out/<candidate>/run.json and every mesh it produced:
   1. headless Blender renders six views, clay and colour (render_views.py, cached);
@@ -63,11 +67,11 @@ def tile(path: Path | None, label: str) -> Image.Image:
     return im
 
 
-def render(mesh: Path, dest: Path, yaw: float) -> dict:
+def render(mesh: Path, dest: Path, yaw: float, pitch: float) -> dict:
     stats = dest / "stats.json"
     if not stats.exists():
         cmd = [blender_exe(), "-b", "--factory-startup", "-P", str(HERE / "render_views.py"),
-               "--", str(mesh), str(dest), "--yaw", str(yaw)]
+               "--", str(mesh), str(dest), "--yaw", str(yaw), "--pitch", str(pitch)]
         with gpu_lock(f"bakeoff-render:{mesh.parent.name}"):
             subprocess.run(cmd, check=True, capture_output=True)
     return json.loads(stats.read_text())
@@ -114,7 +118,8 @@ def main() -> int:
                 summary[name]["items"][pid] = {"error": item.get("error") or "no mesh"}
                 continue
             dest = SHEETS / "renders" / name / pid
-            stats = render(mesh, dest, float(yaws.get(name, 0)))
+            yaw, _, pitch = yaws.get(f"{name}:{pid}", yaws.get(name, "0")).partition(",")
+            stats = render(mesh, dest, float(yaw), float(pitch or 0))
             summary[name]["items"][pid] = {**item, **stats}
             clay = [tile(dest / f"{v}_clay.png", v.replace("_", " ")) for v in VIEWS]
             colour = [tile(dest / f"{v}_colour.png", v.replace("_", " ") + " colour")

@@ -1,11 +1,12 @@
 """Direct3D-S2 adapter (MIT code; weights wushuang98/Direct3D-S2, subfolder direct3d-s2-v-1-1).
 
 Windows port notes:
-  * torchsparse built locally (MSVC + CUDA 13.4), sparsehash replaced by a std::unordered_map shim.
-  * flash_attn has no Windows build for torch 2.14 / cu130: replaced here by a small torch-SDPA shim
-    (same maths, incl. softmax lse for the compressed-attention branch).
-  * Remesh/simplify is OFF, so the GPL pymeshfix / pyvista / igraph / utils3d fill-hole imports are
-    stubbed and never installed.
+  * torchsparse built locally (MSVC + CUDA 13.4), sparsehash replaced by a
+    std::unordered_map shim.
+  * flash_attn has no Windows build for torch 2.14 / cu130: replaced here by a small torch-SDPA
+    shim (same maths, incl. softmax lse for the compressed-attention branch).
+  * Remesh/simplify is OFF, so the GPL pymeshfix / pyvista / igraph / utils3d fill-hole imports
+    are stubbed and never installed.
   * The model's own background removal (BiRefNet) is never used: inputs are RGBA, already matted.
 """
 from __future__ import annotations
@@ -50,8 +51,8 @@ def install_flash_attn_shim() -> None:
         for i in range(len(cq) - 1):
             qs, ks, vs = q[cq[i]:cq[i + 1]], k[ck[i]:ck[i + 1]], v[ck[i]:ck[i + 1]]
             if return_attn_probs:
-                o, l = _lse_attn(qs, ks, vs)
-                lses.append(l)
+                o, lse = _lse_attn(qs, ks, vs)
+                lses.append(lse)
             else:
                 o = F.scaled_dot_product_attention(
                     qs.transpose(0, 1)[None], ks.transpose(0, 1)[None], vs.transpose(0, 1)[None]
@@ -91,7 +92,7 @@ def stub_unused_modules() -> None:
 
 
 def install_offload(pipe) -> dict:
-    """Keep only the sub-models of the running stage on the GPU; record per-stage torch peaks (GB)."""
+    """Keep only the sub-models of the running stage on the GPU; record per-stage peaks (GB)."""
     peaks: dict = {}
     dev = pipe.device
 
@@ -101,7 +102,8 @@ def install_offload(pipe) -> dict:
         m.to("cpu")
 
     for n in ("dense_vae", "dense_dit", "sparse_vae_512", "sparse_dit_512", "sparse_vae_1024",
-              "sparse_dit_1024", "refiner", "refiner_1024", "dense_image_encoder", "sparse_image_encoder"):
+              "sparse_dit_1024", "refiner", "refiner_1024", "dense_image_encoder",
+              "sparse_image_encoder"):
         wrap_model(getattr(pipe, n), n)
 
     def timed_stage(label, models, fn):
@@ -124,11 +126,11 @@ def install_offload(pipe) -> dict:
         return run
 
     orig_inf = pipe.inference
-    ctx = {"stage": 0}
 
     def inference(image, vae, dit, conditioner, scheduler, *a, **k):
         mode = k.get("mode", "dense")
-        refiner = pipe.refiner if mode == "sparse512" else pipe.refiner_1024 if mode == "sparse1024" else None
+        refiner = (pipe.refiner if mode == "sparse512"
+                   else pipe.refiner_1024 if mode == "sparse1024" else None)
         # refiner is moved on-demand inside run(), after the dit/vae/conditioner are released
         if refiner is not None:
             orig_run = refiner.run
@@ -144,13 +146,16 @@ def install_offload(pipe) -> dict:
                     return orig_run(*ra, **rk)
                 finally:
                     torch.cuda.synchronize()
-                    peaks[f"{mode}_refiner"] = {"peak_gb": round(torch.cuda.max_memory_allocated() / 2**30, 2),
-                                                "s": round(time.time() - t, 1)}
+                    peaks[f"{mode}_refiner"] = {
+                        "peak_gb": round(torch.cuda.max_memory_allocated() / 2**30, 2),
+                        "s": round(time.time() - t, 1)}
                     print(f"STAGE {mode}_refiner: {peaks[mode + '_refiner']}", flush=True)
                     refiner.to("cpu")
                     torch.cuda.empty_cache()
             refiner.run = run_ref
-        return timed_stage(mode, [vae, dit, conditioner], lambda *x, **y: orig_inf(image, vae, dit, conditioner, scheduler, *a, **k))()
+        return timed_stage(
+            mode, [vae, dit, conditioner],
+            lambda *x, **y: orig_inf(image, vae, dit, conditioner, scheduler, *a, **k))()
 
     pipe.inference = inference
     return peaks
@@ -165,8 +170,10 @@ def main() -> int:
     ap.add_argument("--sdf-resolution", type=int, default=512)
     a = ap.parse_args()
     src = Path(a.src)
-    # this file is named direct3d_s2.py: keep its folder off sys.path so it cannot shadow the package
-    sys.path[:] = [x for x in sys.path if Path(x or '.').resolve() != Path(__file__).resolve().parent]
+    # this file is named direct3d_s2.py: keep its folder off sys.path so it cannot shadow the
+    # package
+    here = Path(__file__).resolve().parent
+    sys.path[:] = [x for x in sys.path if Path(x or '.').resolve() != here]
     sys.path.insert(0, str(src))
     sys.path.insert(0, str(src.parent / "torchsparse_d3d"))
     sys.path.insert(0, str(src.parent / "direct3d_s2_udf"))  # compiled udf_ext
@@ -175,12 +182,14 @@ def main() -> int:
     stub_unused_modules()
     import os
     os.environ.setdefault("TORCH_HOME", str(src.parent.parent / "torch_hub"))
-    from PIL import Image
+    from PIL import Image  # noqa: I001
     from direct3d_s2.pipeline import Direct3DS2Pipeline
 
     t0 = time.time()
-    pipe = Direct3DS2Pipeline.from_pretrained("wushuang98/Direct3D-S2", subfolder="direct3d-s2-v-1-1")
-    pipe.device = torch.device("cuda:0")  # models stay on CPU; the active sub-model is moved in per stage
+    pipe = Direct3DS2Pipeline.from_pretrained(
+        "wushuang98/Direct3D-S2", subfolder="direct3d-s2-v-1-1")
+    # models stay on CPU; the active sub-model is moved in per stage
+    pipe.device = torch.device("cuda:0")
     stage_peaks = install_offload(pipe)
     load_s = time.time() - t0
 
@@ -190,13 +199,15 @@ def main() -> int:
         "sparse512_steps": 30, "sparse512_cfg": 7.0, "sparse1024_steps": 15, "sparse1024_cfg": 7.0,
         "mc_threshold": 0.2, "remove_interior": True, "remesh": False, "simplify": False,
         "own_background_removal": False, "dtype": "float16", "seed": a.seed,
-        "attention": "torch SDPA shim (no flash-attn on Windows)", "sparse_backend": "torchsparse (local build)",
+        "attention": "torch SDPA shim (no flash-attn on Windows)",
+        "sparse_backend": "torchsparse (local build)",
     }
     out = Path(a.out)
     items = []
     for png in sorted(Path(a.inputs).glob("*.png")):
         pid = png.stem
-        item = {"id": pid, "mesh": None, "gen_s": None, "torch_peak_gb": None, "textured": False, "error": None}
+        item = {"id": pid, "mesh": None, "gen_s": None, "torch_peak_gb": None,
+                "textured": False, "error": None}
         print(f"BEGIN {pid}", flush=True)
         try:
             torch.cuda.reset_peak_memory_stats()
@@ -221,7 +232,8 @@ def main() -> int:
             torch.cuda.empty_cache()
         print(f"END {pid}", flush=True)
         items.append(item)
-    (out / "results.json").write_text(json.dumps({"load_s": round(load_s, 2), "settings": settings, "items": items}, indent=2))
+    (out / "results.json").write_text(json.dumps(
+        {"load_s": round(load_s, 2), "settings": settings, "items": items}, indent=2))
     return 0
 
 

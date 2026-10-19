@@ -2,6 +2,9 @@
 and measure it. Design 5.2 inspection: front, back, both sides, three-quarter, top.
 
     blender -b --factory-startup -P tools/bakeoff/render_views.py -- MESH OUT_DIR [--yaw DEG]
+        [--pitch DEG]
+
+--pitch turns the mesh about X first (a mesh whose up axis came out as -Y needs -90).
 
 Writes OUT_DIR/<view>_<shade>.png (shade = clay | colour) and OUT_DIR/stats.json
 (triangles, vertices, loose parts, open edges, colour source). Workbench engine: fast, no bake.
@@ -27,7 +30,8 @@ def args():
     argv = sys.argv[sys.argv.index("--") + 1:]
     mesh, out = Path(argv[0]), Path(argv[1])
     yaw = float(argv[argv.index("--yaw") + 1]) if "--yaw" in argv else 0.0
-    return mesh, out, yaw
+    pitch = float(argv[argv.index("--pitch") + 1]) if "--pitch" in argv else 0.0
+    return mesh, out, yaw, pitch
 
 
 def import_mesh(path: Path):
@@ -107,11 +111,12 @@ def colour_source(obj):
 
 
 def main():
-    mesh, out, yaw = args()
+    mesh, out, yaw, pitch = args()
     out.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.read_factory_settings(use_empty=True)
     obj = join(import_mesh(mesh))
-    obj.rotation_euler.z = math.radians(yaw)
+    obj.rotation_mode = "XYZ"  # the glTF importer leaves QUATERNION, which ignores rotation_euler
+    obj.rotation_euler = (math.radians(pitch), 0.0, math.radians(yaw))  # XYZ: pitch first
     bpy.ops.object.transform_apply(rotation=True)
     stats = measure(obj)
 
@@ -158,7 +163,8 @@ def main():
             # Front camera sits on -Y looking towards +Y (Blender's front view).
             d = Vector((math.sin(a) * math.cos(e), -math.cos(a) * math.cos(e), math.sin(e)))
             cam.location = d * 10
-            cam.rotation_euler = (-d).to_track_quat("-Z", "Z" if el < 89 else "Y").to_euler()
+            # Camera looks down its -Z with local +Y up; the top view's d is not exactly vertical.
+            cam.rotation_euler = (-d).to_track_quat("-Z", "Y").to_euler()
             scene.render.filepath = str(out / f"{view}_{shade}.png")
             bpy.ops.render.render(write_still=True)
     (out / "stats.json").write_text(json.dumps(stats, indent=2))

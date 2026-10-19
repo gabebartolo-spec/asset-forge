@@ -1,6 +1,7 @@
 """Draw and matte the bake-off reference candidates (SDXL base 1.0 + BiRefNet).
 
-    python tools/bakeoff/gpu_lock.py run sdxl -- models/envs/sdxl/Scripts/python.exe tools/bakeoff/make_refs.py [--only fox] [--seeds 8]
+    python tools/bakeoff/gpu_lock.py run sdxl -- models/envs/sdxl/Scripts/python.exe
+        tools/bakeoff/make_refs.py [--only fox] [--seeds 8]
 
 Writes models/bakeoff/ref_candidates/<id>_s<seed>.png, <id>_s<seed>_rgba.png, <id>_sheet.png and
 timing.json. The lead picks the final refs (models/bakeoff/refs/<id>.png); this script does not.
@@ -51,7 +52,6 @@ def matte(model, img: Image.Image) -> Image.Image:
     x0, x1, y0, y1 = xs.min(), xs.max() + 1, ys.min(), ys.max() + 1
     w, h = x1 - x0, y1 - y0
     side = int(max(w, h) * 1.2)  # ~10% margin each side, square
-    cx, cy = (x0 + x1) // 2, (y0 + y1) // 2
     canvas = Image.new("RGBA", (side, side), (0, 0, 0, 0))
     canvas.paste(rgba.crop((x0, y0, x1, y1)), (side // 2 - w // 2, side // 2 - h // 2))
     return canvas.resize((1024, 1024), Image.LANCZOS)
