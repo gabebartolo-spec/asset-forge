@@ -1,0 +1,28 @@
+# gitleaks config for the secret scan in .github/workflows/lint.yml (job "gitleaks").
+#
+# Extends the default rules unchanged and adds two of our own. the kickoff gate: the
+# planted AWS key AKIAIOSFODNN7EXAMPLE was not caught because the default aws-access-token
+# rule allowlists any match ending in EXAMPLE (it is AWS's own documentation key). The
+# scan was fine; the test value was excused. The first rule below gives the gate a fake
+# secret no allowlist excuses: plant FORGE_TEST_SECRET_ plus 16 letters or digits in a
+# throwaway PR and the gitleaks job must go red.
+title = "Asset Forge gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "forge-test-secret"
+description = "Asset Forge fake secret planted to prove the secret scan fires"
+regex = '''FORGE_TEST_SECRET_[A-Za-z0-9]{16}'''
+keywords = ["forge_test_secret_"]
+
+# Catch-all for sk- style API keys (OpenAI, Anthropic, Stripe and similar) whose exact
+# vendor prefix the default rules do not know. Entropy keeps "sk-your-key-goes-here"
+# style placeholders out.
+[[rules]]
+id = "forge-generic-sk-key"
+description = "High-entropy sk- style API key"
+regex = '''\bsk-[A-Za-z0-9_-]{24,}'''
+entropy = 4.0
+keywords = ["sk-"]

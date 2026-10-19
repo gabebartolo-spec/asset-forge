@@ -1,0 +1,26 @@
+# Godot (export checks)
+.godot/
+
+# Local-only
+vault/
+.env
+__pycache__/
+out/
+review/
+
+# Claude Code worktrees and local settings
+.claude/worktrees/
+.claude/settings.local.json
+
+# Python
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Machine config and generated output (never committed: public repo)
+config.local.toml
+library/
+exports/
+models/
+.superpowers/

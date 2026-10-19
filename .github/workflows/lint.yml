@@ -1,0 +1,74 @@
+name: lint
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  doc-caps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce line caps
+        shell: bash
+        run: |
+          # Caps are read from each doc's own "Cap: N lines" header (first 6 lines),
+          # so the number lives in the doc, not here. Handoffs are capped by the template.
+          fail=0
+          check() { # file cap
+            n=$(wc -l < "$1")
+            if [ "$n" -gt "$2" ]; then
+              echo "::error file=$1::$n lines, cap is $2"
+              fail=1
+            fi
+          }
+          for f in docs/*.md; do
+            cap=$(head -n 6 "$f" | sed -n 's/^Cap: \([0-9][0-9]*\) lines.*/\1/p' | head -n 1)
+            [ -n "$cap" ] && check "$f" "$cap"
+          done
+          check CLAUDE.md 120
+          for f in agent-handoffs/*.md; do
+            [ -e "$f" ] && check "$f" 120
+          done
+          exit $fail
+
+  project-lints:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run project lints
+        shell: bash
+        run: |
+          # Skipped until the project adds tools/lint/run_all.sh.
+          if [ -f tools/lint/run_all.sh ]; then
+            bash tools/lint/run_all.sh
+          else
+            echo "tools/lint/run_all.sh not present yet; skipping"
+          fi
+
+
+  # Secret scan: the default gitleaks rules plus the project's own in .gitleaks.toml
+  # (the fake-secret pattern the gate plants, and a generic sk- key rule).
+  gitleaks:
+    runs-on: ubuntu-latest
+    # gitleaks-action lists the PR's commits through the API; contents: read alone is a 403.
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: ${{ github.workspace }}/.gitleaks.toml

@@ -1,0 +1,31 @@
+[project]
+name = "asset-forge"
+version = "0.0.1"
+description = "Local text/image to game-ready 3D models, skeletons, animations and pixel-perfect sprites."
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "blender: needs a local Blender 5.2 (headless); skipped in CI",
+    "gpu: needs the local GPU and a generator; skipped in CI",
+]
+addopts = "-m 'not blender and not gpu'"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]

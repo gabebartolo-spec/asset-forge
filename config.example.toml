@@ -1,0 +1,20 @@
+# Copy to config.local.toml (gitignored) and edit for this machine.
+# Nothing machine-specific is ever committed: the repo is public.
+
+[blender]
+exe = "C:/Program Files/Blender Foundation/Blender 5.2/blender.exe"
+
+[godot]
+# Godot 4.7.2 console executable, used headless to check that exports import cleanly.
+exe = ""
+
+[comfyui]
+# The director's existing ComfyUI. Asset Forge only calls its HTTP API; it never installs,
+# updates or restarts it.
+url = "http://127.0.0.1:8188"
+
+[app]
+host = "127.0.0.1"
+port = 7860
+library_dir = "library"
+exports_dir = "exports"
