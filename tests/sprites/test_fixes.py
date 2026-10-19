@@ -186,3 +186,14 @@ def test_a_big_drawn_gap_is_allowed_but_a_mid_size_hole_is_not():
     mid = base.copy()
     mid[48:54, 40:46] = 0  # 36 px
     assert "1 holes" in words(check_sprite(mid, SC))
+
+
+def test_a_tall_contact_shadow_round_the_feet_is_removed():
+    from asset_forge.sprites.post import remove_background
+
+    img = native_creature().copy()
+    img[112:126, 56:76] = (121, 117, 127)  # grey patch under the feet, taller than a flat shadow
+    img[100:104, 20:26] = (121, 118, 126)  # and a scrap of the same grey elsewhere
+    rgba = remove_background(img)
+    assert rgba[118, 66, 3] == 0 and rgba[102, 22, 3] == 0
+    assert rgba[70, 60, 3] == 255

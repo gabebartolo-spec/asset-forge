@@ -15,6 +15,8 @@ MAX_HOLE_PX = 12  # smaller see-through pockets are filled; bigger ones fail the
 SHADOW_MIN_PX = 20
 SHADOW_SAT = 0.12  # a shadow is nearly colourless
 SHADOW_MATCH = 16.0  # RGB distance to a proven shadow colour that counts as the same shadow
+SHADOW_LOW = 0.65  # a contact shadow's centre sits in the bottom third of the sprite
+SHADOW_CONTACT_FRAC = 0.25  # and is at most this share of the sprite
 SHADOW_MAX_FRAC = 0.08  # a same-grey piece bigger than this share of the sprite is not shadow
 SHADOW_FLATNESS = 0.35  # a shadow is at most this tall compared to its width
 ACCENT_SLOTS = 3  # palette slots reserved for small saturated colours (eyes, flames)
@@ -111,11 +113,18 @@ def _ground_shadow(rgb: np.ndarray, is_bg: np.ndarray) -> np.ndarray:
     near_bg = pad[:-2, 1:-1] | pad[2:, 1:-1] | pad[1:-1, :-2] | pad[1:-1, 2:]
     out = np.zeros_like(is_bg)
     seeds = []
+    rows = np.nonzero((~is_bg).any(axis=1))[0]
+    top, bottom = (int(rows.min()), int(rows.max())) if len(rows) else (0, 0)
+    area = max(int((~is_bg).sum()), 1)
     for k in range(1, n + 1):
         region = labels == k
         ys, xs = np.nonzero(region)
         h, w = ys.max() - ys.min() + 1, xs.max() - xs.min() + 1
-        if len(ys) >= SHADOW_MIN_PX and h <= SHADOW_FLATNESS * w and (region & near_bg).any():
+        flat = h <= SHADOW_FLATNESS * w
+        # or a patch that sits in the bottom contact area, wrapped round the feet
+        contact = ys.mean() >= top + SHADOW_LOW * (bottom - top) and ys.max() >= bottom - 16
+        small = len(ys) <= SHADOW_CONTACT_FRAC * area
+        if len(ys) >= SHADOW_MIN_PX and (flat or (contact and small)) and (region & near_bg).any():
             out |= region
             seeds.append(rgb[region].mean(axis=0))
     if not seeds:
@@ -126,7 +135,6 @@ def _ground_shadow(rgb: np.ndarray, is_bg: np.ndarray) -> np.ndarray:
         like |= np.linalg.norm(f - c, axis=2) <= SHADOW_MATCH
     like &= grey
     labels, n = label(like, eight=True)
-    area = max(int((~is_bg).sum()), 1)
     for k in range(1, n + 1):
         region = labels == k
         if region.sum() <= SHADOW_MAX_FRAC * area:

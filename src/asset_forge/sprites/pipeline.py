@@ -15,8 +15,8 @@ from .presets import Preset, get_preset
 from .qa import check_back_view, check_front_faces_viewer, check_same_creature, check_sprite
 
 MAX_ATTEMPTS = 6
-FRONT_FIRST_BATCH = 1  # the first front usually passes; later fronts are drawn 3 at a time
-FRONT_BATCH = 3
+FRONT_FIRST_BATCH = 1  # fronts are drawn one per call: a retry costs 12 s, not 30
+FRONT_BATCH = 1
 BACK_BATCH = 3  # back candidates per call; the first that passes every check wins
 
 
