@@ -62,3 +62,11 @@ HF model cards); VRAM is from READMEs until the bake-off measures it. Not legal 
 | three.js (r186; GLTFLoader, OrbitControls) | library | MIT | CLEARED | the spinnable viewer, vendored unmodified in `web/vendor/three/` |
 | Playwright for Python | dev tool | Apache-2.0 | CLEARED | headless-browser clicks in local evidence only; drives the installed Edge, bundles no browser |
 | httpx | dev tool | BSD-3-Clause | CLEARED | FastAPI test client |
+
+## Prompt generator (Phase 9, D-020)
+
+| Item | Kind | Licence | Verdict | Notes |
+|---|---|---|---|---|
+| Qwen3-1.7B (`Qwen/Qwen3-1.7B`) | text LLM | Apache-2.0 | CLEARED | HF card `license: apache-2.0` (API, 2026-10-20); about 3.4 GB in bf16; Qwen2.5-3B is NOT Apache (Qwen research licence), so not used |
+| transformers, huggingface_hub, accelerate | library | Apache-2.0 | CLEARED | run only in `models/envs/promptgen`, never imported by the app |
+| PyTorch | library | BSD-3-Clause | CLEARED | same env |
