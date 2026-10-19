@@ -1,20 +1,17 @@
 # App shell builder handoff (2026-10-20)
-## State: done, draft PR open; waiting for lead
+## State: fixing PR #8 screen-critic + walk-through findings (10 items), then live recapture
 
 ## Task
-Phase 2 item: app shell + Step 1 (Generate) + generator menu (director 2026-10-20). Worktree
-`asset-forge-wt/app-shell`, branch `claude/app-shell` (cut from claude/bakeoff; merge origin/main
-once PR #6 lands, never rebase).
+Draft PR #8 (branch claude/app-shell). Lead brief: fix 10 findings (card VRAM 5 GB, heading at 1366,
+no control jump on result, VRAM wrap, Redo disabled style, text >= 13 px / 4.5:1, type buttons 44 px,
+hint wording, queue state + mm:ss counter, selected-maker mark), recapture live to
+side-session-notes local_d40f4221.../pr8_live2 (shots.md), update PR body Evidence, leave draft.
 
 ## Where things are
-- Backend `src/asset_forge/`: config, gpu_lock (same mkdir lock as tools/bakeoff), store (library
-  layout), jobqueue (one worker, holds models/gpu.lock), generators (Hi3DGen, TripoSG run the
-  bake-off adapters in `models/envs/<id>`), matte (plain-background cut-out), steps (clean_command
-  hook for Step 2), api (FastAPI, 127.0.0.1).
-- Page `web/` (plain JS, vendored three.js r186 in `web/vendor/three`), `AssetForge.bat`.
-- Tests `tests/test_app_*.py` (36 pass), ruff clean. App venv `.venv` (uv, py3.12, gitignored).
-- Evidence driver (scratchpad `run/serve.py`, `run/drive.py`): Edge headless via Playwright,
-  real clicks, Hi3DGen on fox.png through the queue; shots in `scratchpad/run/shots`.
+- Backend `src/asset_forge/` (jobqueue already had queued/waiting/running + elapsed_s; new API test
+  `test_job_status_tells_waiting_for_the_gpu_from_running`). Page `web/` (app.js, style.css, index.html).
+- Message moved: the "Happy with it?" / error note now lives in the footer (fixed min-height), not the panel.
+- Live driver + server in scratchpad (live.py, serve.py, port 7872); library dir scratch.
 
 ## Left
-Nothing for me. LIVE run 2026-10-20 on final page: Hi3DGen 81 s / 6.14 GiB, TripoSG 92 s / 4.88 GiB; TripoSG card VRAM fixed 8 -> 5 GB; shots in side-session-notes local_d40f4221.../pr8_live (shots.md). Earlier evidence: real Hi3DGen run on fox.png through the queue, 70 s and 73 s, 6.15 GB VRAM peak.
+Recapture, shots.md, push, CI, PR body. Then report to lead (head sha, CI run, contrast 5.63 min).

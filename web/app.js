@@ -26,12 +26,19 @@ function showMsg(text, kind = "") {
     sp.className = "spinner";
     m.append(sp);
   }
-  m.append(document.createTextNode(text));
+  text.split("\n").forEach((line, i) => {
+    if (i) m.append(document.createElement("br"));
+    m.append(document.createTextNode(line));
+  });
   m.classList.toggle("hidden", !text);
 }
 function makerTime() {
   const g = state.menu && state.menu.generators.find((x) => x.id === state.generator);
   return g ? g.typical_time : "a few minutes";
+}
+function clock(s) {
+  const t = Math.floor(s || 0);
+  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
 }
 function roundedVram(gb) {
   return `about ${Math.max(1, Math.round(gb))} GB of video memory (VRAM)`;
@@ -107,7 +114,7 @@ function buildMenu(menu) {
     b.querySelector(".label").textContent = g.label;
     b.querySelector(".blurb").textContent = g.blurb;
     b.querySelector(".facts").textContent = sameTime
-      ? g.vram.replace(/^uses/, "Uses") : `Takes ${g.typical_time}; ${g.vram}`;
+      ? g.vram.replace(/^uses/, "Uses") : `Takes ${g.typical_time}\n` + g.vram.replace(/^uses/, "Uses");
     b.onclick = () => selectGenerator(g.id);
     gens.append(b);
     if (g.selected) state.generator = g.id;
@@ -170,8 +177,10 @@ async function watch(jobId) {
     const j = await api(`/api/jobs/${jobId}`);
     if (j.state === "done") return finish(j);
     if (j.state === "failed") return fail(j.error || j.message);
-    let text = `Making your model... this can take ${makerTime()}`;
-    if (j.state === "queued" && j.ahead > 0) text = "Waiting for your turn...";
+    let text;
+    if (j.state === "waiting") text = "Waiting for the graphics card (another job is running)...";
+    else if (j.state === "queued") text = j.ahead > 0 ? "Waiting for your turn..." : "Getting ready...";
+    else text = `Making your model... ${clock(j.elapsed_s)}\nThis can take ${makerTime()}.`;
     showMsg(text, "busy");
     await new Promise((r) => setTimeout(r, 1000));
   }

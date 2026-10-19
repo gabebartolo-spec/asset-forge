@@ -34,14 +34,13 @@
   <section class="stage">
     <div id="viewer" aria-label="3D viewer">
       <div id="viewer-msg" class="viewer-msg"><span>Your model will appear here.<br>
-        Pick a picture on the right,<br>then press <b class="nowrap">Make 3D model</b>.</span></div>
+        Pick a picture on the right, then press the<br>blue Make 3D model button at the bottom right.</span></div>
     </div>
     <div id="viewer-hint" class="viewer-hint hidden">Drag to spin. Scroll to zoom.</div>
   </section>
 
   <aside class="panel" id="panel-1">
     <h2>Make your model</h2>
-    <div id="note" class="note hidden" role="status"></div>
 
     <div class="block">
       <h3>1. Pick a picture</h3>
@@ -72,7 +71,8 @@
 </main>
 
 <footer>
-  <div class="foot-left"><span id="foot-info"></span><span id="foot-hint"></span></div>
+  <div class="foot-left"><span id="foot-info"></span><span id="foot-hint"></span>
+    <div id="note" class="note hidden" role="status"></div></div>
   <div class="foot-right">
     <button class="secondary" id="redo" disabled>Redo</button>
     <button class="primary" id="next" disabled>Make 3D model</button>

@@ -142,3 +142,31 @@ def test_page_is_served(client):
     r = client.get("/")
     assert r.status_code == 200 and "Asset Forge" in r.text
     assert client.get("/app.js").headers["content-type"].startswith("text/javascript")
+
+
+def test_job_status_tells_waiting_for_the_gpu_from_running(settings):
+    """The page shows 'Waiting for the graphics card' vs 'Making your model' + a timer."""
+    lock = settings.lock_dir
+    lock.mkdir(parents=True)
+    (lock / "owner.txt").write_text("sprites:batch pid=1\n")
+    reg = Registry([FakeGenerator("hi3dgen", "Hi3DGen", sleep=0.4)])
+    app = create_app(settings, reg)
+    with TestClient(app) as c:
+        a = upload(c).json()
+        jid = c.post(f"/api/assets/{a['id']}/generate", json={"generator": "hi3dgen"}).json()["id"]
+        end = time.time() + 5
+        while time.time() < end and c.get(f"/api/jobs/{jid}").json()["state"] != "waiting":
+            time.sleep(0.02)
+        waiting = c.get(f"/api/jobs/{jid}").json()
+        assert waiting["state"] == "waiting" and waiting["started"] is None
+        assert waiting["elapsed_s"] == 0.0 and "sprites:batch" in waiting["message"]
+        (lock / "owner.txt").unlink()
+        lock.rmdir()
+        while time.time() < end and c.get(f"/api/jobs/{jid}").json()["state"] != "running":
+            time.sleep(0.02)
+        running = c.get(f"/api/jobs/{jid}").json()
+        assert running["state"] == "running" and running["started"] is not None
+        time.sleep(0.15)
+        assert c.get(f"/api/jobs/{jid}").json()["elapsed_s"] > 0
+        assert finish(c, jid)["state"] == "done"
+    app.state.queue.shutdown()
