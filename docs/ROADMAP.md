@@ -33,3 +33,13 @@ Gate: a Southern Cross front/back pair that drops into the game; director approv
 ## Phase 6 — Library and batch
 Deliverables: Library (resume any step, duplicate, trash), batch queue, step timings.
 Gate: the speed targets in design section 6 measured and reported.
+
+## Phase 7 — Optional local-AI QA check (after a working build; D-015)
+Deliverables: design 5.6 (setting off by default, local vision model via Ollama, plain-words note,
+never blocks). Gate: agreement with the critic agents on saved five-view sheets reported; the
+director decides whether it ships on.
+
+## Phase 8 — Claude MCP server (D-016)
+Deliverables: design 5.7 (MCP tools over the backend job API for every step, sprite and Library
+action). Gate: Claude makes one humanoid and one sprite end to end through MCP alone, and the
+director can resume both in the UI.

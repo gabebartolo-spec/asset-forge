@@ -1,0 +1,31 @@
+# The five bake-off prompts (design 5.2). Every candidate gets the same reference images,
+# drawn once by SDXL base and matted once by BiRefNet (make_refs.py), so only the 3D model varies.
+# `view` follows design 5.2 step 1: T/A-pose front for humanoids, side-on for animals.
+
+style = "single full-body character, centered, plain flat white background, soft even studio lighting, clean 3D game asset concept render, whole body visible head to feet, no shadow on the ground, no text"
+negative = "cropped, cut off, multiple characters, scenery, background objects, text, watermark, frame, blurry, photo of a toy, pedestal, ground shadow"
+
+[[prompt]]
+id = "humanoid"
+type = "Humanoid"
+text = "a medieval human knight in leather and chainmail armour, standing straight in an A-pose with arms angled down away from the body, front view, facing the camera"
+
+[[prompt]]
+id = "spider"
+type = "Monster"
+text = "a giant spider-like monster with exactly eight long jointed legs spread wide, round abdomen, fangs, three-quarter top view so every leg is visible"
+
+[[prompt]]
+id = "brute"
+type = "Monster"
+text = "a hulking muscular brute monster with six arms, three arms on each side of the torso, two thick legs, standing, front view, facing the camera"
+
+[[prompt]]
+id = "fox"
+type = "Animal"
+text = "a low-poly stylised red fox, flat shaded facets, standing on four legs, bushy tail, side view facing left"
+
+[[prompt]]
+id = "bird"
+type = "Animal"
+text = "a small songbird, a robin, standing on two legs with wings folded, side view facing left"

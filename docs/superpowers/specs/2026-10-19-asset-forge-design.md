@@ -189,6 +189,27 @@ Queue several prompts with types; the app runs them one after another through Ge
 Clean, then stops at Skeleton for each, because the skeleton check needs the director. Humanoids
 and animals with a confident template fit can optionally run straight through.
 
+### 5.6 Optional local-AI QA check (director, 2026-10-20, D-015; built after a working build)
+
+- A setting, off by default: "Ask a local AI to check the model". When on, after Clean (and after
+  any fix) the app loads a local vision model (through Ollama), shows it the five-view sheet and
+  asks about missing, fused or melted parts and facing. Then it unloads the model (one GPU).
+- Result: a short plain-words note on the step screen ("Looks clean" / "Back left leg looks fused
+  to the body"), with the view marked. It warns only; it never blocks export or changes the model.
+  The measured checks (section 6) stay the gate.
+- The model needs a CLEARED row in `docs/LICENCES.md`. Its agreement with the critic agents'
+  verdicts is measured on saved sheets before it ships; if it mostly raises false alarms, it stays off.
+
+### 5.7 Claude MCP server (director, 2026-10-20, D-016; roadmap Phase 8)
+
+- A local MCP server so Claude Code can operate Asset Forge: create a job from text or an image,
+  run or redo any step, read the five-view sheet and gate results, move skeleton markers, export,
+  make sprites, and browse the Library.
+- A thin layer over the backend's job API (the same calls the page makes), localhost only, through
+  the one GPU queue. Every step keeps its saved output, so Claude's work is resumable in the UI.
+- Builder's note from now: keep every step callable through the backend API, never only from the page.
+- The MCP SDK gets a `docs/LICENCES.md` row before use.
+
 ## 6. Gates (how the anti-goals are measured)
 
 **Not ugly**
@@ -215,6 +236,15 @@ Every export loads in headless Godot with no errors.
   the director's clicks.
 - Sprite: under 1 minute.
 - The app shows each step's time, so slow steps are visible.
+
+**Clean and intuitive (director, 2026-10-20, D-013)**
+- One main action per screen, plainly labelled; Next and Redo always in the same place.
+- No setting on the main path that the defaults already answer; advanced options folded away.
+- Built for a normal person with no advanced tech skills (director, 2026-10-20, D-014): plain
+  words on screen, no jargon on the main path (VRAM use is shown: he asked for it), every error
+  names the one click that fixes it.
+- Every screen passes a fresh `screen-critic` review and a first-use walk-through (a new agent
+  reaches the step's goal from the screen alone, no docs) before the director sees it.
 
 ## 7. Quality and process
 
