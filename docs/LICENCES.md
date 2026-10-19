@@ -54,3 +54,11 @@ HF model cards); VRAM is from READMEs until the bake-off measures it. Not legal 
 | trimesh, fast-simplification, scikit-image | library | MIT, MIT, BSD-3-Clause | CLEARED | mesh I/O, Step1X-3D cleanup, marching cubes |
 | RMBG-1.4 / 2.0 (Bria) | matting model | bria-rmbg (non-commercial) | BANNED | |
 | DINOv3 | model | Meta dinov3-license | BANNED until read | TRELLIS.2 only |
+
+## Prompt generator (Phase 9, D-020)
+
+| Item | Kind | Licence | Verdict | Notes |
+|---|---|---|---|---|
+| Qwen3-1.7B (`Qwen/Qwen3-1.7B`) | text LLM | Apache-2.0 | CLEARED | HF card `license: apache-2.0` (API, 2026-10-20); about 3.4 GB in bf16; Qwen2.5-3B is NOT Apache (Qwen research licence), so not used |
+| transformers, huggingface_hub, accelerate | library | Apache-2.0 | CLEARED | run only in `models/envs/promptgen`, never imported by the app |
+| PyTorch | library | BSD-3-Clause | CLEARED | same env |
