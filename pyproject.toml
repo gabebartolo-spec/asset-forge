@@ -3,7 +3,7 @@ name = "asset-forge"
 version = "0.0.1"
 description = "Local text/image to game-ready 3D models, skeletons, animations and pixel-perfect sprites."
 requires-python = ">=3.12"
-dependencies = []
+dependencies = ["numpy>=1.26", "pillow>=10"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.6"]
