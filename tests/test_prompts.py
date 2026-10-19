@@ -121,3 +121,18 @@ def test_messages_carry_system_and_example():
     msgs = llm.build_messages("SYS", "robin", "animal")
     assert msgs[0] == {"role": "system", "content": "SYS"}
     assert msgs[-1] == {"role": "user", "content": "robin"}
+
+
+def test_templates_never_state_a_limb_count():
+    import re
+
+    from asset_forge.prompts.templates import SUFFIX, SYSTEM
+
+    count = re.compile(
+        r"(one|two|three|four|five|six|seven|eight|\d+)[\w\s-]{0,12}"
+        r"(legs?|arms?|fours|wings?|heads?|eyes?)",
+        re.I,
+    )
+    for text in [*SUFFIX.values(), *SYSTEM.values()]:
+        assert not count.search(text), text
+    assert "all fours" not in " ".join(SUFFIX.values())

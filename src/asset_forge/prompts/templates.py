@@ -11,19 +11,20 @@ MAX_PROMPT_CHARS = 480
 
 _SUBJECT_RULES = (
     "You write the subject line of an image prompt for a game art tool. Reply with ONE line, "
-    "at most 35 words, in plain English: who or what it is, body shape, clothing or colours, "
-    "and one or two distinctive features. Keep every feature the user names (counts of arms, "
-    "legs, heads, eyes included). Do not mention camera, pose, background, style or lighting. "
-    "Do not invent extra body parts, and do not copy the example. "
-    "No quotes, no lists, no preamble."
+    "at most 35 words, in plain English: who or what it is, body shape, colours, and one or "
+    "two distinctive features. Describe only body, colours and features implied by the idea; "
+    "no clothing, props or accessories unless the idea names them. Keep every feature the "
+    "user names (counts of arms, legs, heads, eyes included). Do not mention camera, pose, "
+    "background, style or lighting. Do not invent extra body parts, and do not copy the "
+    "example. No quotes, no lists, no preamble."
 )
 
 SYSTEM = {
     "humanoid": _SUBJECT_RULES
-    + " The subject is a humanoid with two arms and two legs unless the idea says otherwise.",
+    + " The subject is a humanoid character.",
     "monster": _SUBJECT_RULES + " The subject is a monster or creature; keep its limb count exact.",
     "animal": _SUBJECT_RULES
-    + " The subject is a real animal with its natural body (legs, wings, tail as in life).",
+    + " The subject is a real animal with its natural body as in life.",
     "sprite": _SUBJECT_RULES
     + " The subject is a single creature or character for a pixel-art sprite.",
 }
@@ -34,7 +35,7 @@ SUFFIX = {
     "plain white background, centred, even lighting",
     ("monster", "front"): "full body, front view, symmetrical standing pose with limbs clear of "
     "the body, plain white background, centred, even lighting",
-    ("animal", "front"): "full body, side-on view, standing on all fours, four legs clearly "
+    ("animal", "front"): "full body, side-on view, natural standing pose, all legs clearly "
     "visible, plain white background, centred, even lighting",
     ("sprite", "front"): "pixel art sprite, full body, front view facing the viewer, "
     "plain flat background, centred, clean outline, limited palette",
@@ -51,7 +52,7 @@ FEWSHOT = {
     ),
     "monster": (
         "swamp ogre",
-        "A hunched green ogre with a wide belly, two thick arms, a flat tusked face and a "
+        "A hunched green ogre with a wide belly, thick arms, a flat tusked face and a "
         "ragged cloth belt.",
     ),
     "animal": (
