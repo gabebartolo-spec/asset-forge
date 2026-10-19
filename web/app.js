@@ -20,8 +20,21 @@ async function api(path, opts) {
 function showMsg(text, kind = "") {
   const m = $("viewer-msg");
   m.className = "viewer-msg " + kind;
-  m.textContent = text;
+  m.textContent = "";
+  if (kind === "busy" && text) {
+    const sp = document.createElement("div");
+    sp.className = "spinner";
+    m.append(sp);
+  }
+  m.append(document.createTextNode(text));
   m.classList.toggle("hidden", !text);
+}
+function makerTime() {
+  const g = state.menu && state.menu.generators.find((x) => x.id === state.generator);
+  return g ? g.typical_time : "a few minutes";
+}
+function roundedVram(gb) {
+  return `about ${Math.max(1, Math.round(gb))} GB of video memory (VRAM)`;
 }
 function note(el, text, kind = "") {
   el.className = "note " + kind;
@@ -39,30 +52,38 @@ function render() {
     li.classList.toggle("done", n < state.step);
   });
   const next = $("next"), redo = $("redo");
+  const pill1 = $("pill1");
+  pill1.classList.toggle("clickable", !onStep1);
+  pill1.onclick = onStep1 ? null : () => { state.step = 1; render(); };
+  redo.classList.toggle("hidden", !onStep1);
+  const hint = $("foot-hint");
+  hint.textContent = "";
   if (onStep1) {
     if (state.done && !state.busy) {
       next.textContent = "Next: Clean up";
       next.disabled = false;
     } else {
       next.textContent = state.busy ? "Working..." : "Make 3D model";
-      next.disabled = !state.file || state.busy;
+      next.disabled = !state.file || !state.type || state.busy;
+      if (!state.busy && !state.done) {
+        if (!state.file && !state.type) hint.textContent = "Pick a picture and say what it is, then press Make 3D model.";
+        else if (!state.file) hint.textContent = "Pick a picture first.";
+        else if (!state.type) hint.textContent = "Now say what it is (step 2).";
+      }
     }
     redo.disabled = state.busy || !state.asset;
   } else {
-    next.textContent = "Clean up the model";
-    next.disabled = false;
-    redo.disabled = true;
+    next.textContent = "Coming next";
+    next.disabled = true;
   }
-  document.querySelectorAll("#types button, #generators .gen").forEach((b) => {
-    b.disabled = state.busy;
-  });
+  $("panel-1").classList.toggle("busy", state.busy);
 }
 
 function buildMenu(menu) {
   state.menu = menu;
   const types = $("types");
   types.innerHTML = "";
-  menu.types.forEach((t, i) => {
+  menu.types.forEach((t) => {
     const b = document.createElement("button");
     b.type = "button";
     b.setAttribute("role", "radio");
@@ -70,25 +91,28 @@ function buildMenu(menu) {
     b.textContent = t.label;
     b.onclick = () => selectType(t.id);
     types.append(b);
-    if (i === 0) state.type = t.id;
   });
   const gens = $("generators");
   gens.innerHTML = "";
+  const sameTime = menu.generators.every((g) => g.typical_time === menu.generators[0].typical_time);
+  $("same-time").textContent = sameTime ? `(each takes ${menu.generators[0].typical_time})` : "";
   menu.generators.forEach((g) => {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "gen";
     b.setAttribute("role", "radio");
     b.dataset.value = g.id;
-    b.innerHTML = '<div class="name"></div><div class="blurb"></div><div class="facts"></div>';
+    b.innerHTML = '<div><span class="name"></span><span class="label"></span></div><div class="blurb"></div><div class="facts"></div>';
     b.querySelector(".name").textContent = g.name;
+    b.querySelector(".label").textContent = g.label;
     b.querySelector(".blurb").textContent = g.blurb;
-    b.querySelector(".facts").textContent = `Takes ${g.typical_time}; ${g.vram}`;
+    b.querySelector(".facts").textContent = sameTime
+      ? g.vram.replace(/^uses/, "Uses") : `Takes ${g.typical_time}; ${g.vram}`;
     b.onclick = () => selectGenerator(g.id);
     gens.append(b);
     if (g.selected) state.generator = g.id;
   });
-  selectType(state.type);
+  selectType(null);
   selectGenerator(state.generator);
 }
 function selectType(id) {
@@ -112,7 +136,7 @@ function chooseFile(file) {
   $("preview").src = URL.createObjectURL(file);
   $("preview").classList.remove("hidden");
   $("drop").classList.add("has-image");
-  $("drop-text").textContent = "Click to choose a different picture";
+  $("drop-text").textContent = "Change picture";
   note($("note"), "");
   render();
 }
@@ -146,9 +170,8 @@ async function watch(jobId) {
     const j = await api(`/api/jobs/${jobId}`);
     if (j.state === "done") return finish(j);
     if (j.state === "failed") return fail(j.error || j.message);
-    let text = j.message;
-    if (j.state === "queued" && j.ahead > 0) text = "Waiting for your turn";
-    if (j.state === "running") text += `  ${Math.round(j.elapsed_s)} s`;
+    let text = `Making your model... this can take ${makerTime()}`;
+    if (j.state === "queued" && j.ahead > 0) text = "Waiting for your turn...";
     showMsg(text, "busy");
     await new Promise((r) => setTimeout(r, 1000));
   }
@@ -169,8 +192,8 @@ async function finish(job) {
   state.done = true;
   const name = state.menu.generators.find((g) => g.id === r.generator)?.name || r.generator;
   $("foot-info").textContent = `Made with ${name} in ${Math.round(r.total_s)} s`
-    + (r.gpu_peak_gb != null ? `, using ${r.gpu_peak_gb} GB of VRAM` : "");
-  note($("note"), "Spin it around. Happy with the shape? Press Next. Not right? Press Redo for a new try.", "ok");
+    + (r.gpu_peak_gb != null ? `, using ${roundedVram(r.gpu_peak_gb)}` : "");
+  note($("note"), "Happy with it? Press Next. Not right? Press Redo for a new try.", "ok");
   render();
 }
 
@@ -192,17 +215,8 @@ async function init() {
     drop.classList.remove("over");
     chooseFile(e.dataTransfer.files[0]);
   };
-  $("from-text").onclick = () => note($("note"),
-    "Describing a character in words is coming next. For now, choose a picture.");
   $("next").onclick = async () => {
-    if (state.step === 2) {
-      try {
-        await api(`/api/assets/${state.asset.id}/clean`, { method: "POST" });
-      } catch (e) {
-        note($("note2"), e.message);
-      }
-      return;
-    }
+    if (state.step === 2) return;
     if (state.done) { state.step = 2; render(); } else start();
   };
   $("redo").onclick = () => start();

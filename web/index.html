@@ -24,17 +24,17 @@
 </header>
 
 <ol class="steps" id="steps" aria-label="Steps">
-  <li data-step="1" class="current">1 Make</li>
+  <li data-step="1" class="current" id="pill1">1 Make</li>
   <li data-step="2">2 Clean up</li>
-  <li data-step="3">3 Skeleton</li>
-  <li data-step="4">4 Animate</li>
+  <li data-step="3" class="soonpill">3 Skeleton <span class="soon">soon</span></li>
+  <li data-step="4" class="soonpill">4 Animate <span class="soon">soon</span></li>
 </ol>
 
 <main>
   <section class="stage">
     <div id="viewer" aria-label="3D viewer">
       <div id="viewer-msg" class="viewer-msg"><span>Your model will appear here.<br>
-        Pick a picture on the right, then press <b>Make 3D model</b>.</span></div>
+        Pick a picture on the right,<br>then press <b class="nowrap">Make 3D model</b>.</span></div>
     </div>
     <div id="viewer-hint" class="viewer-hint hidden">Drag to spin. Scroll to zoom.</div>
   </section>
@@ -47,10 +47,9 @@
       <h3>1. Pick a picture</h3>
       <label class="drop" id="drop" for="file">
         <img id="preview" class="hidden" alt="Your picture">
-        <span id="drop-text">Click to choose a picture<br><small>One character on a plain background (PNG or JPG)</small></span>
+        <span id="drop-text">Click to choose a picture<br><small>One character on a plain background (PNG or JPG).<br>Describing it in words is coming next.</small></span>
       </label>
       <input type="file" id="file" accept="image/png,image/jpeg,image/webp" class="hidden">
-      <button class="linklike" id="from-text" type="button">Describe it in words instead (coming next)</button>
     </div>
 
     <div class="block">
@@ -59,21 +58,21 @@
     </div>
 
     <div class="block">
-      <h3>3. Choose a maker</h3>
+      <h3>3. Choose a maker <span id="same-time"></span></h3>
       <div id="generators" role="radiogroup" aria-label="Generator"></div>
     </div>
   </aside>
 
   <aside class="panel hidden" id="panel-2">
-    <h2>Clean up</h2>
-    <p>This turns the rough model into a light, tidy one that is ready for a game.</p>
-    <p>Press the blue button below when you are ready.</p>
-    <div id="note2" class="note hidden" role="status"></div>
+    <h2>Cleaning up is coming next</h2>
+    <p>This step will turn the rough model into a light, tidy one that is ready for a game.
+      It is not built yet, so there is nothing to press here.</p>
+    <p class="muted">Click <b>1 Make</b> above to go back to your model.</p>
   </aside>
 </main>
 
 <footer>
-  <div class="foot-left" id="foot-info"></div>
+  <div class="foot-left"><span id="foot-info"></span><span id="foot-hint"></span></div>
   <div class="foot-right">
     <button class="secondary" id="redo" disabled>Redo</button>
     <button class="primary" id="next" disabled>Make 3D model</button>

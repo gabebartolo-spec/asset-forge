@@ -41,6 +41,7 @@ def test_menu_lists_generators_in_config_order_with_first_preselected(client):
     assert [g["selected"] for g in m["generators"]] == [True, False]
     for g in m["generators"]:
         assert g["typical_time"] and "VRAM" in g["vram"]
+        assert g["label"] and "Heavier" not in g["blurb"]
 
 
 def test_real_menu_order_comes_from_settings(tmp_path):

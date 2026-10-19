@@ -35,13 +35,14 @@ class GenResult:
 class Generator(ABC):
     id: str
     name: str
+    label: str  # two or three plain words next to the name
     blurb: str  # one plain line: what it is good at
     typical_time: str  # plain words, whole job from pressing Make to seeing the model
     vram: str  # plain words
 
     def menu_entry(self, selected: bool) -> dict:
         return {
-            "id": self.id, "name": self.name, "blurb": self.blurb,
+            "id": self.id, "name": self.name, "label": self.label, "blurb": self.blurb,
             "typical_time": self.typical_time, "vram": self.vram, "selected": selected,
         }
 
@@ -161,17 +162,19 @@ class SubprocessGenerator(Generator):
 class Hi3DGen(SubprocessGenerator):
     id = "hi3dgen"
     name = "Hi3DGen"
-    blurb = "Clean, crisp shapes. Fastest. A good first try."
-    typical_time = "about 1 minute"
-    vram = "uses about 7 GB of video memory (VRAM)"
+    label = "Quick and clean"
+    blurb = "Clean, crisp shapes. A good first try."
+    typical_time = "1 to 2 minutes"  # measured 50-113 s through the app (fox.png)
+    vram = "uses about 6 GB of video memory (VRAM)"
 
 
 class TripoSG(SubprocessGenerator):
     id = "triposg"
     name = "TripoSG"
-    blurb = "More detail, closest to your picture. Heavier models."
-    typical_time = "about 1 minute"
-    vram = "uses about 6 GB of video memory (VRAM)"
+    label = "Most detail"
+    blurb = "Follows your picture. Bigger file, slower in a game."
+    typical_time = "2 to 5 minutes"  # measured 166 s warm, 288 s first run (fox.png)
+    vram = "uses about 8 GB of video memory (VRAM)"
 
 
 GENERATOR_CLASSES: dict[str, type[SubprocessGenerator]] = {

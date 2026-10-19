@@ -24,6 +24,7 @@ def make_png(plain_background: bool = True) -> bytes:
 
 
 class FakeGenerator(Generator):
+    label = "Fake"
     blurb = "fake"
     typical_time = "about 1 second"
     vram = "uses about 1 GB of video memory (VRAM)"
