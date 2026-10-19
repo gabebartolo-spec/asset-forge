@@ -11,7 +11,7 @@ Current phase: **1 — Generator bake-off**. Phase 0 gate met 2026-10-20
 
 | Agent | State | Item | Branch / PR | Since |
 |-------|-------|------|-------------|-------|
-| Lead | available | item 3 bake-off next (Hunyuan out, D-010) | — | 2026-10-20 |
+| Lead | available | item 3 done (D-019); awaiting next assignment | PR #6 | 2026-10-20 |
 
 States: working · running a check · awaiting director · blocked · available.
 
@@ -25,7 +25,7 @@ States: working · running a check · awaiting director · blocked · available.
    the machine (design section 4), with licence and verdict.
 
 ### Phase 1 — Generator bake-off (design 5.2; result goes to the director before anything else)
-3. Bake-off script and report: five prompts through every qualifying local image-to-3D model
+3. DONE 2026-10-20 (D-019: Hi3DGen then TripoSG; PR #6). Bake-off script and report: five prompts through every qualifying local image-to-3D model
    (and the text-to-image front-end), with time, peak VRAM, licence, and five-view sheets. The
    director picks the generator. Log the pick as a decision.
 

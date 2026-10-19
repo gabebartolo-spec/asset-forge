@@ -1,5 +1,5 @@
 # Asset Forge lead handoff (2026-10-20, session 5)
-## State: awaiting director (bake-off PR open; menu + prompt-generator question asked)
+## State: available (bake-off done: D-019 Hi3DGen then TripoSG; D-020 logged; PR #6 waits on CI)
 
 ## Task
 STATUS item 3, generator bake-off. Report docs/audits/bakeoff_2026-10-20.md is written: Hi3DGen
@@ -33,8 +33,9 @@ Hi3DGen 12-14 s / 6.8 GB / 220k-592k; Step1X-3D 16-18 s / 5.8 / 200k; TripoSG 29
 - On TripoSR sheets: "weird patterns on all of these" = TripoSR's lumpy surface, a real defect.
 
 ## Next steps
-1. On his answer: D-019 + D-020 in DECISIONS, STATUS item 3 DONE, design 5.2 menu order; push
-   to this PR (or a board PR after merge). Merge on green at the exact head.
+1. DONE in PR #6: D-019 (menu Hi3DGen, then TripoSG), D-020 (prompt generator = "Expand my
+   idea"), STATUS item 3 DONE, design 5.2, ROADMAP Phase 9. Merge #6 on green at the exact head
+   (Auto-fix is on); then remove the bakeoff worktree.
 2. Then wait for the next assigned item (Phase 2 needs a colour route for geometry-only models).
 
 ## Gotchas

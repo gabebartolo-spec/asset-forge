@@ -50,6 +50,8 @@ director can resume both in the UI.
 
 ## Phase 9 — Prompt generator (director, 2026-10-20, D-020)
 His words: "roadmap item: add a prompt generator". Deliverables: a prompt generator on the
-Step 1 and sprite text boxes (exact behaviour per D-020). Local and free like everything else.
+Step 1 and sprite text boxes: the user types a few words and a local model writes the full
+prompt the image step needs (pose, view, plain background), shown to edit before generating
+(D-020: "Expand my idea"). Local and free like everything else.
 Gate: the director uses it to start one model and one sprite; screen-critic and first-use
 walk-through pass. Order among later phases is the director's call.

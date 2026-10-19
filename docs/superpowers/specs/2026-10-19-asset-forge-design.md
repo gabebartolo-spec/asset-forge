@@ -107,7 +107,7 @@ rejected even if it works.
   each result. **The director picks the winner.** Keep the generator behind one interface so it
   can be swapped later.
 - **Generator menu (director, 2026-10-20, D-018: "Choose every time"):** Step 1 shows a menu of
-  every generator that passed the bake-off, on every run, in the order the director set (D-019);
+  every generator that passed the bake-off, on every run, in the order the director set (D-019: Hi3DGen, then TripoSG);
   the top one is preselected. Each entry shows its typical time and VRAM in plain words. Every
   listed generator must pass the Clean-step tests (Step 2) before it is listed.
 
