@@ -50,9 +50,9 @@ FEWSHOT = {
         "carrying a curved knife and a water flask.",
     ),
     "monster": (
-        "six-armed brute",
-        "A hulking grey-skinned brute with six thick muscular arms, a broad horned head and a "
-        "torn leather loincloth.",
+        "swamp ogre",
+        "A hunched green ogre with a wide belly, two thick arms, a flat tusked face and a "
+        "ragged cloth belt.",
     ),
     "animal": (
         "red panda",

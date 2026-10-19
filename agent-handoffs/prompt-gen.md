@@ -14,5 +14,6 @@ Branch claude/prompt-gen, worktree asset-forge-wt/prompt-gen. Draft PR holds the
 
 ## Left
 - Wire to UI (after PR #8 app shell merges): button "Expand my idea", editable result.
-- Speed: each call loads the model (subprocess); a resident worker would cut load time.
+- Resident worker keeps the model loaded: cold start 15-35 s once (call prompts.llm.stop() to free ~4 GB), then 0.4-1.5 s per idea. UI should show 'starting the prompt writer' on first use.
+- Quality: 1.7B model sometimes adds invented details (e.g. red helmet); the user edits the text anyway.
 - Not touched: web/, api.py, STATUS.md, DECISIONS.md.
