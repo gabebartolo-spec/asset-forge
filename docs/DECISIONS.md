@@ -4,6 +4,56 @@ Cap: 400 lines; oldest roll to `docs/archive/`. One decision per entry, newest f
 that is not here does not exist. Format: date · id · who decided · the decision · why · what it
 changes. Only the lead edits this file, from the "Board and log" section of merged PRs.
 
+## 2026-10-20 · D-018 · Director · A generator menu on every run
+Asked how the app should offer the generators that pass the bake-off: a default plus "try
+another", choose every time, or one only. Answer: "Choose every time". Changes: Step 1 shows a
+generator menu on every run listing every candidate that passes the bar (top one preselected);
+every listed generator must pass the Clean-step tests (design 5.2, roadmap Phase 2). The bake-off
+question becomes which passing models go on the menu and in what order (D-019).
+
+## 2026-10-20 · D-017 · Director · Direct3D-S2 dropped; Hi3DGen gets one low-VRAM try
+Asked (to go faster): drop Hi3DGen (13 GB peak) and Direct3D-S2 (20 GB, ~14 min a model), both
+over the 12 GB card in testing? Answer: "drop direct 3d only". Changes: Direct3D-S2 leaves the
+bake-off (fails the 12 GB / 3 min bar as measured); Hi3DGen gets one bounded attempt to fit 12 GB.
+
+## 2026-10-20 · D-016 · Director · A Claude MCP server to operate the app
+His words: "add to roadmap: claude mcp so you can operate the program". Changes: Phase 8 in the
+roadmap; design 5.7. Built on the same backend job API the UI uses, so it adds no second code path.
+
+## 2026-10-20 · D-015 · Director · Optional local-AI QA check, built last
+His words: "add an optional feature to the program which loads a local model to QA, we can
+implement it and test it later once all the other features are in a working build". Changes: a
+Phase 7 item; design 5.6. Off by default; it warns in plain words and never blocks or edits a
+model (the measured checks stay the gate). No trial in the bake-off.
+
+## 2026-10-20 · D-014 · Director · Built for a normal person with no tech skills
+His words: "the target demographic is normal person with no advanced tech skills or knowledge".
+Changes: the UI gate (D-013) is judged as that person: plain words on screen (no "tris",
+"seed", "remesh" on the main path; numbers shown as good/too heavy with the limit; VRAM is shown,
+director: "i know what vram is, include it"),
+errors say what happened and the one click that fixes it, and the first-use walk-through is
+done by an agent briefed as a non-technical user.
+Asked the same day: will others install it on their own PCs? Answer: only on his PC. So the
+bake-off bar is unchanged (12 GB card, set up once by us); no installer or redistribution work.
+
+## 2026-10-20 · D-013 · Director · The app's UI is clean and intuitive
+His words: "make sure the programs UI is clean and intuitive". Changes: a UI gate in design
+section 6: every screen passes a fresh screen-critic review and a first-use walk-through (a new
+agent reaches the step's goal from the screen alone, no docs) before he sees it. Applies from the
+first app screen (after the bake-off); the bake-off itself has no UI.
+
+## 2026-10-20 · D-012 · Lead · Generators run in our own per-model envs
+Why: the Stability Matrix ComfyUI folder was not found, CLAUDE.md forbids touching it, and the
+cleared candidates (TripoSG, TripoSR, Hi3DGen, Direct3D-S2, Step1X-3D) are plain Python repos.
+Changes: each generator gets a uv env `models/envs/<name>`, source `models/src/<name>`, weights
+under `models/hf` (all gitignored), driven by `tools/bakeoff/` adapters behind one contract; one
+GPU job at a time through `models/gpu.lock`. ComfyUI stays optional for the sprite tab.
+
+## 2026-10-20 · D-011 · Director · Stable Fast 3D skipped
+Asked: SF3D's weights are gated (Hugging Face sign-in, accept Stability's Community licence);
+include it? Answer: skip SF3D. Changes: SF3D and SPAR3D leave the bake-off; their licence rows
+stay CLEARED on paper but unused.
+
 ## 2026-10-20 · D-010 · Director · Hunyuan 3D dropped from the bake-off
 Asked: keep Hunyuan (EU/UK/South Korea output ban) in the bake-off, flagged, or drop it now?
 Answer: drop it now. Why: every asset must ship in any market. Changes: Hunyuan 2.x and the kijai

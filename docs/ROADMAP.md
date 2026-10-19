@@ -9,12 +9,16 @@ Deliverables: scaffold green on main; CI proven red on planted defects; licence 
 Gate: STATUS Phase 0 done.
 
 ## Phase 1 — Generator bake-off
-Deliverables: bake-off report (design 5.2 bar). Gate: the director's pick in DECISIONS.md.
+Deliverables: bake-off report (design 5.2 bar). Gate: the director's menu (which passing
+generators, in what order; D-018, D-019) in DECISIONS.md.
 
 ## Phase 2 — 3D: Generate and Clean, end to end
-Deliverables: app shell (step screens, viewer, job store, one GPU queue); Generate; Clean
+Deliverables: app shell (step screens, viewer, job store, one GPU queue); Generate with the
+generator menu (every generator on the D-019 menu behind one interface, top preselected; D-018);
+Clean
 (rebuild, decimate, UV, bake); five-view inspection sheet; export gate; headless Godot import
-check. Gate: three prompts (humanoid, monster, animal) export inside budget; director sees them.
+check. Gate: three prompts (humanoid, monster, animal) export inside budget through every
+generator on the menu (each passes the Clean-step tests); director sees them.
 
 ## Phase 3 — Skeleton
 Deliverables: humanoid template (SkeletonProfileHumanoid names), four-legged template, monster
@@ -33,3 +37,21 @@ Gate: a Southern Cross front/back pair that drops into the game; director approv
 ## Phase 6 — Library and batch
 Deliverables: Library (resume any step, duplicate, trash), batch queue, step timings.
 Gate: the speed targets in design section 6 measured and reported.
+
+## Phase 7 — Optional local-AI QA check (after a working build; D-015)
+Deliverables: design 5.6 (setting off by default, local vision model via Ollama, plain-words note,
+never blocks). Gate: agreement with the critic agents on saved five-view sheets reported; the
+director decides whether it ships on.
+
+## Phase 8 — Claude MCP server (D-016)
+Deliverables: design 5.7 (MCP tools over the backend job API for every step, sprite and Library
+action). Gate: Claude makes one humanoid and one sprite end to end through MCP alone, and the
+director can resume both in the UI.
+
+## Phase 9 — Prompt generator (director, 2026-10-20, D-020)
+His words: "roadmap item: add a prompt generator". Deliverables: a prompt generator on the
+Step 1 and sprite text boxes: the user types a few words and a local model writes the full
+prompt the image step needs (pose, view, plain background), shown to edit before generating
+(D-020: "Expand my idea"). Local and free like everything else.
+Gate: the director uses it to start one model and one sprite; screen-critic and first-use
+walk-through pass. Order among later phases is the director's call.

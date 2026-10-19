@@ -1,0 +1,731 @@
+{
+  "hi3dgen": {
+    "letter": "A",
+    "run": {
+      "candidate": "hi3dgen",
+      "rc": 0,
+      "wall_s": 95.8,
+      "baseline_gb": 0.0,
+      "gpu_peak_gb": 6.79,
+      "gpu_total_gb": 6.79,
+      "load_s": 26.22,
+      "settings": {
+        "normal_model": "Stable-X/yoso-normal-v1-8-1 (StableNormal turbo, fp16)",
+        "normal_resolution": 768,
+        "preprocess_resolution": 1024,
+        "ss_steps": 50,
+        "ss_cfg": 3.0,
+        "slat_steps": 6,
+        "slat_cfg": 3.0,
+        "gen_model": "Stable-X/trellis-normal-v0-1",
+        "precision": "fp16 checkpoints"
+      },
+      "items": [
+        {
+          "id": "bird",
+          "mesh": "bird.glb",
+          "gen_s": 13.82,
+          "torch_peak_gb": 5.22,
+          "textured": false,
+          "error": null,
+          "faces": 339484,
+          "gpu_peak_gb": 4.64
+        },
+        {
+          "id": "brute",
+          "mesh": "brute.glb",
+          "gen_s": 13.59,
+          "torch_peak_gb": 5.22,
+          "textured": false,
+          "error": null,
+          "faces": 592418,
+          "gpu_peak_gb": 6.79
+        },
+        {
+          "id": "fox",
+          "mesh": "fox.glb",
+          "gen_s": 12.68,
+          "torch_peak_gb": 5.22,
+          "textured": false,
+          "error": null,
+          "faces": 330788,
+          "gpu_peak_gb": 4.53
+        },
+        {
+          "id": "humanoid",
+          "mesh": "humanoid.glb",
+          "gen_s": 12.59,
+          "torch_peak_gb": 5.22,
+          "textured": false,
+          "error": null,
+          "faces": 272446,
+          "gpu_peak_gb": 4.73
+        },
+        {
+          "id": "spider",
+          "mesh": "spider.glb",
+          "gen_s": 12.43,
+          "torch_peak_gb": 5.22,
+          "textured": false,
+          "error": null,
+          "faces": 220302,
+          "gpu_peak_gb": 4.73
+        }
+      ]
+    },
+    "items": {
+      "bird": {
+        "id": "bird",
+        "mesh": "bird.glb",
+        "gen_s": 13.82,
+        "torch_peak_gb": 5.22,
+        "textured": false,
+        "error": null,
+        "faces": 339484,
+        "gpu_peak_gb": 4.64,
+        "triangles": 338966,
+        "vertices": 169497,
+        "loose_parts": 7,
+        "loose_parts_over_1pct": 1,
+        "open_edges": 0,
+        "bbox_ratio_xyz": [
+          0.366,
+          1.0,
+          0.877
+        ],
+        "colour_source": null
+      },
+      "brute": {
+        "id": "brute",
+        "mesh": "brute.glb",
+        "gen_s": 13.59,
+        "torch_peak_gb": 5.22,
+        "textured": false,
+        "error": null,
+        "faces": 592418,
+        "gpu_peak_gb": 6.79,
+        "triangles": 591308,
+        "vertices": 295678,
+        "loose_parts": 16,
+        "loose_parts_over_1pct": 2,
+        "open_edges": 0,
+        "bbox_ratio_xyz": [
+          1.0,
+          0.431,
+          0.997
+        ],
+        "colour_source": null
+      },
+      "fox": {
+        "id": "fox",
+        "mesh": "fox.glb",
+        "gen_s": 12.68,
+        "torch_peak_gb": 5.22,
+        "textured": false,
+        "error": null,
+        "faces": 330788,
+        "gpu_peak_gb": 4.53,
+        "triangles": 330198,
+        "vertices": 165082,
+        "loose_parts": 1,
+        "loose_parts_over_1pct": 1,
+        "open_edges": 4,
+        "bbox_ratio_xyz": [
+          0.283,
+          1.0,
+          0.698
+        ],
+        "colour_source": null
+      },
+      "humanoid": {
+        "id": "humanoid",
+        "mesh": "humanoid.glb",
+        "gen_s": 12.59,
+        "torch_peak_gb": 5.22,
+        "textured": false,
+        "error": null,
+        "faces": 272446,
+        "gpu_peak_gb": 4.73,
+        "triangles": 271953,
+        "vertices": 135976,
+        "loose_parts": 26,
+        "loose_parts_over_1pct": 4,
+        "open_edges": 7,
+        "bbox_ratio_xyz": [
+          0.571,
+          0.226,
+          1.0
+        ],
+        "colour_source": null
+      },
+      "spider": {
+        "id": "spider",
+        "mesh": "spider.glb",
+        "gen_s": 12.43,
+        "torch_peak_gb": 5.22,
+        "textured": false,
+        "error": null,
+        "faces": 220302,
+        "gpu_peak_gb": 4.73,
+        "triangles": 219878,
+        "vertices": 109965,
+        "loose_parts": 12,
+        "loose_parts_over_1pct": 1,
+        "open_edges": 22,
+        "bbox_ratio_xyz": [
+          0.966,
+          1.0,
+          0.421
+        ],
+        "colour_source": null
+      }
+    }
+  },
+  "step1x3d": {
+    "letter": "B",
+    "run": {
+      "candidate": "step1x3d",
+      "rc": 0,
+      "wall_s": 128.0,
+      "baseline_gb": 0.0,
+      "gpu_peak_gb": 5.81,
+      "gpu_total_gb": 5.81,
+      "load_s": 5.5,
+      "settings": {
+        "steps": 50,
+        "guidance": 7.5,
+        "octree_resolution": 384,
+        "max_faces": 200000,
+        "dtype": "fp16",
+        "offload": "none",
+        "surface_extractor": "mc (skimage)",
+        "seed": 0,
+        "model": "Step1X-3D-Geometry-1300m",
+        "bg_removal": "none (alpha used)"
+      },
+      "items": [
+        {
+          "id": "bird",
+          "mesh": "bird.glb",
+          "gen_s": 16.9,
+          "torch_peak_gb": 4.75,
+          "textured": false,
+          "error": null,
+          "faces": 200000,
+          "gpu_peak_gb": 5.8
+        },
+        {
+          "id": "brute",
+          "mesh": "brute.glb",
+          "gen_s": 17.5,
+          "torch_peak_gb": 4.82,
+          "textured": false,
+          "error": null,
+          "faces": 200000,
+          "gpu_peak_gb": 5.81
+        },
+        {
+          "id": "fox",
+          "mesh": "fox.glb",
+          "gen_s": 16.6,
+          "torch_peak_gb": 4.84,
+          "textured": false,
+          "error": null,
+          "faces": 200000,
+          "gpu_peak_gb": 5.81
+        },
+        {
+          "id": "humanoid",
+          "mesh": "humanoid.glb",
+          "gen_s": 16.5,
+          "torch_peak_gb": 4.81,
+          "textured": false,
+          "error": null,
+          "faces": 200000,
+          "gpu_peak_gb": 5.81
+        },
+        {
+          "id": "spider",
+          "mesh": "spider.glb",
+          "gen_s": 16.4,
+          "torch_peak_gb": 4.79,
+          "textured": false,
+          "error": null,
+          "faces": 200000,
+          "gpu_peak_gb": 5.81
+        }
+      ]
+    },
+    "items": {
+      "bird": {
+        "id": "bird",
+        "mesh": "bird.glb",
+        "gen_s": 16.9,
+        "torch_peak_gb": 4.75,
+        "textured": false,
+        "error": null,
+        "faces": 200000,
+        "gpu_peak_gb": 5.8,
+        "triangles": 199806,
+        "vertices": 99907,
+        "loose_parts": 3,
+        "loose_parts_over_1pct": 2,
+        "open_edges": 0,
+        "bbox_ratio_xyz": [
+          0.494,
+          1.0,
+          0.839
+        ],
+        "colour_source": null
+      },
+      "brute": {
+        "id": "brute",
+        "mesh": "brute.glb",
+        "gen_s": 17.5,
+        "torch_peak_gb": 4.82,
+        "textured": false,
+        "error": null,
+        "faces": 200000,
+        "gpu_peak_gb": 5.81,
+        "triangles": 199954,
+        "vertices": 99975,
+        "loose_parts": 1,
+        "loose_parts_over_1pct": 1,
+        "open_edges": 0,
+        "bbox_ratio_xyz": [
+          1.0,
+          0.504,
+          0.979
+        ],
+        "colour_source": null
+      },
+      "fox": {
+        "id": "fox",
+        "mesh": "fox.glb",
+        "gen_s": 16.6,
+        "torch_peak_gb": 4.84,
+        "textured": false,
+        "error": null,
+        "faces": 200000,
+        "gpu_peak_gb": 5.81,
+        "triangles": 199841,
+        "vertices": 99923,
+        "loose_parts": 1,
+        "loose_parts_over_1pct": 1,
+        "open_edges": 3,
+        "bbox_ratio_xyz": [
+          0.349,
+          1.0,
+          0.743
+        ],
+        "colour_source": null
+      },
+      "humanoid": {
+        "id": "humanoid",
+        "mesh": "humanoid.glb",
+        "gen_s": 16.5,
+        "torch_peak_gb": 4.81,
+        "textured": false,
+        "error": null,
+        "faces": 200000,
+        "gpu_peak_gb": 5.81,
+        "triangles": 199790,
+        "vertices": 99877,
+        "loose_parts": 4,
+        "loose_parts_over_1pct": 2,
+        "open_edges": 13,
+        "bbox_ratio_xyz": [
+          0.59,
+          0.296,
+          1.0
+        ],
+        "colour_source": null
+      },
+      "spider": {
+        "id": "spider",
+        "mesh": "spider.glb",
+        "gen_s": 16.4,
+        "torch_peak_gb": 4.79,
+        "textured": false,
+        "error": null,
+        "faces": 200000,
+        "gpu_peak_gb": 5.81,
+        "triangles": 199778,
+        "vertices": 99893,
+        "loose_parts": 4,
+        "loose_parts_over_1pct": 1,
+        "open_edges": 0,
+        "bbox_ratio_xyz": [
+          1.0,
+          0.782,
+          0.772
+        ],
+        "colour_source": null
+      }
+    }
+  },
+  "triposg": {
+    "letter": "C",
+    "run": {
+      "candidate": "triposg",
+      "rc": 0,
+      "wall_s": 184.7,
+      "baseline_gb": 0.0,
+      "gpu_peak_gb": 6.34,
+      "gpu_total_gb": 6.34,
+      "load_s": 24.53,
+      "settings": {
+        "steps": 50,
+        "guidance": 7.0,
+        "num_tokens": 2048,
+        "dtype": "float16",
+        "decoder": "hierarchical dense_octree_depth=8 hierarchical_octree_depth=9 + skimage lewiner MC (repo default is flash+diso, banned NC)",
+        "bounds": 1.005,
+        "prep": "own alpha-bbox crop, white bg, 10% pad, no RMBG",
+        "simplify": false
+      },
+      "items": [
+        {
+          "id": "bird",
+          "mesh": "bird.glb",
+          "gen_s": 29.31,
+          "torch_peak_gb": 5.23,
+          "textured": false,
+          "error": null,
+          "faces": 801276,
+          "gpu_peak_gb": 6.34
+        },
+        {
+          "id": "brute",
+          "mesh": "brute.glb",
+          "gen_s": 32.7,
+          "torch_peak_gb": 5.3,
+          "textured": false,
+          "error": null,
+          "faces": 1384860,
+          "gpu_peak_gb": 5.83
+        },
+        {
+          "id": "fox",
+          "mesh": "fox.glb",
+          "gen_s": 29.23,
+          "torch_peak_gb": 5.23,
+          "textured": false,
+          "error": null,
+          "faces": 779310,
+          "gpu_peak_gb": 5.75
+        },
+        {
+          "id": "humanoid",
+          "mesh": "humanoid.glb",
+          "gen_s": 28.92,
+          "torch_peak_gb": 5.22,
+          "textured": false,
+          "error": null,
+          "faces": 1041234,
+          "gpu_peak_gb": 5.75
+        },
+        {
+          "id": "spider",
+          "mesh": "spider.glb",
+          "gen_s": 32.35,
+          "torch_peak_gb": 5.31,
+          "textured": false,
+          "error": null,
+          "faces": 674352,
+          "gpu_peak_gb": 6.13
+        }
+      ]
+    },
+    "items": {
+      "bird": {
+        "id": "bird",
+        "mesh": "bird.glb",
+        "gen_s": 29.31,
+        "torch_peak_gb": 5.23,
+        "textured": false,
+        "error": null,
+        "faces": 801276,
+        "gpu_peak_gb": 6.34,
+        "triangles": 798377,
+        "vertices": 399260,
+        "loose_parts": 88,
+        "loose_parts_over_1pct": 1,
+        "open_edges": 6,
+        "bbox_ratio_xyz": [
+          0.43,
+          1.0,
+          0.898
+        ],
+        "colour_source": null
+      },
+      "brute": {
+        "id": "brute",
+        "mesh": "brute.glb",
+        "gen_s": 32.7,
+        "torch_peak_gb": 5.3,
+        "textured": false,
+        "error": null,
+        "faces": 1384860,
+        "gpu_peak_gb": 5.83,
+        "triangles": 1379954,
+        "vertices": 689971,
+        "loose_parts": 4,
+        "loose_parts_over_1pct": 1,
+        "open_edges": 0,
+        "bbox_ratio_xyz": [
+          1.0,
+          0.58,
+          1.0
+        ],
+        "colour_source": null
+      },
+      "fox": {
+        "id": "fox",
+        "mesh": "fox.glb",
+        "gen_s": 29.23,
+        "torch_peak_gb": 5.23,
+        "textured": false,
+        "error": null,
+        "faces": 779310,
+        "gpu_peak_gb": 5.75,
+        "triangles": 776784,
+        "vertices": 388390,
+        "loose_parts": 2,
+        "loose_parts_over_1pct": 2,
+        "open_edges": 0,
+        "bbox_ratio_xyz": [
+          0.525,
+          1.0,
+          0.729
+        ],
+        "colour_source": null
+      },
+      "humanoid": {
+        "id": "humanoid",
+        "mesh": "humanoid.glb",
+        "gen_s": 28.92,
+        "torch_peak_gb": 5.22,
+        "textured": false,
+        "error": null,
+        "faces": 1041234,
+        "gpu_peak_gb": 5.75,
+        "triangles": 1038102,
+        "vertices": 519228,
+        "loose_parts": 298,
+        "loose_parts_over_1pct": 1,
+        "open_edges": 45,
+        "bbox_ratio_xyz": [
+          0.519,
+          0.255,
+          1.0
+        ],
+        "colour_source": null
+      },
+      "spider": {
+        "id": "spider",
+        "mesh": "spider.glb",
+        "gen_s": 32.35,
+        "torch_peak_gb": 5.31,
+        "textured": false,
+        "error": null,
+        "faces": 674352,
+        "gpu_peak_gb": 6.13,
+        "triangles": 671824,
+        "vertices": 336458,
+        "loose_parts": 279,
+        "loose_parts_over_1pct": 1,
+        "open_edges": 0,
+        "bbox_ratio_xyz": [
+          0.95,
+          1.0,
+          0.733
+        ],
+        "colour_source": null
+      }
+    }
+  },
+  "triposr": {
+    "letter": "D",
+    "run": {
+      "candidate": "triposr",
+      "rc": 0,
+      "wall_s": 22.1,
+      "baseline_gb": 0.0,
+      "gpu_peak_gb": 5.39,
+      "gpu_total_gb": 5.39,
+      "load_s": 10.14,
+      "settings": {
+        "mc_resolution": 256,
+        "foreground_ratio": 0.85,
+        "bg_grey": 0.5,
+        "chunk_size": 8192,
+        "marching_cubes": "torchmcubes",
+        "threshold": 25.0,
+        "rembg": false,
+        "texture": "vertex colours (no bake)",
+        "precision": "fp32",
+        "seed": 0
+      },
+      "items": [
+        {
+          "id": "bird",
+          "mesh": "bird.glb",
+          "gen_s": 1.52,
+          "torch_peak_gb": 4.14,
+          "textured": true,
+          "error": null,
+          "faces": 85131,
+          "gpu_peak_gb": 5.39
+        },
+        {
+          "id": "brute",
+          "mesh": "brute.glb",
+          "gen_s": 1.1,
+          "torch_peak_gb": 4.14,
+          "textured": true,
+          "error": null,
+          "faces": 115720,
+          "gpu_peak_gb": 5.39
+        },
+        {
+          "id": "fox",
+          "mesh": "fox.glb",
+          "gen_s": 1.14,
+          "torch_peak_gb": 4.14,
+          "textured": true,
+          "error": null,
+          "faces": 91078,
+          "gpu_peak_gb": 5.39
+        },
+        {
+          "id": "humanoid",
+          "mesh": "humanoid.glb",
+          "gen_s": 1.11,
+          "torch_peak_gb": 4.14,
+          "textured": true,
+          "error": null,
+          "faces": 42243,
+          "gpu_peak_gb": 5.39
+        },
+        {
+          "id": "spider",
+          "mesh": "spider.glb",
+          "gen_s": 1.11,
+          "torch_peak_gb": 4.14,
+          "textured": true,
+          "error": null,
+          "faces": 42561,
+          "gpu_peak_gb": 5.39
+        }
+      ]
+    },
+    "items": {
+      "bird": {
+        "id": "bird",
+        "mesh": "bird.glb",
+        "gen_s": 1.52,
+        "torch_peak_gb": 4.14,
+        "textured": true,
+        "error": null,
+        "faces": 85131,
+        "gpu_peak_gb": 5.39,
+        "triangles": 85057,
+        "vertices": 42535,
+        "loose_parts": 3,
+        "loose_parts_over_1pct": 1,
+        "open_edges": 3,
+        "bbox_ratio_xyz": [
+          0.809,
+          0.986,
+          1.0
+        ],
+        "colour_source": "VERTEX"
+      },
+      "brute": {
+        "id": "brute",
+        "mesh": "brute.glb",
+        "gen_s": 1.1,
+        "torch_peak_gb": 4.14,
+        "textured": true,
+        "error": null,
+        "faces": 115720,
+        "gpu_peak_gb": 5.39,
+        "triangles": 115582,
+        "vertices": 57797,
+        "loose_parts": 2,
+        "loose_parts_over_1pct": 1,
+        "open_edges": 12,
+        "bbox_ratio_xyz": [
+          0.948,
+          0.524,
+          1.0
+        ],
+        "colour_source": "VERTEX"
+      },
+      "fox": {
+        "id": "fox",
+        "mesh": "fox.glb",
+        "gen_s": 1.14,
+        "torch_peak_gb": 4.14,
+        "textured": true,
+        "error": null,
+        "faces": 91078,
+        "gpu_peak_gb": 5.39,
+        "triangles": 90974,
+        "vertices": 45494,
+        "loose_parts": 1,
+        "loose_parts_over_1pct": 1,
+        "open_edges": 42,
+        "bbox_ratio_xyz": [
+          0.478,
+          1.0,
+          0.735
+        ],
+        "colour_source": "VERTEX"
+      },
+      "humanoid": {
+        "id": "humanoid",
+        "mesh": "humanoid.glb",
+        "gen_s": 1.11,
+        "torch_peak_gb": 4.14,
+        "textured": true,
+        "error": null,
+        "faces": 42243,
+        "gpu_peak_gb": 5.39,
+        "triangles": 42199,
+        "vertices": 21108,
+        "loose_parts": 3,
+        "loose_parts_over_1pct": 1,
+        "open_edges": 27,
+        "bbox_ratio_xyz": [
+          0.472,
+          0.281,
+          1.0
+        ],
+        "colour_source": "VERTEX"
+      },
+      "spider": {
+        "id": "spider",
+        "mesh": "spider.glb",
+        "gen_s": 1.11,
+        "torch_peak_gb": 4.14,
+        "textured": true,
+        "error": null,
+        "faces": 42561,
+        "gpu_peak_gb": 5.39,
+        "triangles": 42527,
+        "vertices": 21281,
+        "loose_parts": 8,
+        "loose_parts_over_1pct": 1,
+        "open_edges": 33,
+        "bbox_ratio_xyz": [
+          1.0,
+          0.389,
+          0.871
+        ],
+        "colour_source": "VERTEX"
+      }
+    }
+  }
+}
