@@ -56,6 +56,14 @@ HF model cards); VRAM is from READMEs until the bake-off measures it. Not legal 
 | numpy, Pillow | library | BSD-3-Clause, MIT-CMU (HPND) | CLEARED | sprite post-processing; app dependencies |
 | RMBG-1.4 / 2.0 (Bria) | matting model | bria-rmbg (non-commercial) | BANNED | |
 | DINOv3 | model | Meta dinov3-license | BANNED until read | TRELLIS.2 only |
+| FastAPI (with Starlette, Pydantic) | library | MIT, BSD-3-Clause, MIT | CLEARED | the backend (Phase 2) |
+| uvicorn | library | BSD-3-Clause | CLEARED | serves the backend on 127.0.0.1 |
+| python-multipart | library | Apache-2.0 | CLEARED | picture upload |
+| Pillow | library | MIT-CMU (HPND) | CLEARED | picture prep in the app |
+| NumPy | library | BSD-3-Clause | CLEARED | picture prep in the app |
+| three.js (r186; GLTFLoader, OrbitControls) | library | MIT | CLEARED | the spinnable viewer, vendored unmodified in `web/vendor/three/` |
+| Playwright for Python | dev tool | Apache-2.0 | CLEARED | headless-browser clicks in local evidence only; drives the installed Edge, bundles no browser |
+| httpx | dev tool | BSD-3-Clause | CLEARED | FastAPI test client |
 
 ## Prompt generator (Phase 9, D-020)
 

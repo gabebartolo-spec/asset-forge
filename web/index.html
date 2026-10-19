@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asset Forge</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "/vendor/three/three.module.js",
+  "three/addons/": "/vendor/three/addons/"
+} }
+</script>
+</head>
+<body>
+<header>
+  <div class="brand">Asset Forge</div>
+  <nav class="tabs" aria-label="Sections">
+    <button class="tab active" id="tab-3d">3D model</button>
+    <button class="tab" disabled title="Coming later">Sprite <span class="soon">soon</span></button>
+    <button class="tab" disabled title="Coming later">Library <span class="soon">soon</span></button>
+  </nav>
+</header>
+
+<ol class="steps" id="steps" aria-label="Steps">
+  <li data-step="1" class="current" id="pill1">1 Make</li>
+  <li data-step="2">2 Clean up</li>
+  <li data-step="3" class="soonpill">3 Skeleton <span class="soon">soon</span></li>
+  <li data-step="4" class="soonpill">4 Animate <span class="soon">soon</span></li>
+</ol>
+
+<main>
+  <section class="stage">
+    <div id="viewer" aria-label="3D viewer">
+      <div id="viewer-msg" class="viewer-msg"><span>Your model will appear here.<br>
+        Pick a picture on the right, then press<br>Make 3D model, bottom right.</span></div>
+    </div>
+    <div id="viewer-hint" class="viewer-hint hidden">Drag to spin. Scroll to zoom.</div>
+  </section>
+
+  <aside class="panel" id="panel-1">
+    <h2>Make your model</h2>
+
+    <div class="block">
+      <h3>1. Pick a picture</h3>
+      <label class="drop" id="drop" for="file">
+        <img id="preview" class="hidden" alt="Your picture">
+        <span id="drop-text">Click to choose a picture<br><small>One character on a plain background (PNG or JPG).<br>Describing it in words is coming next.</small></span>
+      </label>
+      <input type="file" id="file" accept="image/png,image/jpeg,image/webp" class="hidden">
+    </div>
+
+    <div class="block">
+      <h3>2. What is it?</h3>
+      <p class="hint">This picks the skeleton it gets later.</p>
+      <div class="seg" id="types" role="radiogroup" aria-label="Type"></div>
+    </div>
+
+    <div class="block">
+      <h3>3. Choose a maker <span id="same-time"></span></h3>
+      <div id="generators" role="radiogroup" aria-label="Generator"></div>
+    </div>
+  </aside>
+
+  <aside class="panel hidden" id="panel-2">
+    <h2>Cleaning up is coming next</h2>
+    <p>This step will turn the rough model into a light, tidy one that is ready for a game.
+      It is not built yet, so there is nothing to press here.</p>
+    <p class="muted">Click <b>1 Make</b> above to go back to your model.</p>
+  </aside>
+</main>
+
+<footer>
+  <div class="foot-left"><span id="foot-info"></span><span id="foot-hint"></span>
+    <div id="note" class="note hidden" role="status"></div></div>
+  <div class="foot-right">
+    <button class="secondary" id="redo" disabled>Redo</button>
+    <button class="primary" id="next" disabled>Make 3D model</button>
+  </div>
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
