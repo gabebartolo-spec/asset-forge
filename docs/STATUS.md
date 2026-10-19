@@ -4,24 +4,24 @@ Cap: 150 lines. Edited only by the lead, in a board PR after each merge, from th
 "Board and log" section. History rolls to `docs/archive/status_<month>.md`.
 
 ## Phase
-Current phase: **0 — Foundations** (gate: CI green on main and proven to reject a failing test,
-a lint error and a planted secret). Gate signer: the lead.
+Current phase: **1 — Generator bake-off**. Phase 0 gate met 2026-10-20
+(`docs/audits/kickoff_gate.md`), signed by the lead.
 
 ## Agents
 
 | Agent | State | Item | Branch / PR | Since |
 |-------|-------|------|-------------|-------|
-| Lead | available | Phase 0 item 1 next | — | 2026-10-20 |
+| Lead | awaiting director | item 3 (Hunyuan in or out of the bake-off) | — | 2026-10-20 |
 
 States: working · running a check · awaiting director · blocked · available.
 
 ## Assigned items (in order; an item starts only when it is listed here)
 
 ### Phase 0 (assigned by the director, 2026-10-19: "set it up so i can begin development")
-1. Lead: prove the gate with throwaway PRs, each closed unmerged after it goes red: a failing
+1. DONE 2026-10-20. Lead: prove the gate with throwaway PRs, each closed unmerged after it goes red: a failing
    unit test, a ruff error, a planted `FORGE_TEST_SECRET_` + 16 characters. Record run ids in
    `docs/audits/kickoff_gate.md`.
-2. Lead: `docs/LICENCES.md` rows for every candidate generator, checkpoint and LoRA already on
+2. DONE 2026-10-20 (Hunyuan HELD for the director). Lead: `docs/LICENCES.md` rows for every candidate generator, checkpoint and LoRA already on
    the machine (design section 4), with licence and verdict.
 
 ### Phase 1 — Generator bake-off (design 5.2; result goes to the director before anything else)

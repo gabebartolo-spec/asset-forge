@@ -1,46 +1,39 @@
-# Lead handoff, 2026-10-20 (written for the account switch)
-## State: available (Phase 0 item 1 is next)
+# Lead handoff, 2026-10-20 (session 2)
+## State: awaiting director (Hunyuan in or out of the bake-off)
 
 ## Task
 Lead of Asset Forge: local text/image -> game-ready 3D (clean mesh, skeleton, procedural
 animations, .glb) and pixel-perfect Pokémon-style sprites. Read, in order: `CLAUDE.md`, this
 file, the design `docs/superpowers/specs/2026-10-19-asset-forge-design.md` (in full),
-`docs/STATUS.md`, `docs/DECISIONS.md`. Then do STATUS "Assigned items" in order.
+`docs/STATUS.md`, `docs/DECISIONS.md`, `docs/LICENCES.md`. Then do STATUS "Assigned items".
 
 ## Branch and commit
-- main: the first commit (scaffold + design), pushed to github.com/gabebartolo-spec/asset-forge
-  (public). Branch protection on main: `test`, `doc-caps`, `gitleaks` required, squash only.
-- No worktrees, no open PRs.
+- Phase 0 done: gate proved (`docs/audits/kickoff_gate.md`, PRs #1-#3 closed unmerged), licence
+  register filled (D-009). Board PR `claude/phase0-board` carries both; check it merged.
 
-## Unfinished changes
-None. Next: Phase 0 item 1 (gate-proving throwaway PRs), item 2 (licence rows), then Phase 1
-bake-off. The bake-off result goes to the director as labelled five-view sheets before any app
-code is written.
-
-## Evidence so far
-- Builder check run on the design (Sonnet subagent, 2026-10-19); its 8 questions are answered in
-  design section 9 (1 by the director, 7 lead calls, D-007/D-008).
-- Local: `pytest` 2 passed, `ruff check .` clean, at the first commit.
-
-## Attempts (fix-loop record)
-None.
+## Next
+Phase 1 item 3, the bake-off. Candidates that are CLEARED: TripoSG (swap RMBG for BiRefNet),
+TripoSR, SF3D, Hi3DGen, Direct3D-S2, Step1X-3D geometry-only if it fits. Hunyuan 2.x only if the
+director keeps it (HELD, D-009). Text-to-image front end: SDXL + `pixel-art-xl` are cleared, but
+a non-pixel reference model for 3D input still needs a licence row.
+Blocker to solve first: the Stability Matrix ComfyUI folder was not found (searched C:\Users\DANTE
+and D:\ to depth 3; %APPDATA%\StabilityMatrix has no LibraryDir). Our own `.venv` per model is
+allowed and may be simpler than ComfyUI for TripoSG/SF3D.
 
 ## Open decisions
-None waiting on the director. Lead calls in design section 9 may be overruled by him.
+- Director: keep Hunyuan in the bake-off despite the EU/UK/South Korea output ban?
 
 ## Running jobs
-None. A brainstorm mockup server may still run from the old session (localhost, auto-exits after
-4 h idle); ignore it.
+None.
 
 ## Findings for the lead
-- The project-kickoff scaffold is Godot-only. For a Python tool, the Godot harness (tests/*.gd,
-  run_tests.sh, shard planner, gdlint, build.yml, godot-tests and sim-review skills) was removed
-  and replaced with pytest + ruff (`tests.yml`, `forge-tests` skill). Not yet proved across
-  projects, so not in the skill's learnings.
-- The machine already has `hunyuan3d-dit-v2-mv_fp16` and SDXL pixel-art models in the Stability
-  Matrix ComfyUI; never update or modify that install (shared-machine rule).
+- Civitai returns "not available in your region" from this PC, so Civitai licence flags cannot
+  be read here; treat Civitai models as unverifiable.
+- Planted-defect PRs bind to the lead session's PR bar; auto_fix and auto_archive were off.
 Playbook: nothing new.
 
 ## Rules learnt the hard way (under 10 lines)
 - Southern Cross is Essentials Gen 9 Pack, not GBA; check the target game's files before
   assuming a sprite format.
+- "MIT" on a 3D model is not enough: check its export path's dependencies (nvdiffrast,
+  diffoctreerast are non-commercial).

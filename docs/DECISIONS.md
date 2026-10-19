@@ -4,6 +4,13 @@ Cap: 400 lines; oldest roll to `docs/archive/`. One decision per entry, newest f
 that is not here does not exist. Format: date · id · who decided · the decision · why · what it
 changes. Only the lead edits this file, from the "Board and log" section of merged PRs.
 
+## 2026-10-20 · D-009 · Lead · Licence register verdicts; Hunyuan held
+Why: the Hunyuan 3D licence (§5c) bans using or distributing its Output outside the Territory
+(world minus EU, UK, South Korea), so its assets could not ship in a game sold there. This
+supersedes the D-008 line "Hunyuan allowed in Australia". Changes: Hunyuan rows are HELD until
+the director decides; TRELLIS and every pack with nvdiffrast/diffoctreerast are BANNED; both
+Civitai pixel items are BANNED (unverifiable or no-sale terms); `pixel-art-xl` and SDXL CLEARED.
+
 ## 2026-10-19 · D-008 · Lead (director may overrule) · Calls after the builder check
 Why: settle builder questions without changing what gets built. Changes: design section 9 lists
 them (8k monster budget editable, limb-chain editor first, no auto re-seed, Godot 4.7.2, bake-off
