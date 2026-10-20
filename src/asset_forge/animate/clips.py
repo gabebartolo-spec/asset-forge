@@ -648,7 +648,7 @@ class FourLegged(Animator):
         def frame(c, t):
             r = {"Neck1": pitch(c["neck"]), "Head": pitch(c["neck"] * 0.6),
                  **self._tail(0, 0, c["tail"] * 4)}
-            mv = {"Hips": np.array([0.0, 0.0, -c["hz"] * sink])}
+            mv = {"Hips": np.array([0.0, 0.0, -0.02 * self.L - c["hz"] * sink])}  # standing drop
             return self.pose(r, mv, self.planted(), root=about(roll(c["fall"]), pivot))
 
         clip = self.keyed_clip("faint", k, frame)
@@ -752,7 +752,7 @@ class Bird(Animator):
         def frame(c, t):
             r = {"Neck1": pitch(c["neck"]), "Head": pitch(c["neck"] * 0.6),
                  **self._wings(c["wopen"], c["wraise"])}
-            mv = {"Hips": np.array([0.0, 0.0, -c["hz"] * sink])}
+            mv = {"Hips": np.array([0.0, 0.0, -0.02 * self.L - c["hz"] * sink])}  # standing drop
             return self.pose(r, mv, self.planted(), root=about(roll(c["fall"]), pivot))
 
         clip = self.keyed_clip("faint", k, frame)

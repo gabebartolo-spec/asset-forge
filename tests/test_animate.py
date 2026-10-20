@@ -369,6 +369,17 @@ def test_a_hit_knocks_the_torso_and_head_back_then_settles():
     np.testing.assert_allclose(head[-1], head[0], atol=1e-6)
 
 
+@pytest.mark.parametrize("template", list(STICKS))
+def test_every_clip_starts_at_the_idle_root_position(template):
+    b = body(template)
+    a = animator(b)
+    start = b.joint_positions(a.idle().deltas[0])["Hips"]
+    for name in ("attack", "hit", "faint"):
+        hips = b.joint_positions(getattr(a, name)().deltas[0])["Hips"]
+        np.testing.assert_allclose(hips[:2], start[:2], atol=1e-3 * b.height)  # in place
+        assert abs(hips[2] - start[2]) <= 0.01 * b.height, (name, hips, start)
+
+
 def test_the_faint_ends_lying_flat_with_straight_legs():
     b = body("humanoid")
     f = animator(b).faint()

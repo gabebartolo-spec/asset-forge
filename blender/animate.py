@@ -239,6 +239,7 @@ def render_previews(clips, actions, arm, model, body, out: Path, size: int):
     az, el = math.radians(55), math.radians(12)
     d = Vector((math.sin(az) * math.cos(el), -math.cos(az) * math.cos(el), math.sin(el)))
     made = {}
+    anchor = None  # idle's box centre: every clip is framed on it, so switching clips never pops
     for clip, act in zip(clips, actions, strict=True):
         use_action(arm, act)
         lo, hi = np.full(3, np.inf), np.full(3, -np.inf)
@@ -246,8 +247,18 @@ def render_previews(clips, actions, arm, model, body, out: Path, size: int):
             scene.frame_set(f)
             a, b = mesh_box(model)
             lo, hi = np.minimum(lo, a), np.maximum(hi, b)
-        centre = Vector(((lo + hi) / 2).tolist())
-        cam_data.ortho_scale = float(max(hi - lo)) * 1.25
+        if anchor is None:
+            anchor = (lo + hi) / 2
+        centre = Vector(anchor.tolist())
+        # the view's right and up; the frame must hold the clip's box about the fixed centre
+        look = -np.array(d)
+        right = np.cross(look, [0.0, 0.0, 1.0])
+        right /= np.linalg.norm(right)
+        up_v = np.cross(right, look)
+        corners = np.array([[x, y, z] for x in (lo[0], hi[0]) for y in (lo[1], hi[1])
+                            for z in (lo[2], hi[2])]) - anchor
+        half = max(np.abs(corners @ right).max(), np.abs(corners @ up_v).max())
+        cam_data.ortho_scale = float(2 * half) * 1.15
         cam.location = centre + d * 30 * body.height
         cam.rotation_euler = (-d).to_track_quat("-Z", "Y").to_euler()
         cam_data.clip_end = 100 * body.height
