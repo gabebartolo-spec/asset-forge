@@ -4,6 +4,18 @@ Cap: 400 lines; oldest roll to `docs/archive/`. One decision per entry, newest f
 that is not here does not exist. Format: date · id · who decided · the decision · why · what it
 changes. Only the lead edits this file, from the "Board and log" section of merged PRs.
 
+## 2026-10-20 · D-026 · Director · Anything that can run in parallel, runs
+His words: "if theres anything you can work on in parrelal then do it". Changes: item 12 (Step 2
+page + hand-over) starts now against PR #9's script interface with Clean mocked, merging after #9;
+Phase 3 monsters (limb-chain editor) and a Step 1 limb-count check start now. Lead calls logged
+here: animation clips in place with move speeds in clips.json; loops set by a Godot import sidecar
+(names unchanged); gait speeds scale with leg length (Froude), no step-time floors.
+
+## 2026-10-20 · D-023 · Director · Southern Cross sprite sizes
+Southern Cross art 80 px, exported 2x = 160 px for front AND back, file names UPPERCASE; GBA
+unchanged (PR #11). Sprite backs by turnaround sheet yielded 0-1 of 18: the back draw is replaced
+by a multi-view method in a later slice.
+
 ## 2026-10-20 · D-025 · Director · Work on several phases at once
 His words: "get to work / work on multiple phases at once, get more efficient". Changes: Phase 4
 Animation (first slice: 2 legs, 4 legs, bird) and Phase 6 Library and batch start now beside the
