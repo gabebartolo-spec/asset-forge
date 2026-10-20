@@ -36,7 +36,9 @@ fixture, swipe arc, hit recoil, faint flat); new tests shown failing on HEAD cod
 New blender test: faint lowest ~0 mm and torso gap <= 5% H. Unit suite 255 passed, ruff clean.
 
 ## Left
-- Read S/bl_tests.log (blender tests); fix if red.
+- Blender run (S/bl_tests.log): 6 passed, 1 failed: new faint test, end_torso_gap_mm is NaN on the
+  blockman fixture (no vertex dominated by Hips/Spine/Chest/UpperChest groups: check its vertex
+  group names / weights in torso_mask). end_lowest_mm 0.0 OK. Fix the mask, rerun under gpu.lock.
 - Push; re-render 36 previews: python tools/animate/previews.py <models/skeleton_out> <evidence>/previews_v3 --export
   (uses gpu.lock; gives Godot checks on six rigs + gait lines). Look at fox walk/run hind legs,
   human attack/hit/faint frames (crops) before reporting.
