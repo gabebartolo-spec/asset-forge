@@ -75,7 +75,7 @@ mocked; no GPU in CI. Keep CI under 10 minutes. See the `forge-tests` skill.
 ## Sessions and context
 
 - Fresh session at every task boundary; write `agent-handoffs/<role>.md` first (120-line cap,
-  rewritten, never appended). Hand off at about 200k context; wait in the background only.
+  rewritten, never appended). Hand off at about 300k context (leads 500k); wait in the background only.
 - No subagents (director, 2026-10-20: "no more subagents, if you need a helper you spawn a fresh
   session"): every helper (builder, critic, support, researcher) is a fresh Claude Code session
   started with `start_session`, briefed by its prompt, reporting through its turn-end note.
