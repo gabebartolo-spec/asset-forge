@@ -222,6 +222,38 @@ function chooseFile(file) {
   $("drop-text").textContent = "Change picture";
   note($("note"), "");
   render();
+  showCutout(file, false);
+}
+
+// Show the picture with its background cut away. The model cuts again on request ("Cut out
+// again"); the 3D step receives the same cut because the server cuts the upload the same way.
+async function showCutout(file, again) {
+  const row = $("cut-row"), text = $("cut-text"), btn = $("cut-again");
+  const can = !!(state.menu && state.menu.cutout && state.menu.cutout.available);
+  row.classList.remove("hidden");
+  btn.classList.toggle("hidden", !can);
+  btn.disabled = true;
+  text.textContent = again ? "Cutting out again..." : "Cutting out your subject...";
+  try {
+    const fd = new FormData();
+    fd.append("image", file);
+    fd.append("model", again ? "true" : "false");
+    const r = await fetch("/api/cutout", { method: "POST", body: fd });
+    if (!r.ok) {
+      let msg = "Could not cut that picture out. Try another picture.";
+      try { msg = (await r.json()).detail || msg; } catch { /* not json */ }
+      throw new Error(msg);
+    }
+    if (state.file !== file) return; // a newer picture was chosen meanwhile
+    $("preview").src = URL.createObjectURL(await r.blob());
+    text.textContent = can
+      ? "Background removed. Not right? Press Cut out again for a closer cut."
+      : "Background removed.";
+  } catch (e) {
+    text.textContent = e.message;
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // Follow a job until it ends. `what` is the plain-words name of the work; the footer says
@@ -472,6 +504,7 @@ async function expand(again) {
 
 async function init() {
   $("file").onchange = (e) => chooseFile(e.target.files[0]);
+  $("cut-again").onclick = () => state.file && showCutout(state.file, true);
   const drop = $("drop");
   drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
   drop.ondragleave = () => drop.classList.remove("over");
@@ -534,6 +567,7 @@ async function openAsset(id, step) {
   const g = a.steps.generate || {};
   const hasPic = (g.files || []).includes("input.png");
   state.file = null; state.rig = null; state.bones = state.pose = false;
+  $("cut-row").classList.add("hidden");
   state.done = state.reference = false; state.meshUrl = null; state.step = 1; state.source = "";
   state.asset = null;
   state.limbWarn = ""; state.chain = null; state.limbSel = -1; state.limbsEdited = false; state.builtChain = null; state.outside = []; state.resetAsk = false;

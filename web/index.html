@@ -49,6 +49,10 @@
         <span id="drop-text">Click to choose a picture<br><small>One character on a plain background (PNG or JPG).</small></span>
       </label>
       <input type="file" id="file" accept="image/png,image/jpeg,image/webp" class="hidden">
+      <div class="row hidden" id="cut-row">
+        <span class="why" id="cut-text" role="status"></span>
+        <button type="button" class="secondary small" id="cut-again">Cut out again</button>
+      </div>
       <label class="lbl" for="idea">Or describe your model</label>
       <textarea id="idea" rows="1" maxlength="600" placeholder="A few words are enough, like: a six-armed brute"></textarea>
       <div class="row">
