@@ -1,9 +1,10 @@
 # Handoff: animation (round 4: "Fix first" on #22's joints), updated 2026-10-20
-State: running a check (bwb5ff2ms: -m blender + previews_v4, log out/run_v4b.log).
-Pushed b80830c (lead asked, so af-proto can re-merge); local 0d077f6 not pushed yet.
-PR #20 ready (not draft). Do not merge (the lead merges). Lead (director 2026-10-20): GPU
-lock only for GPU jobs; re-rig, -m blender and Workbench previews run without it
-(previews use --lock out/own.lock).
+State: round 4 done and pushed: origin/claude/animation = 43450d7 (PR #20 ready, body has
+rounds 3 and 4). CI watcher was running at hand-off; if not green at head, read the failing
+shard (jobs/annotations API) and fix. Do not merge (the lead merges). Context hit 300k:
+stood down; a fresh session continues only if CI is red or the lead's critic returns fixes.
+Lead (director 2026-10-20): GPU lock only for GPU jobs; re-rig, -m blender and Workbench
+previews run without it (previews use --lock out/own.lock).
 Worktree: C:/Users/DANTE/Documents/GitHub/asset-forge/.claude/worktrees/magical-booth-c546dd
 (no .venv: run C:/Users/DANTE/Documents/GitHub/asset-forge-wt/animation/.venv/Scripts/python.exe
 with PYTHONPATH=src; never edit that old worktree). config.local.toml copied in (gitignored).
@@ -34,7 +35,7 @@ push once. No critics (the lead starts a fresh motion critic). Report 6 lines ma
     the slide check (unit and .glb) now follows the paw/toe tip ("<leg>Foot.tail"; clips.json
     "foot_tips" in glTF axes; files without it fall back to the ankle node).
   - That exposed a real defect: curled toes/paws dipped through the floor mid-swing (bird
-    toes ~1 cm). Animator.swing_turn cuts the curl back to keep the tip >= half the lift up.
+    toes ~1 cm). Animator.swing_turn cuts the curl back to keep the tip clear (now >= 3/4 of the lift, 0d077f6).
 - Previews framed on all clips together (union box centre, smallest scale), constant per rig.
 - 4 new tests, failing first on the old src (scratch failing_first.txt): paw tip check,
   tips never dip in the swing [bird fails old], heel about the ball, faint on the floor.
@@ -50,15 +51,13 @@ push once. No critics (the lead starts a fresh motion critic). Report 6 lines ma
 - Re-rig of six on merged fit: out/rigs_v4, all RIG OK, 4 influences. First previews run
   (before 0d077f6): all six OK, export OK, RIG_CHECK_OK, LOOP_CHECK_OK; re-rendering now.
 
+- Final: -m blender (animate + skeleton) 13 passed; previews_v4 re-rendered after 0d077f6:
+  six OK, export OK, RIG/LOOP_CHECK_OK; slide cm person walk 0.05-0.13, fox walk 0.02.
+  Own look at strips (out/check_v4.png): faint flat on floor, size constant; figure sits ~1/3
+  frame height (union framing includes the lying faint), the critic may flag it.
+
 ## Next steps
-1. Read out/run_v4b.log: BLENDER_TESTS (all passed), PREVIEWS rc 0 and
-   six "OK" rig lines with export OK.
-2. View own GIF frames at 2x (crops): figure size constant, faint lies on the floor, bird hop
-   feet together, walk tall.
-3. PR #20 body (%TEMP%/afsp/pr_body.md is the live copy): round 3 was never added; insert
-   round 3 (old scratch round3.md, paths -> out/previews_v4) and round 4 after round 2; drop
-   stale Not exercised lines (foot fit, fox 18 deg yaw now fixed by #22). gh pr edit 20
-   --body-file. Push; check CI green at head.
-   Finding for the lead's learnings (workers don't write them): tracking the paw/toe tip
+1. CI green at 43450d7 (gh pr checks 20).
+2. Lead runs a fresh motion critic on out/previews_v4/ (36 GIFs); apply its FIX list.
+3. Finding for the lead's learnings (workers don't write them): tracking the paw/toe tip
    instead of the ankle caught toes clipping through the floor mid-swing (test failed first).
-4. Report to the lead (local_1a944552 relays): sha, GIF folder, test counts.
