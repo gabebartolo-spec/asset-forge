@@ -137,6 +137,7 @@ class GpuQueue:
                 job.message = f"Waiting for the graphics card ({owner} is using it)"
                 job.save()
 
+        end, message = FAILED, "Something went wrong. Press Redo to try again."
         try:
             with self._mu:  # card jobs start in press order
                 while job in self._line and self._line[0] is not job:
@@ -152,16 +153,19 @@ class GpuQueue:
                 job.message = "Starting"
                 job.save()
                 job.result = job.run(job)
-                job.state = DONE
-                job.message = "Done"
+            end, message = DONE, "Done"
         except Exception as e:  # noqa: BLE001
             traceback.print_exc()
             job.error = _plain(e)  # before the state flips: waiters read both
-            job.message = job.error
-            job.state = FAILED
+            end, message = FAILED, job.error
         finally:
+            # Order matters (flaky batch test): the card share is released and `finished` is
+            # set before the state flips; the save then writes the end state and the step's
+            # timing; only then is the job settled, which is when the page sees it end.
             self._admitted(job)
             job.finished = time.time()
+            job.message = message
+            job.state = end
             job.save()
             job.settled = True
 

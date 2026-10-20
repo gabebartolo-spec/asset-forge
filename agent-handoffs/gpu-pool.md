@@ -29,14 +29,17 @@ Replace the one-at-a-time `models/gpu.lock` with a VRAM budget (D-030 in the PR'
   `models/` (a private lock nobody else saw).
 - `jobqueue.GpuQueue`: a thread per job; card jobs admitted in press order (a waiting big job
   holds back later card jobs), CPU jobs start at once. `submit(..., need=...)`. `wait()` waits for
-  `settled`; `Job.view()` (API/batch) reads "running" until settled (fixed a done-before-saved race).
+  `settled`; `Job.view()` (API/batch) reads "running" until settled. Lead 2026-10-20 (af-ci-fix
+  stopped, I own jobqueue.py and the flaky test_batch_of_three...): the end state now flips in
+  `finally` after the share is released and `finished` is set; save writes state + timing; then
+  settled. Deterministic test: test_app_queue::test_a_job_reads_done_only_after_...
 - `api.py`/`library.py` pass needs: expand, draw, generate:<id>, batch = max(draw, generate).
 - `tools/bakeoff/gpu_lock.py run <who> [--vram MB] -- cmd`: default stays exclusive.
 - `[gpu] budget_mb` in config (Settings.gpu_budget_mb, config.example.toml).
 - Docs: CLAUDE.md machine rule, design 4/5.7/9 lines, ROADMAP Phase 2, forge-tests GPU line.
 
 ## Evidence
-- Unit: full suite 206 passed before the path fix; then gpu/queue suites 16 passed; ruff clean.
+- Unit: full suite 210 passed at the timing fix; library timing/batch tests 15/15 repeats; ruff clean.
   New `tests/test_gpu_budget.py` (11 tests). conftest autouse disables nvidia-smi in tests.
 - Real proof (notes folder `gpu_pool_proof/`): A and B (--vram 256, real CUDA allocs on the
   4070 SUPER) overlapped 17:52:16.3-17:52:30.9; C (no --vram) waited "for proofB, proofA" and
