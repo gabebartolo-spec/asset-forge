@@ -7,9 +7,13 @@ from pathlib import Path
 
 
 def clean_command(blender_exe: str, repo: Path, raw_glb: Path, out_dir: Path,
-                  asset_type: str, ref_png: Path) -> list[str]:
-    """Writes `<out_dir>/clean.glb` and `<out_dir>/report.json`."""
-    return [
+                  asset_type: str, ref_png: Path, generator: str | None = None) -> list[str]:
+    """Writes `<out_dir>/clean.glb` and `<out_dir>/report.json`. `generator` ("hi3dgen" or
+    "triposg") tells clean.py which way that maker faces the model."""
+    cmd = [
         blender_exe, "-b", "--factory-startup", "-P", str(repo / "blender" / "clean.py"), "--",
         str(raw_glb), str(out_dir), "--type", asset_type, "--ref", str(ref_png),
     ]
+    if generator:
+        cmd += ["--generator", generator]
+    return cmd

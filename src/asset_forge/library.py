@@ -1,10 +1,10 @@
 """Library tab and batch queue (design 5.4, 5.5). Routes only; the files live in store.py and
 the work runs on the one GPU queue.
 
-Batch: each prompt becomes a text-only asset and ONE queue job (draw the picture, then make the
-3D model). Jobs run one after another in the order queued, so a batch and a single Make press
-share the one GPU in turn. Clean up is not wired yet (501 in api.py); when it is, add it to
-`run` here so a batch stops at Skeleton as the design says.
+Batch: each prompt becomes a text-only asset and ONE queue job (draw the picture, make the 3D
+model, clean it up). Jobs run one after another in the order queued, so a batch and a single
+Make press share the one GPU in turn. A batch stops at Skeleton (design 5.5): the skeleton check
+needs the director, so it is never queued here.
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from collections.abc import Callable
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+from .clean_step import CleanFailed
 from .draw import ReferenceDrawer
 from .generators import Registry
 from .jobqueue import GpuQueue, Job
@@ -36,7 +37,8 @@ class BatchRequest(BaseModel):
 
 
 def register_library(app: FastAPI, store: Store, queue: GpuQueue, registry: Registry,
-                     drawer: ReferenceDrawer, draw_now: Callable, generate_now: Callable) -> None:
+                     drawer: ReferenceDrawer, draw_now: Callable, generate_now: Callable,
+                     clean_now: Callable) -> None:
     batches: dict[str, list[dict]] = {}
 
     def missing(what: str) -> HTTPException:
@@ -107,7 +109,13 @@ def register_library(app: FastAPI, store: Store, queue: GpuQueue, registry: Regi
                 tag = f"Model {n} of {total}: "
                 drew = draw_now(aid, kind, words, seed, lambda m: job.set_message(tag + m))
                 res = generate_now(aid, generator, seed, lambda m: job.set_message(tag + m))
-                return {**res, "timings": {"draw": drew["draw_s"], "generate": res["total_s"]}}
+                cleaned = clean_now(aid, lambda m: job.set_message(tag + m))
+                if not cleaned["passed"]:  # the made model stays; the card shows where it stopped
+                    raise CleanFailed("Made, but the clean-up broke a limit: "
+                                      + " ".join(cleaned["problems"]))
+                return {**res, "clean": cleaned, "timings": {
+                    "draw": drew["draw_s"], "generate": res["total_s"],
+                    "clean": cleaned["total_s"]}}
 
             job = queue.submit(asset["id"], "generate", run)
             items.append({"asset_id": asset["id"], "prompt": words, "type": kind,
