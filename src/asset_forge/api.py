@@ -8,7 +8,10 @@
     GET  /api/assets, /api/assets/{id}    the library
     GET  /api/assets/{id}/files/{step}/{name}   an output (raw.glb, input.png, ...)
     POST /api/assets/{id}/clean           Step 2 hook (not wired yet: 501)
-    POST /api/assets/{id}/skeleton        Step 3: fit, bind, test pose (queued; needs clean.glb)
+    POST /api/assets/{id}/skeleton        Step 3: fit, bind, test pose (queued; needs clean.glb).
+                                          A monster sends its confirmed {spine, limbs}
+    GET  /api/assets/{id}/skeleton/limbs  a monster's proposed limb chains and counts
+                                          (?fresh=1: the proposal, not the confirmed limbs)
     GET  /api/library[?trash=1]           cards: thumbnail flag, type, date, last step, timings
     POST /api/assets/{id}/duplicate, /trash, /restore   copy, move to library/_trash, put back
     POST /api/batch, GET /api/batch/{id}  several prompts through draw + 3D on the one queue
@@ -25,23 +28,29 @@ import io
 import json
 import mimetypes
 import secrets
+import struct
 import time
 from collections.abc import Callable
+from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from .anatomy import check_mesh
 from .animate import NOT_YET, animate
 from .config import Settings, load_settings
+from .cutout import CutoutError, Cutter, as_png, default_cutter, needs_model
 from .draw import DrawError, ReferenceDrawer, default_drawer
 from .export import export_animated
 from .generators import Registry
+from .gpu_lock import gpu_lock, vram_need
 from .jobqueue import GpuQueue, Job
 from .library import register_library
-from .matte import prepare_reference
+from .matte import one_subject, prepare_reference
 from .skeleton import rig
+from .skeleton.monster import ChainError, monster_bones
 from .store import ASSET_TYPES, NotFound, Store
 
 mimetypes.add_type("text/javascript", ".js")
@@ -49,6 +58,7 @@ mimetypes.add_type("model/gltf-binary", ".glb")
 
 TYPE_LABELS = {"humanoid": "Humanoid", "monster": "Monster", "animal": "Animal"}
 MAX_UPLOAD = 25 * 1024 * 1024
+DRAW_TRIES = 3  # draws per press before the picture is given up on
 MAX_WORDS = 600
 
 
@@ -97,7 +107,7 @@ def release_idea_writer() -> None:
 
 def create_app(settings: Settings | None = None, registry: Registry | None = None,
                queue: GpuQueue | None = None, expander: Expander | None = None,
-               drawer: ReferenceDrawer | None = None,
+               drawer: ReferenceDrawer | None = None, cutter: Cutter | None = None,
                release_writer: Callable[[], None] | None = None) -> FastAPI:
     settings = settings or load_settings()
     store = Store(settings.library_dir)
@@ -120,9 +130,11 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
 
     expander = expander or real_expander
     drawer = drawer or default_drawer(settings)
+    cutter = cutter or default_cutter(settings.models_dir)
     release_writer = release_writer or release_idea_writer
 
-    gpu_queue = queue or GpuQueue(settings.lock_dir, persist=persist)
+    gpu_queue = queue or GpuQueue(settings.lock_dir, persist=persist,
+                                  budget_mb=settings.gpu_budget_mb, make_room=release_writer)
     if queue is not None:
         gpu_queue.persist = persist
 
@@ -141,6 +153,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
             "types": [{"id": t, "label": TYPE_LABELS[t]} for t in ASSET_TYPES],
             "generators": registry.menu(),
             "text_draw": {"available": drawer.available, "note": drawer.note},
+            "cutout": {"available": cutter.available, "note": cutter.note},
         }
 
     @app.post("/api/assets")
@@ -150,12 +163,46 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         if len(data) > MAX_UPLOAD:
             raise HTTPException(400, "That picture is too big. Use one under 25 MB.")
         try:
-            cut = prepare_reference(data)
-            buf = io.BytesIO()
-            cut.save(buf, "PNG")
-            return store.create_asset(type, buf.getvalue())
-        except ValueError as e:
+            return store.create_asset(type, as_png(cut_picture(data)))
+        except (ValueError, CutoutError) as e:
             raise HTTPException(400, str(e)) from e
+
+    @app.post("/api/cutout")
+    async def cutout(image: UploadFile = File(...),  # noqa: B008
+                     model: bool = Form(False)) -> Response:  # noqa: B008
+        """Cut the subject out of any picture and return a transparent PNG (the page's "Cut
+        out" preview and Claude's tool). `model=true` always uses the cut-out model."""
+        data = await image.read(MAX_UPLOAD + 1)
+        if len(data) > MAX_UPLOAD:
+            raise HTTPException(400, "That picture is too big. Use one under 25 MB.")
+        try:
+            return Response(as_png(cut_picture(data, force_model=model)), media_type="image/png")
+        except (ValueError, CutoutError) as e:
+            raise HTTPException(400, str(e)) from e
+
+    def cut_picture(data: bytes, force_model: bool = False):  # noqa: ANN202
+        """Quick plain-background cut first; the cut-out model when that left no single whole
+        subject (a busy background) or when asked. Falls back to the quick cut, with its plain
+        error, when the model is not installed."""
+        first_error = None
+        try:
+            cut = prepare_reference(data)
+        except ValueError as e:
+            if "not a picture" in str(e):  # nothing for the model to look at
+                raise
+            cut, first_error = None, e
+        if force_model or cut is None or needs_model(cut):
+            if cutter.available:
+                release_writer()
+                with gpu_lock(settings.lock_dir, "asset-forge:cutout",
+                              vram_mb=vram_need("cutout:birefnet"),
+                              budget_mb=settings.gpu_budget_mb, make_room=release_writer):
+                    return prepare_reference(cutter.cut(data))
+            if force_model:
+                raise CutoutError(cutter.note)
+        if cut is None:
+            raise first_error
+        return cut
 
     def need_drawer() -> None:
         if not drawer.available:
@@ -174,12 +221,22 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         """Draw input.png from the words (inside a queue job; the batch uses it too)."""
         release_writer()  # the idea writer must not hold VRAM while the picture is drawn
         t0 = time.time()
-        png = drawer.draw(prompt, asset_type, seed, progress)
         buf = io.BytesIO()
-        try:
-            prepare_reference(png).save(buf, "PNG")
-        except ValueError as e:
-            raise DrawError("The drawing came out empty. Press Draw another.") from e
+        for attempt in range(DRAW_TRIES):  # a picture of several creatures is drawn again
+            seed_used = seed + attempt
+            png = drawer.draw(prompt, asset_type, seed_used, progress)
+            try:
+                cut = prepare_reference(png)
+            except ValueError as e:
+                raise DrawError("The drawing came out empty. Press Draw another.") from e
+            if one_subject(cut):
+                break
+            progress("The picture had more than one creature, drawing it again...")
+        else:
+            raise DrawError("The picture keeps coming out with several creatures or cut off. "
+                            "Press Draw another, or add 'one animal alone' to your words.")
+        cut.save(buf, "PNG")
+        seed = seed_used
         (store.step_dir(asset_id, "generate") / "input.png").write_bytes(buf.getvalue())
         return {"seed": seed, "draw_s": round(time.time() - t0, 1)}
 
@@ -195,6 +252,8 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
             "total_s": round(time.time() - t0, 1), "gen_s": res.gen_s,
             "gpu_peak_gb": res.gpu_peak_gb, "details": res.details,
         }
+        progress("Counting legs and arms...")
+        result["anatomy"] = limb_check(asset_id, res.mesh)
         store.write_result(asset_id, "generate", result)
         store.mark_reached(asset_id, "generate")
         return result
@@ -210,7 +269,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
             job.set_message("Writing your description...")
             return {"prompt": expander(idea, req.type, seed)}
 
-        return gpu_queue.submit("expand", "expand", run).public()
+        return gpu_queue.submit("expand", "expand", run, need="expand:qwen").public()
 
     @app.post("/api/assets/from-text")
     def from_text(req: TextAssetRequest) -> dict:
@@ -235,7 +294,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         def run(job: Job) -> dict:
             return draw_now(asset_id, asset["type"], prompt, seed, job.set_message)
 
-        return gpu_queue.submit(asset_id, "generate", run).public()
+        return gpu_queue.submit(asset_id, "generate", run, need="draw:sdxl").public()
 
     @app.get("/api/assets")
     def list_assets() -> list[dict]:
@@ -268,7 +327,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         def run(job: Job) -> dict:
             return generate_now(asset_id, generator, seed, job.set_message)
 
-        job = gpu_queue.submit(asset_id, "generate", run)
+        job = gpu_queue.submit(asset_id, "generate", run, need=f"generate:{generator.id}")
         return job.public()
 
     @app.get("/api/jobs/{job_id}")
@@ -276,7 +335,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         job = gpu_queue.jobs.get(job_id)
         if job is None:
             raise missing("job")
-        out = job.public()
+        out = job.view()
         out["ahead"] = gpu_queue.ahead_of(job)
         return out
 
@@ -294,8 +353,68 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         return JSONResponse(
             {"detail": "Cleaning up the model is coming next."}, status_code=501)
 
+    def limb_check(asset_id: str, mesh) -> dict | None:
+        """Step 1 limb gate: count legs and arms against the words (None = nothing to check)."""
+        asset = store.get_asset(asset_id)
+        return check_mesh(mesh, asset.get("prompt"), asset["type"])
+
+    @app.get("/api/assets/{asset_id}/skeleton/limbs")
+    def monster_limbs(asset_id: str, fresh: bool = False) -> dict:
+        """A monster's proposed limb chains, worked out once from its shape and kept; the user's
+        edits are sent back with Build skeleton (no automatic re-proposal). fresh: the app's
+        own proposal again, leaving out the limbs the user confirmed (Start the limbs again)."""
+        try:
+            store.get_asset(asset_id)
+            clean_glb = store.step_dir(asset_id, "clean") / "clean.glb"
+            out = store.step_dir(asset_id, "skeleton")
+        except NotFound:
+            raise missing("model") from None
+        if not clean_glb.is_file():
+            raise HTTPException(409, "Clean up the model first, then build its skeleton.")
+        for name in ("proposal.json",) if fresh else ("chain.json", "proposal.json"):
+            if (out / name).is_file():
+                data = json.loads((out / name).read_text(encoding="utf-8"))
+                return {**data, "confirmed": name == "chain.json"}
+        from .skeleton.glb import read_mesh
+        from .skeleton.limbs import propose
+
+        try:
+            data = propose(*read_mesh(clean_glb)).public()
+        except (OSError, ValueError, KeyError, IndexError, struct.error):
+            raise HTTPException(500, "I could not find the limbs on this model. "
+                                     "Go back to step 1 and press Redo.") from None
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "proposal.json").write_text(json.dumps(data), encoding="utf-8")
+        return {**data, "confirmed": False}
+
+    def confirmed_chain(asset_id: str, body: dict | None) -> Path:
+        """Check the monster's edited limb chains and keep them as skeleton/chain.json."""
+        if not body or "limbs" not in body:
+            raise HTTPException(400, "Check the limb markers, then press Build skeleton.")
+        try:
+            monster_bones(body)
+        except ChainError as e:
+            raise HTTPException(400, str(e)) from None
+        out = store.step_dir(asset_id, "skeleton")
+        out.mkdir(parents=True, exist_ok=True)
+        path = out / "chain.json"
+        keep = {"spine": body["spine"], "limbs": [
+            {"kind": lb["kind"], "joints": lb["joints"]} for lb in body["limbs"]]}
+        if isinstance(body.get("height"), int | float):
+            keep["height"] = body["height"]  # sizes the markers when the limbs are changed later
+        path.write_text(json.dumps(keep), encoding="utf-8")
+        return path
+
+    def markers_outside(clean_glb: Path, chain: Path) -> list[list[int]]:
+        """[limb, joint] of every confirmed marker outside the body (limb -1: the body line)."""
+        from .skeleton.glb import read_mesh
+        from .skeleton.limbs import outside_joints
+
+        found = outside_joints(*read_mesh(clean_glb), json.loads(chain.read_text("utf-8")))
+        return [list(x) for x in found]
+
     @app.post("/api/assets/{asset_id}/skeleton")
-    def skeleton(asset_id: str) -> dict:
+    def skeleton(asset_id: str, body: dict | None = Body(None)) -> dict:  # noqa: B008
         # TODO(PR #9): the Clean step will write library/<id>/clean/clean.glb through this
         # app; until it is merged the file is placed there by hand and the Step 2 -> Step 3
         # hand-over button does not exist yet.
@@ -307,16 +426,16 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
             raise missing("model") from None
         if not clean_glb.is_file():
             raise HTTPException(409, "Clean up the model first, then build its skeleton.")
-        if asset["type"] == "monster":
-            raise HTTPException(
-                400, "Monsters get their skeleton in a later version. Humanoid and Animal "
-                     "work today.")
+        chain = confirmed_chain(asset_id, body) if asset["type"] == "monster" else None
 
         def run(job: Job) -> dict:
             job.set_message("Fitting the skeleton to your model...")
             t0 = time.time()
-            res = rig(clean_glb, out, asset["type"], settings.blender_exe, repo=settings.repo)
+            res = rig(clean_glb, out, asset["type"], settings.blender_exe, repo=settings.repo,
+                      **({"chain": chain} if chain else {}))
             result = {**res.public(), "total_s": round(time.time() - t0, 1)}
+            if chain:
+                result["outside"] = markers_outside(clean_glb, chain)
             store.write_result(asset_id, "skeleton", result)
             store.mark_reached(asset_id, "skeleton")
             return result

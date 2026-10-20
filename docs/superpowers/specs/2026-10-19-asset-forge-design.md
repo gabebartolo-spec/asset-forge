@@ -8,7 +8,10 @@ build step is the bake-off (section 5.2), and its result goes back to him before
 
 A local app that turns a text prompt or a reference image into game-ready art, with no spend:
 
-1. **3D models**: humanoids, monsters (including many-legged ones), and low-poly animals.
+1. **3D models**: humanoids, monsters (including many-legged ones), low-poly animals, and
+   (director, 2026-10-20, D-032) every other game 3D asset: gear, props, vehicles, buildings.
+   Creatures are rigged and animated; hard-surface things (gear, props, vehicles, buildings)
+   are static or move by parts (wheels, doors), see ROADMAP Phase 12.
    Each is generated, rebuilt in Blender into a clean game mesh, given a skeleton, given a
    standard set of animations, and exported for Godot.
 2. **Pokémon-style 2D sprites**: pixel-perfect (every pixel on the grid, a limited palette, no
@@ -69,7 +72,7 @@ rejected even if it works.
   Stability Matrix ComfyUI, and never switch it through comfy-mcp. Anything Asset Forge needs
   installed goes in its own environment inside the repo (e.g. `.venv/`, gitignored). Blender runs
   headless (`blender -b`), never stealing focus. ComfyUI, Blender bakes and any local model share
-  one GPU: one generation job at a time.
+  one GPU through a VRAM budget (D-030): jobs that fit run at once, CPU-only work never waits.
 - **Licences (binding):** every model, LoRA, node pack or library must allow commercial use; the
   games are commercial. Record each in `docs/LICENCES.md` before it is used. Known flags: Flux
   dev is non-commercial (banned); Hunyuan3D 2.x is under the Tencent Hunyuan Community Licence
@@ -115,7 +118,7 @@ rejected even if it works.
 - Always rebuild; never just tidy. The raw mesh is dense and messy. Remesh or retopologise to a
   clean surface, decimate to the type's budget, merge loose bits, fix normals, put the origin at
   the feet and the model at real-world scale (humanoid about 1.8 m unless told otherwise), with
-  +Y forward to match Godot's import convention.
+  the model facing glTF +Z (Blender -Y), Godot's model front (D-021).
 - Smart UV unwrap, bake the generator's colour (and normal detail where it helps) onto one
   texture, one material.
 - Viewer: before/after slider, triangle count, texture size.
@@ -210,7 +213,7 @@ and animals with a confident template fit can optionally run straight through.
   run or redo any step, read the five-view sheet and gate results, move skeleton markers, export,
   make sprites, and browse the Library.
 - A thin layer over the backend's job API (the same calls the page makes), localhost only, through
-  the one GPU queue. Every step keeps its saved output, so Claude's work is resumable in the UI.
+  the shared GPU budget. Every step keeps its saved output, so Claude's work is resumable in the UI.
 - Builder's note from now: keep every step callable through the backend API, never only from the page.
 - The MCP SDK gets a `docs/LICENCES.md` row before use.
 
@@ -231,6 +234,15 @@ and animals with a confident template fit can optionally run straight through.
 | Materials | 1 | 1 |
 | Texture | ≤ 1024×1024 | ≤ 512×512 |
 | Bone influences per vertex | ≤ 4 | ≤ 4 |
+
+**Hard-surface budgets (proposed 2026-10-20, D-032; the bake-off sets the final numbers):**
+
+| Limit | Gear / prop | Vehicle | Building (one piece) |
+|---|---|---|---|
+| Triangles | ≤ 2,000 | ≤ 8,000 | ≤ 12,000 |
+| Materials | 1 | ≤ 2 (glass) | ≤ 2 |
+| Texture | ≤ 512×512 | ≤ 1024×1024 | ≤ 1024×1024 (tileable parts preferred) |
+| Bones | 0 (parts as nodes) | 0 (parts as nodes) | 0 |
 
 Defaults are editable per asset, but the export always checks against the asset's own budget.
 Every export loads in headless Godot with no errors.
@@ -296,5 +308,8 @@ Every export loads in headless Godot with no errors.
   prompts. The director picks among qualifiers from labelled renders.
 - **Hunyuan licence:** the director is in Australia, outside the excluded territories, so
   Hunyuan models may enter the bake-off. Record the licence terms in `docs/LICENCES.md`.
-- **One GPU:** a single job queue in the backend; before a Blender bake or render, the app frees
-  ComfyUI's VRAM (its `/free` endpoint) rather than shutting ComfyUI down.
+- **One GPU, many jobs (D-030, replaces the single queue):** each job declares its VRAM need
+  (one table in `gpu_lock.py`, from measured peaks) and runs as soon as the needs fit the budget
+  (11000 MB of 12 GB, `[gpu] budget_mb`) and the card's live free memory; card jobs start in the
+  order pressed, CPU-only jobs at once. Before a Blender bake or render, the app frees ComfyUI's
+  VRAM (its `/free` endpoint) rather than shutting ComfyUI down.

@@ -4,6 +4,37 @@ Cap: 400 lines; oldest roll to `docs/archive/`. One decision per entry, newest f
 that is not here does not exist. Format: date · id · who decided · the decision · why · what it
 changes. Only the lead edits this file, from the "Board and log" section of merged PRs.
 
+## 2026-10-20 · D-032 · Director · Forge makes every kind of 3D asset, and Godot-direct modelling stays on the roadmap
+His words: "we want this program to be adept at all 3d models, gear, objects, vehicles, buildings" and
+"modelling in godot directly may be useful, dont abandon that thread, we are going to model more than just
+monsters in the game". Changes: design section 1 scope and proposed hard-surface budgets (section 6),
+ROADMAP Phase 12 (types, bake-off, Godot-direct modelling through the Claude MCP, rebuild-from-generated,
+building kits). Lead's call: Godot-direct modelling is written by the director's Claude session via
+Phase 8, not by a paid API inside the app, so "local and free" stands; budgets are proposals until the
+bake-off. Supersedes the D-031 line that put Claude-built models outside the design.
+
+## 2026-10-20 · D-031 · Director · Take the good ideas from the community posts; add background cut-out
+His words: "assess the claims in all the images I linked you, take whats good from it", "our forge also
+needs the ability to remove backgrounds/cut the subject out of the image", "well incorporate all the good
+ideas into the roadmap". Changes: roadmap Phase 10 (cut-out, assigned) and Phase 11 (delighting,
+Z-Image-Turbo, wireframe and height, user side/back pictures, send-back-with-notes, KTX2); skipped ideas
+and why are listed there. Phase 11 items start only when STATUS lists them.
+
+## 2026-10-20 · D-030 · Director · As many GPU jobs at once as fit in VRAM
+His words: "why is there only 1 gpu queue? open as many as you can". Changes: PR #28, the lock is a
+VRAM budget (each job declares its need, about 11 of 12 GB), CPU-only work (Blender, tests) takes no
+lock; RULEBOOK and shared-machine-rules updated.
+
+## 2026-10-20 · D-029 · Director · No subagents; every helper is a fresh session
+His words: "no more subagents, if you need a helper you spawn a fresh session" and "seperate
+sessions grouped properly in the toolbar". Changes: every builder and critic is a start_session
+session in its own worktree, filed in the "Asset Forge" sidebar group (RULEBOOK; CLAUDE.md, PR #23).
+
+## 2026-10-20 · D-028 · Director · Animation clips: fix first
+Asked whether the PR #20 clips ship. His answer: "Fix first" on person walk, fox walk, bird walk,
+and attack/faint. Changes: #20 stays open; it re-rigs on the #22 joints, makes previews_v4 and
+passes a fresh motion critic before he sees the clips again.
+
 ## 2026-10-20 · D-027 · Director · Clean colour: keep improving first
 Asked: ship the 6/10 multi-view colour now, keep improving, or shape only. His answer: "Keep
 improving first". Changes: PR #9 stays open; a fresh Clean builder targets the causes behind the

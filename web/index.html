@@ -26,7 +26,7 @@
 <ol class="steps" id="steps" aria-label="Steps">
   <li data-step="1" class="current" id="pill1">1 Make</li>
   <li data-step="2">2 Clean up</li>
-  <li data-step="3" class="soonpill" id="pill3">3 Skeleton <span class="soon" id="pill3-soon">soon</span></li>
+  <li data-step="3" class="soonpill" id="pill3">3 Skeleton</li>
   <li data-step="4" class="soonpill" id="pill4">4 Animate <span class="soon" id="pill4-soon">soon</span></li>
 </ol>
 
@@ -49,6 +49,10 @@
         <span id="drop-text">Click to choose a picture<br><small>One character on a plain background (PNG or JPG).</small></span>
       </label>
       <input type="file" id="file" accept="image/png,image/jpeg,image/webp" class="hidden">
+      <div class="row hidden" id="cut-row">
+        <span class="why" id="cut-text" role="status"></span>
+        <button type="button" class="secondary small" id="cut-again">Cut out again</button>
+      </div>
       <label class="lbl" for="idea">Or describe your model</label>
       <textarea id="idea" rows="1" maxlength="600" placeholder="A few words are enough, like: a six-armed brute"></textarea>
       <div class="row">
@@ -85,15 +89,31 @@
       later, when you pick an animation.</p>
     <p class="muted" id="skel-type"></p>
 
+    <div class="block hidden" id="limb-edit">
+      <h3>Check the limbs</h3>
+      <p class="limb-how">Each limb is a row of yellow dots, from where it joins the body to its tip.
+        Drag a dot that is in the wrong place. The blue dots are the body. Adding or removing
+        changes only the bones; the model's shape stays as it is.</p>
+      <ul id="limb-list" class="limb-list"></ul>
+      <div class="row">
+        <select id="limb-kind" aria-label="Kind of limb to add">
+          <option value="leg">Leg</option><option value="arm">Arm</option>
+          <option value="head">Head</option><option value="tail">Tail</option></select>
+        <button type="button" class="small secondary" id="limb-add">Add its bones</button>
+      </div>
+      <p class="muted" id="limb-hint"></p>
+    </div>
+
     <div class="block hidden" id="skel-look">
       <h3>Check how it fits</h3>
       <button type="button" class="toggle" id="tog-bones" aria-pressed="false">
-        <b>Show the bones</b><span>Yellow dots are joints, blue lines are bones. Every dot should sit
+        <b>Show the bones</b><span>Yellow dots are joints, white lines are bones. Every dot should sit
         inside the body, at a shoulder, elbow, knee and so on.</span></button>
       <button type="button" class="toggle" id="tog-pose" aria-pressed="false">
-        <b>Try a quick pose</b><span>Bends the arms, legs and head once. If the skin stretches or tears,
+        <b>Try a quick pose</b><span id="pose-how">Bends the arms, legs and head once. If the skin stretches or tears,
         the skeleton does not fit yet. Press again to stand it straight.</span></button>
       <p class="muted" id="skel-facts"></p>
+      <button type="button" class="small secondary hidden" id="limb-again">Change the limbs</button>
     </div>
     <p class="muted" id="skel-wait">Press <b>Build skeleton</b>, bottom right. It takes under a minute.</p>
     <!-- TODO(PR #9): the Clean step will hand its model over here; until it merges, the page opens

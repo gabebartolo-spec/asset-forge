@@ -12,11 +12,12 @@ D-025). Phase 1 done 2026-10-20 (D-019).
 
 | Agent | State | Item | Branch / PR | Since |
 |-------|-------|------|-------------|-------|
-| Lead | working | board; critics; merges | this PR | 2026-10-20 |
-| clean-b8 | working | item 5 (method B causes: registration, single part; bar 8/10; D-027) | #9 | 2026-10-20 |
-| anim-b2 | awaiting director | item 10 (clips look) | #20 | 2026-10-20 |
-| step2-fix | working | item 12 (verdict count fix + queue race fix; PR after #9) | claude/step2-page | 2026-10-20 |
-| monster-rig | working | item 13 (monster skeleton + limb count) | claude/monster-rig | 2026-10-20 |
+| Lead (s8) | working | board; critics; merges | this PR | 2026-10-20 |
+| af-clean | working | item 5 (method B to 8/10; D-027) | #9 | 2026-10-20 |
+| af-anim | working | item 10 (fix first, D-028; re-rig on #22) | #20 | 2026-10-20 |
+| af-refdraw | working | item 4 follow-up (text-only reference drawer) | claude/ref-drawer | 2026-10-20 |
+| af-monster | working | item 13 (monster skeleton + limb count) | claude/monster-rig | 2026-10-20 |
+| af-proto | working | e2e run2 (goal: 80% critic pass) | claude/prototype | 2026-10-20 |
 
 States: working · running a check · awaiting director · blocked · available.
 
@@ -55,5 +56,8 @@ States: working · running a check · awaiting director · blocked · available.
 
 ### Phase 9 — Prompt generator (assigned 2026-10-20, D-022)
 8. DONE 2026-10-20. Back end (PR #12) and page (PR #14).
+
+### Phase 10 — Cut out the subject (assigned 2026-10-20, D-031)
+14. BiRefNet "Cut out the subject" step (lead builds it; see ROADMAP Phase 10).
 
 Later phases are in `docs/ROADMAP.md` and start only when listed here.

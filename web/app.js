@@ -10,6 +10,9 @@ const state = {
   reference: false, refUrl: "",               // text-only: the drawn picture is ready to check
   showing: null,                              // what the viewer shows: "model", "ref" or null
   anim: null, clip: "walk", exported: null,   // Step 4: the clips made, the one playing, the export
+  limbWarn: "",                               // Step 1: the model's legs or arms do not match the words
+  chain: null, limbSel: -1, limbsEdited: false, // Step 3, monsters: the limb chains being checked
+  builtChain: null, outside: [], resetAsk: false, // what was built, and its markers outside the body
 };
 let viewer = null;
 
@@ -77,7 +80,6 @@ function render() {
   const pill3 = $("pill3");
   pill3.classList.toggle("clickable", state.cleanReady && state.step !== 3);
   pill3.onclick = state.cleanReady && state.step !== 3 ? () => goStep3() : null;
-  $("pill3-soon").classList.toggle("hidden", state.cleanReady);
   renderPill4();
   document.querySelectorAll("#steps li").forEach((li) => {
     const n = Number(li.dataset.step);
@@ -88,7 +90,8 @@ function render() {
   const pill1 = $("pill1");
   pill1.classList.toggle("clickable", !onStep1);
   pill1.onclick = onStep1 ? null : () => backToStep1();
-  redo.classList.toggle("hidden", !onStep1 || !state.asset);
+  const limbReset = limbEditing();
+  redo.classList.toggle("hidden", !(onStep1 && state.asset) && !limbReset);
   const hint = $("foot-hint");
   hint.textContent = "";
   const words = $("idea").value.trim();
@@ -118,6 +121,10 @@ function render() {
     $("skel-wait").classList.toggle("hidden", !!state.rig);
     $("tog-bones").setAttribute("aria-pressed", String(state.bones));
     $("tog-pose").setAttribute("aria-pressed", String(state.pose));
+    if (limbReset) { // Redo here throws away the user's limb edits, so it says so and asks
+      redo.textContent = state.resetAsk ? "Yes, start again" : "Start the limbs again";
+      redo.disabled = state.busy;
+    }
   } else if (state.step === 4) {
     renderStep4(next);
   } else {
@@ -128,7 +135,8 @@ function render() {
   const wordCount = words ? words.split(/\s+/).length : 0;
   const noDraw = !!(state.menu && !state.menu.text_draw.available);
   $("draw-note").textContent = noDraw ? state.menu.text_draw.note : "";
-  $("draw-note").classList.toggle("hidden", !(noDraw && !state.file && (state.source || wordCount >= 3)));
+  $("draw-note").classList.toggle("hidden",
+    !(noDraw && !state.file && !state.done && (state.source || wordCount >= 3)));
   $("expand-why").classList.toggle("hidden", !(words && !state.type));
   $("expand").disabled = !words || !state.type || state.busy || state.expanding;
   $("expand").textContent = state.expanding ? "Writing..." : "Expand my idea";
@@ -141,6 +149,8 @@ function render() {
       : state.file ? "Your picture builds the model; your words are kept as notes."
       : state.source ? "Edit it if you like. Not quite right? Try another version." : "";
   }
+  limbWarningButtons(onStep1);
+  limbEditorShown();
   grow();
   $("viewer-hint").classList.toggle("hidden", !(state.showing === "model" && !state.busy));
   $("panel-1").classList.toggle("busy", state.busy);
@@ -216,6 +226,38 @@ function chooseFile(file) {
   $("drop-text").textContent = "Change picture";
   note($("note"), "");
   render();
+  showCutout(file, false);
+}
+
+// Show the picture with its background cut away. The model cuts again on request ("Cut out
+// again"); the 3D step receives the same cut because the server cuts the upload the same way.
+async function showCutout(file, again) {
+  const row = $("cut-row"), text = $("cut-text"), btn = $("cut-again");
+  const can = !!(state.menu && state.menu.cutout && state.menu.cutout.available);
+  row.classList.remove("hidden");
+  btn.classList.toggle("hidden", !can);
+  btn.disabled = true;
+  text.textContent = again ? "Cutting out again..." : "Cutting out your subject...";
+  try {
+    const fd = new FormData();
+    fd.append("image", file);
+    fd.append("model", again ? "true" : "false");
+    const r = await fetch("/api/cutout", { method: "POST", body: fd });
+    if (!r.ok) {
+      let msg = "Could not cut that picture out. Try another picture.";
+      try { msg = (await r.json()).detail || msg; } catch { /* not json */ }
+      throw new Error(msg);
+    }
+    if (state.file !== file) return; // a newer picture was chosen meanwhile
+    $("preview").src = URL.createObjectURL(await r.blob());
+    text.textContent = can
+      ? "Background removed. Not right? Press Cut out again for a closer cut."
+      : "Background removed.";
+  } catch (e) {
+    text.textContent = e.message;
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // Follow a job until it ends. `what` is the plain-words name of the work; the footer says
@@ -249,6 +291,7 @@ async function start() {
   if (state.busy) return;
   if (!state.file && !state.reference) return drawPicture();
   state.busy = true;
+  state.limbWarn = "";
   render();
   note($("note"), "");
   $("foot-info").textContent = "Getting ready...";
@@ -308,7 +351,7 @@ async function finish(job) {
   const name = state.menu.generators.find((g) => g.id === r.generator)?.name || r.generator;
   $("foot-info").textContent = `Made with ${name} in ${Math.round(r.total_s)} s`
     + (makerVram(r.generator) ? `, using ${makerVram(r.generator)}` : "");
-  note($("note"), "Happy with it? Press Next. Not right? Press Redo for a new try.", "ok");
+  showLimbCheck(r.anatomy);
   render();
 }
 
@@ -330,16 +373,28 @@ async function backToStep1() {
 async function goStep3() {
   state.step = 3;
   state.showing = "model";
-  $("skel-type").textContent = `This is ${TYPE_WORDS[state.asset.type] || "a model"}, so it gets a ${
-    state.asset.type === "humanoid" ? "human" : "animal"} skeleton.`;
+  $("skel-type").textContent = state.asset.type === "monster"
+    ? "This is a monster, so its skeleton comes from its shape."
+    : `This is ${TYPE_WORDS[state.asset.type] || "a model"}, so it gets a ${
+      state.asset.type === "humanoid" ? "human" : "animal"} skeleton.`;
+  $("pose-how").textContent = `${state.asset.type === "monster" ? "Bends each limb once."
+    : "Bends the arms, legs and head once."} If the skin stretches or tears, the skeleton does not ${
+    ""}fit yet. Press again to stand it straight.`;
   render();
   viewer = viewer || new Viewer($("viewer"));
   note($("note"), "");
   try {
-    if (state.rig) await showRig(false);
+    if (state.rig) {
+      await showRig(false);
+      if (state.outside.length) {
+        note($("note"), "Some red dots are outside the body, so they do not move the model. "
+          + "Press Change the limbs and drag the red dots onto the body.", "warn");
+      }
+    }
     else {
       await viewer.load(fileUrl("clean", "clean.glb"));
       showMsg("");
+      if (state.asset.type === "monster") await loadLimbs();
     }
   } catch {
     note($("note"), "I could not show the model. Go back and try again.", "error");
@@ -350,8 +405,12 @@ async function goStep3() {
 
 async function showRig(keepView) {
   const name = state.pose ? "test_pose.glb" : "rigged.glb";
+  const limbs = state.rig.limbs || [];
   await viewer.load(fileUrl("skeleton", name, state.rig.total_s), {
-    keepView, pose: state.pose, showBones: state.bones });
+    keepView, pose: state.pose, showBones: state.bones,
+    tips: limbs.filter((lb) => lb.tip).map((lb) => ({ name: `${lb.name}_Tip`, bone: lb.bones[lb.bones.length - 1], at: lb.tip })),
+    red: (state.rig.outside || []).map(([i, j]) => (i < 0 ? ["Spine1", "Spine2", "Spine3", ""][j]
+      : j < limbs[i].bones.length ? limbs[i].bones[j] : `${limbs[i].name}_Tip`)) });
   showMsg("");
 }
 
@@ -362,7 +421,11 @@ async function buildSkeleton() {
   showMsg("Fitting the skeleton to your model...\nThis takes under a minute.", "busy");
   render();
   try {
-    const job = await api(`/api/assets/${state.asset.id}/skeleton`, { method: "POST" });
+    const monster = state.asset.type === "monster";
+    if (monster) state.builtChain = confirmedLimbs();
+    const job = monster
+      ? await post(`/api/assets/${state.asset.id}/skeleton`, state.builtChain)
+      : await api(`/api/assets/${state.asset.id}/skeleton`, { method: "POST" });
     for (;;) {
       const j = await api(`/api/jobs/${job.id}`);
       if (j.state === "done") { state.rig = j.result; break; }
@@ -378,7 +441,10 @@ async function buildSkeleton() {
     $("skel-facts").textContent = `Fitted ${r.bones} bones. Each part of the skin follows at most 4 of them, ${
       "so it stays light in a game."}`;
     $("foot-info").textContent = `Skeleton built in ${Math.round(r.total_s)} s`;
-    note($("note"), "Check the dots sit inside the body, then try the quick pose.", "ok");
+    state.outside = r.outside || [];
+    if (state.outside.length) note($("note"), outsideMessage(), "warn");
+    else note($("note"), "Check the dots sit inside the body, then try the quick pose.", "ok");
+    state.chain = null; // the built skeleton is shown now; Change the limbs brings them back
   } catch (e) {
     showMsg("");
     note($("note"), e.message, "error");
@@ -572,6 +638,7 @@ async function expand(again) {
 
 async function init() {
   $("file").onchange = (e) => chooseFile(e.target.files[0]);
+  $("cut-again").onclick = () => state.file && showCutout(state.file, true);
   const drop = $("drop");
   drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
   drop.ondragleave = () => drop.classList.remove("over");
@@ -593,9 +660,12 @@ async function init() {
     if (state.step === 2) return;
     if (state.done) { state.step = 2; render(); } else start();
   };
-  $("redo").onclick = () => (state.file || state.done ? start() : drawPicture());
+  $("redo").onclick = () => (state.step === 3 ? resetLimbs()
+    : state.file || state.done ? start() : drawPicture());
   $("tog-bones").onclick = () => toggle("bones");
   $("tog-pose").onclick = () => toggle("pose");
+  $("limb-add").onclick = () => addLimb();
+  $("limb-again").onclick = () => changeLimbs();
   try {
     buildMenu(await api("/api/menu"));
   } catch {
@@ -633,8 +703,10 @@ async function openAsset(id, step) {
   const hasPic = (g.files || []).includes("input.png");
   state.file = null; state.rig = null; state.bones = state.pose = false;
   state.anim = state.exported = null;
+  $("cut-row").classList.add("hidden");
   state.done = state.reference = false; state.meshUrl = null; state.step = 1; state.source = "";
   state.asset = null;
+  state.limbWarn = ""; state.chain = null; state.limbSel = -1; state.limbsEdited = false; state.builtChain = null; state.outside = []; state.resetAsk = false;
   selectType(a.type);
   state.asset = a;
   if (g.settings && state.menu.generators.some((x) => x.id === g.settings.generator)) selectGenerator(g.settings.generator);
@@ -652,6 +724,7 @@ async function openAsset(id, step) {
     state.done = true;
     if (a.steps.skeleton && a.steps.skeleton.result) {
       state.rig = a.steps.skeleton.result;
+      state.outside = state.rig.outside || [];
       $("skel-facts").textContent = `Fitted ${state.rig.bones} bones.`;
       state.bones = true;
     }
@@ -672,7 +745,7 @@ async function openAsset(id, step) {
     }
     const name = state.menu.generators.find((x) => x.id === g.result.generator)?.name || g.result.generator;
     $("foot-info").textContent = `Made with ${name} in ${Math.round(g.result.total_s)} s`;
-    note($("note"), "Happy with it? Press Next. Not right? Press Redo for a new try.", "ok");
+    showLimbCheck(g.result.anatomy);
   } else if (state.reference) {
     showRef("Happy with it? Press Make 3D model. Not right? Press Redo for another picture.");
   } else {
@@ -680,6 +753,214 @@ async function openAsset(id, step) {
     state.showing = null;
   }
   render();
+}
+
+// ---- Step 1: the limb check (legs and arms against the words) ----
+
+function showLimbCheck(anatomy) {
+  state.limbWarn = anatomy && anatomy.ok === false ? anatomy.message : "";
+  if (state.limbWarn) note($("note"), state.limbWarn, "warn");
+  else note($("note"), "Happy with it? Press Next. Not right? Press Redo for a new try.", "ok");
+}
+
+// A wrong count makes Re-roll the main button and Next a quieter "Use it anyway".
+function limbWarningButtons(onStep1) {
+  const warn = onStep1 && state.done && !state.busy && !!state.limbWarn;
+  const next = $("next"), redo = $("redo");
+  next.classList.toggle("secondary", warn); // classList, not className: keep "hidden" as it is
+  next.classList.toggle("primary", !warn);
+  redo.classList.toggle("primary", warn);
+  redo.classList.toggle("secondary", !warn);
+  if (state.step !== 3) redo.textContent = warn ? "Re-roll" : "Redo";
+  if (warn) next.textContent = "Use it anyway";
+}
+
+// ---- Step 3, monsters: check the limb chains the app found, then Build skeleton ----
+
+const KIND_NAMES = { leg: "Leg", arm: "Arm", head: "Head", tail: "Tail" };
+const TIP_WORDS = { leg: "foot", arm: "hand", head: "tip", tail: "tip" };
+
+async function loadLimbs(fresh = false) {
+  try {
+    state.chain = await api(`/api/assets/${state.asset.id}/skeleton/limbs${fresh ? "?fresh=1" : ""}`);
+  } catch (e) {
+    note($("note"), e.message, "error");
+    return;
+  }
+  state.limbSel = -1;
+  state.limbsEdited = false;
+  state.resetAsk = false;
+  if (fresh) state.outside = [];
+  showLimbs();
+  const c = state.chain.counts || {};
+  const said = ["legs", "arms", "heads", "tails"].filter((k) => c[k]).map((k) => `${c[k]} ${
+    c[k] === 1 ? k.slice(0, -1) : k}`);
+  $("limb-hint").textContent = state.chain.confirmed ? "These are the limbs you confirmed last time."
+    : said.length ? `I found ${said.join(", ")}.` : "I could not find any limbs. Add them yourself.";
+  if (state.outside.length) note($("note"), "Drag the red dots onto the body, then press Build skeleton.", "warn");
+  else note($("note"), "Check the limbs, then press Build skeleton.", "ok");
+}
+
+function limbEditing() {
+  return state.step === 3 && !!(state.asset && state.asset.type === "monster") && !state.rig && !!state.chain;
+}
+
+function limbSide(chain, lb) { // the character's left is +X, as in the skeleton's bone names
+  const mid = chain.spine.reduce((t, p) => t + p[0], 0) / chain.spine.length;
+  const dx = lb.joints[0][0] - mid;
+  const h = chain.height || (state.chain && state.chain.height) || 1;
+  return Math.abs(dx) < 0.03 * h ? "middle" : dx > 0 ? "left" : "right";
+}
+
+function limbNames(chain) { // "Leg 3", numbered within each kind, in list order
+  const n = {};
+  return chain.limbs.map((lb) => {
+    n[lb.kind] = (n[lb.kind] || 0) + 1;
+    return `${KIND_NAMES[lb.kind]} ${n[lb.kind]}`;
+  });
+}
+
+function showLimbs() {
+  viewer.editChains(state.chain, {
+    selected: state.limbSel, red: state.outside,
+    onGrab: (i) => markRow(i),
+    onMove: (i, j) => {
+      state.limbsEdited = true;
+      state.resetAsk = false;
+      state.outside = state.outside.filter(([a, b]) => !(a === i && b === j));
+      if (i >= 0) state.limbSel = i;
+      showLimbs();
+    },
+  });
+  const list = $("limb-list");
+  list.textContent = "";
+  const names = limbNames(state.chain);
+  state.chain.limbs.forEach((lb, i) => {
+    const li = document.createElement("li");
+    li.classList.toggle("sel", i === state.limbSel);
+    li.onmouseenter = () => viewer.highlightChain(i);
+    li.onmouseleave = () => viewer.highlightChain(state.limbSel);
+    const pick = document.createElement("button");
+    pick.type = "button";
+    pick.className = "pick";
+    pick.textContent = `${names[i]}, ${limbSide(state.chain, lb)}`;
+    pick.title = "Show this limb in orange";
+    pick.onclick = () => { state.limbSel = i === state.limbSel ? -1 : i; showLimbs(); };
+    const rm = document.createElement("button");
+    rm.type = "button";
+    rm.className = "small secondary";
+    rm.textContent = "Remove bones";
+    rm.setAttribute("aria-label", `Remove the bones of ${pick.textContent}`);
+    rm.onclick = () => removeLimb(i);
+    li.append(pick, rm);
+    list.append(li);
+    if (i === state.limbSel) requestAnimationFrame(() => li.scrollIntoView({ block: "nearest" }));
+  });
+  render();
+}
+
+function markRow(i) { // while a dot is dragged, its limb's row lights up (no rebuild mid-drag)
+  [...$("limb-list").children].forEach((li, k) => li.classList.toggle("sel", k === i));
+  viewer.highlightChain(i);
+}
+
+function removeLimb(i) {
+  state.chain.limbs.splice(i, 1);
+  state.outside = state.outside.filter(([a]) => a !== i).map(([a, b]) => [a > i ? a - 1 : a, b]);
+  state.limbSel = -1;
+  state.limbsEdited = true;
+  state.resetAsk = false;
+  $("limb-hint").textContent = "Bones removed. The body part stays in the model; it just will not move by itself.";
+  showLimbs();
+}
+
+// A new limb starts beside the body, pointing straight out on the side with fewer limbs, as long
+// as the others; the user drags its first dot to where it meets the body and the last to its tip.
+function addLimb() {
+  const ch = state.chain, kind = $("limb-kind").value;
+  const sp = ch.spine;
+  const mid = sp.reduce((t, p) => t.map((x, k) => x + p[k] / sp.length), [0, 0, 0]);
+  const sides = ch.limbs.map((lb) => limbSide(ch, lb));
+  const left = sides.filter((s) => s === "left").length, right = sides.filter((s) => s === "right").length;
+  const dir = left > right ? -1 : 1;
+  const lens = ch.limbs.map((lb) => lb.joints.slice(1).reduce((t, p, k) =>
+    t + Math.hypot(...p.map((x, j) => x - lb.joints[k][j])), 0));
+  const len = lens.length ? lens.reduce((t, x) => t + x, 0) / lens.length : 0.4 * (ch.height || 1);
+  const half = Math.max(...sp.map((p) => Math.abs(p[0] - mid[0])), 0.05 * (ch.height || 1));
+  const base = [mid[0] + dir * half, mid[1], mid[2]];
+  const joints = [0, 1 / 3, 2 / 3, 1].map((t) => [base[0] + dir * len * t, base[1], base[2]]
+    .map((x) => Math.round(x * 1e4) / 1e4));
+  ch.limbs.push({ kind, joints });
+  state.limbSel = ch.limbs.length - 1;
+  state.limbsEdited = true;
+  state.resetAsk = false;
+  const word = KIND_NAMES[kind].toLowerCase();
+  $("limb-hint").textContent = `Added beside the body, in orange. Drag the first orange dot to where the ${
+    word} meets the body, and the last one to its ${TIP_WORDS[kind]}.`;
+  showLimbs();
+}
+
+function confirmedLimbs() {
+  return { spine: state.chain.spine, height: state.chain.height, limbs: state.chain.limbs.map((lb) => ({ kind: lb.kind, joints: lb.joints })) };
+}
+
+// "Leg 8's foot is outside the body..." for the markers of the built skeleton outside the body
+function outsideMessage() {
+  const ch = state.builtChain, names = limbNames(ch);
+  const parts = [];
+  for (const [i, j] of state.outside) {
+    let what;
+    if (i < 0) what = "A dot on the body line";
+    else {
+      const kind = ch.limbs[i].kind;
+      what = `${names[i]}'s ${j === 3 ? TIP_WORDS[kind] : j === 0 ? "first dot" : "middle dot"}`;
+    }
+    if (!parts.includes(what)) parts.push(what);
+  }
+  const list = parts.length === 1 ? parts[0]
+    : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+  const one = parts.length === 1;
+  return `${list} ${one ? "is" : "are"} outside the body, so ${one ? "it does" : "they do"} not move ${
+    ""}the model. Press Change the limbs and drag the red dots onto the body.`;
+}
+
+function limbEditorShown() {
+  const monster = !!(state.asset && state.asset.type === "monster");
+  const editing = limbEditing();
+  $("limb-edit").classList.toggle("hidden", !editing);
+  $("limb-add").disabled = state.busy;
+  $("limb-again").classList.toggle("hidden", !(monster && state.rig));
+  $("limb-again").disabled = state.busy;
+  $("skel-wait").innerHTML = editing
+    ? "When the limbs look right, press <b>Build skeleton</b>, bottom right."
+    : "Press <b>Build skeleton</b>, bottom right. It takes under a minute.";
+}
+
+async function changeLimbs() { // back to the markers, starting from the limbs confirmed last time
+  if (state.busy) return;
+  state.rig = null;
+  state.bones = state.pose = false;
+  $("foot-info").textContent = "";
+  try {
+    await viewer.load(fileUrl("clean", "clean.glb"));
+    await loadLimbs();
+  } catch {
+    note($("note"), "I could not show the model. Go back and try again.", "error");
+  }
+  render();
+}
+
+async function resetLimbs() { // Start the limbs again: the app's own proposal; asks first if edited
+  if (state.busy || !limbEditing()) return;
+  const edited = state.limbsEdited || state.chain.confirmed;
+  if (edited && !state.resetAsk) {
+    state.resetAsk = true;
+    note($("note"), "Your changes to the limbs will be lost. Press Yes, start again to go back to the limbs I found.", "warn");
+    render();
+    return;
+  }
+  await loadLimbs(true);
+  $("limb-hint").textContent = `Back to the limbs I found. ${$("limb-hint").textContent}`;
 }
 
 init();

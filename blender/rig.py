@@ -2,11 +2,13 @@
 
     blender -b --factory-startup -P blender/rig.py -- CLEAN_GLB OUT_DIR --type humanoid|animal
         [--template humanoid|four_legged|bird] [--no-sheets] [--force-fallback]
+    ... --type monster --chain CHAIN_JSON   (the limb chains the user confirmed)
 
-Fits the fixed template to the mesh, binds it (Blender automatic weights, falling back to
-distance weights when they fail), limits every vertex to 4 bones, strikes a test pose and writes
-OUT_DIR/rigged.glb, rigged.blend, test_pose.glb, skeleton.json and (unless --no-sheets) the
-test-pose sheet as OUT_DIR/pose_<view>_<clay|colour>.png.
+Fits the fixed template to the mesh (a monster: builds the bones from its confirmed chains),
+binds it (Blender automatic weights, falling back to distance weights when they fail), limits
+every vertex to 4 bones, strikes a test pose and writes OUT_DIR/rigged.glb, rigged.blend,
+test_pose.glb, skeleton.json and (unless --no-sheets) the test-pose sheet as
+OUT_DIR/pose_<view>_<clay|colour>.png.
 """
 
 import json
@@ -22,6 +24,7 @@ from mathutils import Matrix, Vector
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from asset_forge.skeleton import fit as fitter  # noqa: E402
 from asset_forge.skeleton import weights as wmod  # noqa: E402
+from asset_forge.skeleton.monster import monster_bones, monster_pose  # noqa: E402
 from asset_forge.skeleton.pose import TEST_POSES  # noqa: E402
 from asset_forge.skeleton.templates import MAX_INFLUENCES, TEMPLATES  # noqa: E402
 
@@ -33,7 +36,10 @@ SHEET_EXPOSURE = 1.1
 
 def parse():
     a = sys.argv[sys.argv.index("--") + 1:]
-    o = {"glb": Path(a[0]), "out": Path(a[1]), "type": "humanoid", "template": None,
+    # resolved here: Blender's render paths do not follow a relative "../out" like Python does
+    o = {"glb": Path(a[0]).resolve(), "out": Path(a[1]).resolve(), "type": "humanoid",
+         "template": None,
+         "chain": Path(a[a.index("--chain") + 1]).resolve() if "--chain" in a else None,
          "sheets": "--no-sheets" not in a, "fallback": "--force-fallback" in a}
     if "--type" in a:
         o["type"] = a[a.index("--type") + 1]
@@ -75,7 +81,7 @@ def verts_np(obj):
     return a.reshape(n, 3).astype(float)
 
 
-def build_armature(template, joints):
+def build_armature(bones, joints):
     bpy.ops.object.armature_add(enter_editmode=True)
     arm = bpy.context.view_layer.objects.active
     arm.name = "Armature"
@@ -84,7 +90,7 @@ def build_armature(template, joints):
     for b in list(eb):
         eb.remove(b)
     made = {}
-    for bd in TEMPLATES[template]:
+    for bd in bones:
         head = Vector(joints[bd.name].tolist())
         tail = Vector(joints[bd.tail].tolist())
         if (tail - head).length < 1e-4:
@@ -92,7 +98,7 @@ def build_armature(template, joints):
         e = eb.new(bd.name)
         e.head, e.tail = head, tail
         made[bd.name] = e
-    for bd in TEMPLATES[template]:
+    for bd in bones:
         if bd.parent:
             made[bd.name].parent = made[bd.parent]
             if (made[bd.name].head - made[bd.parent].tail).length < 1e-6:
@@ -185,6 +191,8 @@ def bind(obj, arm, force_fallback):
 
 
 def rotate_bone(arm, name, axis, deg):
+    if not isinstance(axis, str):
+        axis = Vector(axis).normalized()
     bpy.context.view_layer.update()
     pb = arm.pose.bones[name]
     t = Matrix.Translation(pb.head.copy())
@@ -192,10 +200,10 @@ def rotate_bone(arm, name, axis, deg):
     bpy.context.view_layer.update()
 
 
-def strike_pose(arm, template):
+def strike_pose(arm, pose):
     bpy.context.view_layer.objects.active = arm
     bpy.ops.object.mode_set(mode="POSE")
-    for name, axis, deg in TEST_POSES[template]:
+    for name, axis, deg in pose:
         rotate_bone(arm, name, axis, deg)
     arm.animation_data_create()
     arm.animation_data.action = bpy.data.actions.new("test_pose")
@@ -264,17 +272,24 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     obj = import_mesh(o["glb"])
     v = verts_np(obj)
-    template = o["template"]
-    if template is None:
-        template = "humanoid" if o["type"] == "humanoid" else fitter.choose_animal_template(v)
-    joints = fitter.fit(v, template)
-    arm = build_armature(template, joints)
+    limbs = None
+    if o["chain"] is not None:
+        template = "monster"
+        bones, joints, limbs = monster_bones(json.loads(o["chain"].read_text()))
+        pose = monster_pose(limbs, joints)
+    else:
+        template = o["template"]
+        if template is None:
+            template = "humanoid" if o["type"] == "humanoid" else fitter.choose_animal_template(v)
+        joints = fitter.fit(v, template)
+        bones = TEMPLATES[template]
+        pose = TEST_POSES[template]
+    arm = build_armature(bones, joints)
     info = bind(obj, arm, o["fallback"])
-    bones = TEMPLATES[template]
 
     export(out / "rigged.glb", [arm, obj], False)
     bpy.ops.wm.save_as_mainfile(filepath=str(out / "rigged.blend"), copy=True)
-    strike_pose(arm, template)
+    strike_pose(arm, pose)
     export(out / "test_pose.glb", [arm, obj], True)
     if o["sheets"]:
         render_sheet(obj, out)
@@ -284,8 +299,10 @@ def main():
         "joints": {b.name: [round(float(x), 5) for x in joints[b.name]] for b in bones},
         "bone_list": [{"name": b.name, "parent": b.parent,
                        "tail": [round(float(x), 5) for x in joints[b.tail]]} for b in bones],
-        "foot_pivots": {k: [round(float(x), 5) for x in p]
-                        for k, p in fitter.foot_pivots(v, template).items()},
+        "limbs": limbs,
+        "foot_pivots": {} if limbs is not None else {
+            k: [round(float(x), 5) for x in p]
+            for k, p in fitter.foot_pivots(v, template).items()},
         "forward": "-Y (glTF +Z)", "seconds": round(time.perf_counter() - t0, 1),
     }
     (out / "skeleton.json").write_text(json.dumps(rep, indent=1))

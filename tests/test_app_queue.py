@@ -88,3 +88,28 @@ def test_status_is_persisted_at_each_change(tmp_path):
     q.wait(job.id, 10)
     q.shutdown()
     assert seen[0] == "queued" and seen[-1] == "done" and "running" in seen
+
+
+def test_a_job_reads_done_only_after_its_end_state_and_timing_are_saved(tmp_path):
+    """The flaky batch test: the page read a job as done before its timing was on disk."""
+    saved = []
+
+    def slow_persist(job):
+        if job.state in (DONE, FAILED):
+            time.sleep(0.3)  # a slow disk while the end state and timing are written
+            saved.append((job.state, job.finished is not None))
+
+    q = GpuQueue(tmp_path / "gpu.lock", persist=slow_persist, lock_poll_s=0.01)
+    job = q.submit("a", "generate", lambda j: {"ok": True})
+    seen = set()
+    end = time.time() + 5
+    while time.time() < end and not job.settled:
+        state = job.view()["state"]
+        seen.add(state)
+        if state == DONE:
+            assert saved == [(DONE, True)], "done is shown only after the save finished"
+        time.sleep(0.005)
+    q.shutdown()
+    assert job.view()["state"] == DONE and saved == [(DONE, True)]
+    assert DONE not in seen or saved
+    assert not (tmp_path / "gpu.lock").exists(), "the card share is released before done"

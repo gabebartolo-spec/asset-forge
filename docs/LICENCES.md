@@ -54,6 +54,7 @@ HF model cards); VRAM is from READMEs until the bake-off measures it. Not legal 
 | trimesh, fast-simplification, scikit-image | library | MIT, MIT, BSD-3-Clause | CLEARED | mesh I/O, Step1X-3D cleanup, marching cubes |
 | peft, diffusers, huggingface_hub | library | Apache-2.0 | CLEARED | SDXL + LoRA draw step in `models/envs/sdxl` (sprite mode A); PyPI metadata 2026-10-20 |
 | numpy, Pillow | library | BSD-3-Clause, MIT-CMU (HPND) | CLEARED | sprite post-processing; app dependencies |
+| SciPy | library | BSD-3-Clause (wheels bundle OpenBLAS and LAPACK, BSD-3-Clause, and the GCC runtime, GPL-3.0-or-later WITH GCC-exception-3.1; read from the 1.18.1 wheel LICENSE.txt) | CLEARED | monster limb finder (`skeleton/limbs.py`: voxel distance maps, graph search); app dependency; lead OK 2026-10-20 |
 | RMBG-1.4 / 2.0 (Bria) | matting model | bria-rmbg (non-commercial) | BANNED | |
 | DINOv3 | model | Meta dinov3-license | BANNED until read | TRELLIS.2 only |
 | FastAPI (with Starlette, Pydantic) | library | MIT, BSD-3-Clause, MIT | CLEARED | the backend (Phase 2) |

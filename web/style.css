@@ -34,8 +34,9 @@ main { flex: 1; min-height: 0; display: flex; gap: 16px; padding: 0 20px 12px; }
 .block h3 span { font-weight: 400; }
 .drop { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 72px; border: 2px dashed var(--line); border-radius: 12px; cursor: pointer; text-align: center; padding: 10px; color: var(--dim); }
 .drop:hover, .drop.over { border-color: var(--accent); color: var(--text); }
-.drop img { max-height: 72px; max-width: 100%; border-radius: 8px; }
+.drop img { max-height: 72px; max-width: 100%; border-radius: 8px; background: repeating-conic-gradient(#3a3f4a 0 25%, #2b2f38 0 50%) 0 0 / 12px 12px; }
 .drop.has-image { border-style: solid; }
+.drop.has-image img { max-height: 132px; }
 .drop small { color: var(--dim); }
 .muted { color: var(--dim); font-size: 14px; margin: 6px 0 0; }
 .seg { display: flex; gap: 6px; }
@@ -72,7 +73,7 @@ button:focus-visible, .drop:focus-within { outline: 2px solid #fff; outline-offs
   .block { margin: 6px 0; }
   .block h3 { margin-bottom: 4px; }
   .drop { min-height: 56px; padding: 6px; }
-  .drop img { max-height: 52px; }
+  .drop img, .drop.has-image img { max-height: 84px; }
   .gen { padding: 6px 12px; margin-bottom: 4px; }
 }
 .hint { margin: -4px 0 8px; color: var(--dim); font-size: 13px; }
@@ -163,3 +164,17 @@ button.primary.small { min-width: 0; font-weight: 600; background: var(--accent)
 .bitem.done span { color: var(--ok); }
 .bitem.failed span { color: var(--bad); }
 .bitem.running span { color: var(--text); }
+
+/* Step 3, monsters: the limb list beside the draggable markers */
+.limb-how { margin: 0 0 8px; color: var(--dim); font-size: 14px; }
+.limb-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.limb-list li { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 8px; border: 2px solid transparent; }
+.limb-list li.sel { border-color: #ff7a3d; background: #2a211c; }
+.limb-list li button.pick { flex: 1; text-align: left; background: none; border: 0; color: var(--text); font: inherit; cursor: pointer; padding: 8px 4px; }
+.limb-list li button.small { min-height: 36px; padding: 4px 12px; }
+#limb-kind { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 10px; font: inherit; font-size: 14px; padding: 0 10px; min-height: 44px; }
+.note.warn { color: #ffc861; }
+@media (max-height: 780px) {
+  .limb-list li button.pick { padding: 4px; }
+  .limb-how { margin-bottom: 4px; }
+}

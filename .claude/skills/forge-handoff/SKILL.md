@@ -1,12 +1,12 @@
 ---
 name: forge-handoff
-description: Writing and starting from a Asset Forge agent handoff - the file agent-handoffs/ROLE.md inside the repo that lets a fresh session continue without the old transcript, its 120-line cap, rewrite not append, and when to hand off. Use it when a task is done or you switch to unrelated work, when your context is getting long (past about 150k tokens), before the director restarts or clears a session, and at the start of any new session.
+description: Writing and starting from a Asset Forge agent handoff - the file agent-handoffs/ROLE.md inside the repo that lets a fresh session continue without the old transcript, its 120-line cap, rewrite not append, and when to hand off. Use it when a task is done or you switch to unrelated work, when your context is getting long (past about 300k tokens), before the director restarts or clears a session, and at the start of any new session.
 ---
 
 # Handoffs
 
-Fresh session at every task boundary; hand off at about 200k context (memory-shared/token-and-ci-efficiency.md).
-A helper past 200k asks its lead for a restart; a successor keeps the old name or a clearer one. Write
+Fresh session at every task boundary; hand off at about 300k context, leads 500k (memory-shared/token-and-ci-efficiency.md).
+A helper past 300k asks its lead for a restart; a successor keeps the old name or a clearer one. Write
 the handoff first, then start the new session from it. The user-level Stop hook blocks a turn
 that changed the project without a fresh handoff; write it, never ask the director to remind you.
 

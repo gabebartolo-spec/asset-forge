@@ -191,3 +191,25 @@ def test_picture_upload_path_unchanged(parts):
     body = {"generator": "hi3dgen"}
     g = finish(c, c.post(f"/api/assets/{a['id']}/generate", json=body).json()["id"])
     assert g["state"] == "done"
+
+
+def test_a_draw_with_several_creatures_is_drawn_again_with_the_next_seed(settings, fake_registry):
+    from pathlib import Path
+
+    tiled = (Path(__file__).parent / "fixtures" / "multi_fox_ref.png").read_bytes()
+
+    class Tiled(MockDrawer):
+        def draw(self, prompt, asset_type, seed, progress):  # noqa: ANN001
+            png = super().draw(prompt, asset_type, seed, progress)
+            return tiled if seed == 5 else png  # the first seed comes out as a tiled pattern
+
+    drawer = Tiled()
+    app = create_app(settings, fake_registry, expander=Writer(), drawer=drawer,
+                     release_writer=lambda: None)
+    with TestClient(app) as c:
+        a = c.post("/api/assets/from-text", json={"prompt": "a fox", "type": "animal"}).json()
+        j = finish(c, c.post(f"/api/assets/{a['id']}/draw", json={"seed": 5}).json()["id"])
+        assert j["state"] == "done" and j["result"]["seed"] == 6
+        assert [x[2] for x in drawer.calls] == [5, 6]
+    app.state.queue.shutdown()
+
