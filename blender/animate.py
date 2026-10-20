@@ -66,18 +66,18 @@ def mesh_min_z(obj) -> float:
     return float(mesh_z(obj).min())
 
 
-TORSO = ("Hips", "Spine", "Chest", "UpperChest")
-
-
-def torso_mask(obj) -> np.ndarray:
-    """Vertices skinned mostly to the trunk bones (TORSO)."""
-    names = {g.index: g.name for g in obj.vertex_groups}
-    out = np.zeros(len(obj.data.vertices), dtype=bool)
-    for v in obj.data.vertices:
-        if v.groups:
-            g = max(v.groups, key=lambda e: e.weight)
-            out[v.index] = names.get(g.group) in TORSO
-    return out
+def torso_mask(obj, arm) -> np.ndarray:
+    """Rest-pose vertices of the trunk: between the hips and the neck, and no further out
+    sideways than the shoulder joints (so not the arms or legs). Chosen by position, not by
+    skin weight, because a blocky skinning gives the trunk to the shoulders and legs."""
+    bones = arm.data.bones
+    lo = bones["Hips"].head_local.z
+    hi = (bones["Neck"] if "Neck" in bones else bones["Neck1"]).head_local.z
+    side = abs(bones["LeftUpperArm"].head_local.x) if "LeftUpperArm" in bones else 1e9
+    m = np4(obj.matrix_world)
+    co = np.array([v.co[:] for v in obj.data.vertices], dtype=float)
+    pts = co @ m[:3, :3].T + m[:3, 3]
+    return (pts[:, 2] >= lo) & (pts[:, 2] <= hi) & (np.abs(pts[:, 0]) <= side)
 
 
 def mesh_box(obj):
@@ -153,7 +153,7 @@ def ground_faint(clip, keyer, act, model):
     # should be too (a body propped on its knees or hands is crouched, not lying)
     scene.frame_set(clip.frames - 1)
     z = mesh_z(model)
-    mask = torso_mask(model)
+    mask = torso_mask(model, keyer.arm)
     gap = float(z[mask].min() - z.min()) if mask.any() else float("nan")
     return {"lowest_before_mm": round(min(mins) * 1000, 1),
             "lift_max_mm": round(float(up.max()) * 1000, 1),
