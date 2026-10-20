@@ -1,5 +1,5 @@
 # Asset Forge lead handoff (2026-10-20, session 7)
-## State: working (clean-b8 running; strict motion critic + mocap licence research running)
+## State: working (clean-b8 and anim-b4 builders running)
 
 ## Director said (2026-10-20)
 - "eta til usable build?" -> ~1.5-2 working days.
@@ -16,17 +16,19 @@
   into claude/clean-step, PR #9 body. Then lead: fresh realism-critic on the sheets, merge #9.
 - claude/step2-page a131c49 pushed (count fix + 0fb46ea _settle cherry-pick; 192 unit pass). NO PR
   until #9 merges. Not re-checked vs #20's jobqueue `_plain`.
-- PR #20 animation (350dcf2): DO NOT MERGE, director "Fix first" on every clip. Fresh strict
-  motion-critic (scratch critic_motion_s7/) + a mocap-licence research agent are running. Then:
-  brief a fresh anim builder with exact fixes; if the critic says people need retargeted mocap,
-  ask the director (D-005 says procedural) with a side-by-side clip.
+- PR #20 animation (350dcf2): DO NOT MERGE, director "Fix first" on every clip. Strict critic: all 5
+  FIX (weight, secondary motion, timing; notes folder motion_critic_s7.md). anim-b4 (opus) applies it
+  all + bird hop + kinetic chain + gravity faint -> previews_v4/. Then fresh motion-critic, then the
+  director. Mocap option (notes mocap_licences_2026-10-20.md: Quaternius UAL CC0, CMU) only if the
+  tuned person walk still reads mechanical: ask him (D-005 change; downloading needs his yes).
 - monster-b2 lives in the OLD lead session (claude/monster-rig, head d66d38b); old lead forwards.
 - Proposed card: Step 3 foot joint fix (task_043885cd).
 - asset-forge-wt has 5 worktrees: context-trim (claude/context-trim, uncommitted CLAUDE.md +
   settings.json) is not a lead lane; owner unknown. Do not touch; remove when its owner is done.
 
 ## Next steps
-1. #20: critic report -> fix brief (or method question) -> new clips -> director.
+1. #20: anim-b4 report -> fresh motion-critic on previews_v4 -> clips to director (render from
+   the worktree path; notes-folder files did not show for him).
 2. clean-b8 report -> check evidence, fresh realism-critic (own scratch subfolder), merge #9.
 3. #9 merged -> open step2-page PR (sync main first; gates/ add/add take #9's), merge on green.
 4. Board PR after each merge. Then monster-rig PR when a slot frees.
