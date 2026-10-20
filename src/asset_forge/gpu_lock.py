@@ -41,6 +41,7 @@ VRAM_MB: dict[str, int] = {
     "generate:step1x": 5800,
     "generate:triposr": 5400,
     "draw:sdxl": 10800,
+    "cutout:birefnet": 2500,  # measured 1615 MB peak (fp16, 1024 px) plus headroom
     "clean:multiview": 11000,  # MV-Adapter views inside Clean (its VRAM_CAP_GB 11.0): whole card
     "expand:qwen": 4200,
     "clean": 0,  # remesh, decimate, merge, UV (Blender, CPU)
