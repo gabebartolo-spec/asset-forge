@@ -1,6 +1,8 @@
 # Handoff: monster-rig (Phase 3 monsters + Step 1 limb gate, STATUS item 13, D-026), 2026-10-20
-State: done. Branch claude/monster-rig pushed (origin/main #22/#23 merged in). No PR (3-PR cap): the
-lead opens it with the body below. Worktree C:/Users/DANTE/Documents/GitHub/asset-forge-wt/monster-rig
+State: screen-critic round 1 (PR #27, 10 defects, notes critic_monster_screen.md) fixed in 9a83146;
+re-shooting evidence in ../mr_evidence/round2 (shots.py + shots_server.py in the session scratchpad:
+real app on port 7871, library ../mr_shots2, Step 1 generator stubbed with the real Hi3DGen spider mesh).
+Then: re-rig the 4 real monsters (../mr_out/rig_all.sh, chains regenerated) for new pose sheets, push. Worktree C:/Users/DANTE/Documents/GitHub/asset-forge-wt/monster-rig
 (own .venv with scipy, config.local.toml). Evidence in ../mr_evidence; rig outputs in ../mr_out.
 Lead rulings: gate option A (Re-roll primary, "Use it anyway" quiet second; the warning says extra
 legs STAY in the model); scipy OK with a LICENCES.md row (added).
@@ -13,6 +15,15 @@ legs STAY in the model); scipy OK with a LICENCES.md row (added).
   GET /api/assets/{id}/skeleton/limbs, POST skeleton {spine, limbs}; page: web/viewer.js markers,
   web/app.js Step 3 limb editor + Step 1 warning.
 - Merge note: rig.py skeleton.json keeps main's foot_pivots for template rigs; monsters write {}.
+
+## Round 2 fixes (critic 1-10)
+outside_joints() in limbs.py + result["outside"] -> warning + red dots (built view and editor); body
+line snapped onto the core; limb list unscrolled; Step 1 "This model has 10 legs, not 8 ... can only
+move bones"; Add its bones / Remove bones; new limb beside the body; tip dots after Build (rig limbs
+carry "tip"); white bone lines; drag lights the row, hover lights the dots; pose ~30 deg per joint and
+"Bends each limb once"; Skeleton "soon" badge gone, draw-note hidden once a model exists; Step 3 Redo =
+"Start the limbs again" (asks first; GET limbs?fresh=1). Also fixed: limbWarningButtons wiped "hidden"
+via className, which showed Redo on Step 3.
 
 ## PR body (for the lead)
 Title: rig: monster skeleton from the mesh, limb editor, Step 1 limb check
