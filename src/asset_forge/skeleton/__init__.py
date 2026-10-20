@@ -37,19 +37,22 @@ class RigResult:
     max_influences: int
     seconds: float
     problems: list[str] = field(default_factory=list)
+    limbs: list[dict] = field(default_factory=list)
 
     def public(self) -> dict:
         return {"template": self.template, "bones": self.bones,
                 "weights_method": self.weights_method, "max_influences": self.max_influences,
-                "seconds": self.seconds, "problems": self.problems}
+                "seconds": self.seconds, "problems": self.problems, "limbs": self.limbs}
 
 
 def rig_command(blender_exe: str, repo: Path, clean_glb: Path, out_dir: Path, asset_type: str,
-                template: str | None = None) -> list[str]:
+                template: str | None = None, chain: Path | None = None) -> list[str]:
     cmd = [blender_exe, "-b", "--factory-startup", "-P", str(repo / "blender" / "rig.py"), "--",
            str(clean_glb), str(out_dir), "--type", asset_type]
     if template:
         cmd += ["--template", template]
+    if chain:
+        cmd += ["--chain", str(chain)]
     return cmd
 
 
@@ -73,12 +76,13 @@ def check_rig_glb(glb: Path) -> list[str]:
 
 
 def rig(clean_glb: Path, out_dir: Path, asset_type: str, blender_exe: str,
-        template: str | None = None, repo: Path = REPO, timeout: float = 600) -> RigResult:
-    """Run the Skeleton step. Raises RigFailed (plain words) when it cannot finish."""
+        template: str | None = None, repo: Path = REPO, timeout: float = 600,
+        chain: Path | None = None) -> RigResult:
+    """Run the Skeleton step. Raises RigFailed (plain words) when it cannot finish. A monster
+    needs `chain`: the limb chains the user confirmed (see skeleton/monster.py)."""
     clean_glb, out_dir = Path(clean_glb), Path(out_dir)
-    if asset_type == "monster":
-        raise RigFailed("Monsters get their skeleton in a later version. "
-                        "Humanoid and Animal work today.")
+    if asset_type == "monster" and (chain is None or not Path(chain).is_file()):
+        raise RigFailed("Check the limb markers, then press Build skeleton.")
     if not clean_glb.is_file():
         raise RigFailed("There is no cleaned model yet. Run Clean up first.")
     if not blender_exe or not Path(blender_exe).is_file():
@@ -86,7 +90,7 @@ def rig(clean_glb: Path, out_dir: Path, asset_type: str, blender_exe: str,
     out_dir.mkdir(parents=True, exist_ok=True)
     try:
         proc = subprocess.run(rig_command(blender_exe, repo, clean_glb, out_dir, asset_type,
-                                          template), capture_output=True, text=True,
+                                          template, chain), capture_output=True, text=True,
                               timeout=timeout)
     except subprocess.TimeoutExpired:
         raise RigFailed("Building the skeleton took too long. Press Redo.") from None
@@ -100,4 +104,4 @@ def rig(clean_glb: Path, out_dir: Path, asset_type: str, blender_exe: str,
         raise RigFailed(" ".join(problems))
     w = rep["weights"]
     return RigResult(out_dir, rep["template"], rep["bones"], w["method"], w["max_influences"],
-                     rep["seconds"], w["problems"])
+                     rep["seconds"], w["problems"], rep.get("limbs") or [])

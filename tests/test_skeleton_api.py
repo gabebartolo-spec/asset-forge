@@ -43,7 +43,7 @@ def finish(client, job_id, timeout=10):
     raise AssertionError("job did not finish")
 
 
-def fake_rig(clean_glb, out_dir, asset_type, blender_exe, template=None, repo=None):
+def fake_rig(clean_glb, out_dir, asset_type, blender_exe, template=None, repo=None, chain=None):
     out_dir.mkdir(parents=True, exist_ok=True)
     write_skinned_glb(out_dir / "rigged.glb")
     write_skinned_glb(out_dir / "test_pose.glb")
@@ -69,11 +69,11 @@ def test_skeleton_before_clean_says_what_to_do_first(client):
     assert r.status_code == 409 and "Clean up the model first" in r.json()["detail"]
 
 
-def test_monster_skeleton_is_not_built_yet_in_plain_words(client, settings):
+def test_monster_skeleton_waits_for_the_confirmed_limbs_in_plain_words(client, settings):
     aid = new_asset(client, "monster")
     put_clean(settings, aid)
     r = client.post(f"/api/assets/{aid}/skeleton")
-    assert r.status_code == 400 and "later version" in r.json()["detail"]
+    assert r.status_code == 400 and "limb markers" in r.json()["detail"]
 
 
 def test_a_rig_that_fails_its_gate_shows_the_plain_words_on_the_job(client, settings,

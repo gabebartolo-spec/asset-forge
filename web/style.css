@@ -161,3 +161,17 @@ button.primary.small { min-width: 0; font-weight: 600; background: var(--accent)
 .bitem.done span { color: var(--ok); }
 .bitem.failed span { color: var(--bad); }
 .bitem.running span { color: var(--text); }
+
+/* Step 3, monsters: the limb list beside the draggable markers */
+.limb-how { margin: 0 0 8px; color: var(--dim); font-size: 14px; }
+.limb-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.limb-list li { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 8px; border: 2px solid transparent; }
+.limb-list li.sel { border-color: #ff7a3d; background: #2a211c; }
+.limb-list li button.pick { flex: 1; text-align: left; background: none; border: 0; color: var(--text); font: inherit; cursor: pointer; padding: 8px 4px; }
+.limb-list li button.small { min-height: 36px; padding: 4px 12px; }
+#limb-kind { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 10px; font: inherit; font-size: 14px; padding: 0 10px; min-height: 44px; }
+.note.warn { color: #ffc861; }
+@media (max-height: 780px) {
+  .limb-list li button.pick { padding: 4px; }
+  .limb-how { margin-bottom: 4px; }
+}
