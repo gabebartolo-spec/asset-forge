@@ -4,6 +4,12 @@ Cap: 400 lines; oldest roll to `docs/archive/`. One decision per entry, newest f
 that is not here does not exist. Format: date · id · who decided · the decision · why · what it
 changes. Only the lead edits this file, from the "Board and log" section of merged PRs.
 
+## 2026-10-20 · D-027 · Director · Clean colour: keep improving first
+Asked: ship the 6/10 multi-view colour now, keep improving, or shape only. His answer: "Keep
+improving first". Changes: PR #9 stays open; a fresh Clean builder targets the causes behind the
+4 fails (picture-to-mesh registration, single-part mesh, fox chest and front legs, greaves) with
+a bar of 8/10 and a fresh realism critic before merge; step2-page (item 12) still merges after #9.
+
 ## 2026-10-20 · D-026 · Director · Anything that can run in parallel, runs
 His words: "if theres anything you can work on in parrelal then do it". Changes: item 12 (Step 2
 page + hand-over) starts now against PR #9's script interface with Clean mocked, merging after #9;
