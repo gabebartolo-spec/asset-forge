@@ -10,7 +10,9 @@
     POST /api/assets/{id}/clean           Step 2: rebuild the model (queued; runs blender/clean.py)
                                           result: passed, problems (broken limits), triangles,
                                           texture; files clean/clean.glb, report.json
-    POST /api/assets/{id}/skeleton        Step 3: fit, bind, test pose (queued; needs clean.glb)
+    POST /api/assets/{id}/skeleton        Step 3: fit, bind, test pose (queued; needs clean.glb).
+                                          A monster sends its confirmed {spine, limbs}
+    GET  /api/assets/{id}/skeleton/limbs  a monster's proposed limb chains and counts
     GET  /api/library[?trash=1]           cards: thumbnail flag, type, date, last step, timings
     POST /api/assets/{id}/duplicate, /trash, /restore   copy, move to library/_trash, put back
     POST /api/batch, GET /api/batch/{id}  several prompts through draw + 3D on the one queue
@@ -27,14 +29,17 @@ import io
 import json
 import mimetypes
 import secrets
+import struct
 import time
 from collections.abc import Callable
+from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from .anatomy import check_mesh
 from .animate import NOT_YET, animate
 from .clean_step import Runner, blender_runner, clean_model
 from .config import Settings, load_settings
@@ -45,6 +50,7 @@ from .jobqueue import GpuQueue, Job
 from .library import register_library
 from .matte import prepare_reference
 from .skeleton import rig
+from .skeleton.monster import ChainError, monster_bones
 from .store import ASSET_TYPES, NotFound, Store
 
 mimetypes.add_type("text/javascript", ".js")
@@ -200,6 +206,8 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
             "total_s": round(time.time() - t0, 1), "gen_s": res.gen_s,
             "gpu_peak_gb": res.gpu_peak_gb, "details": res.details,
         }
+        progress("Counting legs and arms...")
+        result["anatomy"] = limb_check(asset_id, res.mesh)
         store.write_result(asset_id, "generate", result)
         store.mark_reached(asset_id, "generate")
         return result
@@ -318,8 +326,57 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
 
         return gpu_queue.submit(asset_id, "clean", run).public()
 
+    def limb_check(asset_id: str, mesh) -> dict | None:
+        """Step 1 limb gate: count legs and arms against the words (None = nothing to check)."""
+        asset = store.get_asset(asset_id)
+        return check_mesh(mesh, asset.get("prompt"), asset["type"])
+
+    @app.get("/api/assets/{asset_id}/skeleton/limbs")
+    def monster_limbs(asset_id: str) -> dict:
+        """A monster's proposed limb chains, worked out once from its shape and kept; the user's
+        edits are sent back with Build skeleton (no automatic re-proposal)."""
+        try:
+            store.get_asset(asset_id)
+            clean_glb = store.step_dir(asset_id, "clean") / "clean.glb"
+            out = store.step_dir(asset_id, "skeleton")
+        except NotFound:
+            raise missing("model") from None
+        if not clean_glb.is_file():
+            raise HTTPException(409, "Clean up the model first, then build its skeleton.")
+        for name in ("chain.json", "proposal.json"):
+            if (out / name).is_file():
+                data = json.loads((out / name).read_text(encoding="utf-8"))
+                return {**data, "confirmed": name == "chain.json"}
+        from .skeleton.glb import read_mesh
+        from .skeleton.limbs import propose
+
+        try:
+            data = propose(*read_mesh(clean_glb)).public()
+        except (OSError, ValueError, KeyError, IndexError, struct.error):
+            raise HTTPException(500, "I could not find the limbs on this model. "
+                                     "Go back to step 1 and press Redo.") from None
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "proposal.json").write_text(json.dumps(data), encoding="utf-8")
+        return {**data, "confirmed": False}
+
+    def confirmed_chain(asset_id: str, body: dict | None) -> Path:
+        """Check the monster's edited limb chains and keep them as skeleton/chain.json."""
+        if not body or "limbs" not in body:
+            raise HTTPException(400, "Check the limb markers, then press Build skeleton.")
+        try:
+            monster_bones(body)
+        except ChainError as e:
+            raise HTTPException(400, str(e)) from None
+        out = store.step_dir(asset_id, "skeleton")
+        out.mkdir(parents=True, exist_ok=True)
+        path = out / "chain.json"
+        keep = {"spine": body["spine"], "limbs": [
+            {"kind": lb["kind"], "joints": lb["joints"]} for lb in body["limbs"]]}
+        path.write_text(json.dumps(keep), encoding="utf-8")
+        return path
+
     @app.post("/api/assets/{asset_id}/skeleton")
-    def skeleton(asset_id: str) -> dict:
+    def skeleton(asset_id: str, body: dict | None = Body(None)) -> dict:  # noqa: B008
         try:
             asset = store.get_asset(asset_id)
             clean_glb = store.step_dir(asset_id, "clean") / "clean.glb"
@@ -329,15 +386,13 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         if not clean_glb.is_file() or store.get_asset(asset_id)["steps"].get(
                 "clean", {}).get("result", {}).get("passed") is False:
             raise HTTPException(409, "Clean up the model first, then build its skeleton.")
-        if asset["type"] == "monster":
-            raise HTTPException(
-                400, "Monsters get their skeleton in a later version. Humanoid and Animal "
-                     "work today.")
+        chain = confirmed_chain(asset_id, body) if asset["type"] == "monster" else None
 
         def run(job: Job) -> dict:
             job.set_message("Fitting the skeleton to your model...")
             t0 = time.time()
-            res = rig(clean_glb, out, asset["type"], settings.blender_exe, repo=settings.repo)
+            res = rig(clean_glb, out, asset["type"], settings.blender_exe, repo=settings.repo,
+                      **({"chain": chain} if chain else {}))
             result = {**res.public(), "total_s": round(time.time() - t0, 1)}
             store.write_result(asset_id, "skeleton", result)
             store.mark_reached(asset_id, "skeleton")
