@@ -282,13 +282,13 @@ class Animator:
 
     def swing_turn(self, lg, rise: float, lift: float, base: float, curl: float) -> float:
         """The foot's turn in the swing: `base` (heel up / toes up) plus as much of the swing
-        `curl` as keeps the toe or paw tip clear of the ground: at least half the swing's
+        `curl` as keeps the toe or paw tip clear of the ground: at least 3/4 of the swing's
         `lift` above where it stands (`rise`: the ankle above its standing height). A curl
         that would scuff the tip along the floor or push it through is cut back."""
         v = lg.tip - lg.ankle
 
         def clear(k):
-            return rise + float((pitch(base + k * curl) @ v)[2] - v[2]) >= 0.5 * lift - 1e-9
+            return rise + float((pitch(base + k * curl) @ v)[2] - v[2]) >= 0.75 * lift - 1e-9
 
         if clear(1.0) or not clear(0.0):
             return base + curl if clear(1.0) else base
@@ -824,7 +824,7 @@ class FourLegged(Animator):
         front = ("FrontLeft", "FrontRight")
 
         def curl(s, lg):  # the forepaw folds right back as it swings (no straight stilts)
-            return (70 if lg.name in front else 45) * np.sin(np.pi * s)
+            return (70 if lg.name in front else 45) * np.sin(np.pi * s) ** 1.5  # flat on landing
 
         # No standing crouch and no mid-stance knee give: every bit of hip drop bends the hind
         # leg's single lower bone further back (HIND_SHIN_MAX_DEG), which costs stride
@@ -971,7 +971,7 @@ class Bird(Animator):
             return r, {"Hips": np.array([0.015 * L * np.cos(w - np.pi * g.duty), 0.0, 0.0])}, {}
 
         def curl(s, lg):
-            return 70 * np.sin(np.pi * s)
+            return 70 * np.sin(np.pi * s) ** 1.5
 
         if run:
             kw = dict(duty=0.38, lift=0.30 * L, phases=BIPED)
@@ -1022,7 +1022,7 @@ class Bird(Animator):
             return r, {}, {}
 
         def curl(s, lg):
-            return 70 * np.sin(np.pi * s)
+            return 70 * np.sin(np.pi * s) ** 1.5
 
         # no heel roll: both feet push off and land flat together (a roll about each toe tip
         # would lift two feet of slightly different shape by different heights)
