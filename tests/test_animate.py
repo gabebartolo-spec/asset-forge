@@ -9,7 +9,15 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from anim_factory import GAIT, LEG, clips_json, foot_track, write_anim_glb
+from anim_factory import (
+    GAIT,
+    LEG,
+    clips_json,
+    foot_track,
+    paw_tips,
+    write_anim_glb,
+    write_paw_glb,
+)
 from test_skeleton import stick_bird, stick_fox, stick_human
 
 from asset_forge.animate import AnimFailed, animate
@@ -19,6 +27,7 @@ from asset_forge.animate.check import (
     foot_joints,
     read_animations,
     seam_errors,
+    world_positions,
 )
 from asset_forge.animate.clips import (
     CLIP_NAMES,
@@ -626,3 +635,56 @@ def test_nothing_moves_once_the_faint_has_settled(template):
     for p in P[settle:]:
         worst = max(float(np.linalg.norm(p[j] - P[settle][j])) for j in p)
         assert worst <= 0.002 * b.height, worst / b.height
+
+
+# ------------------------------------------------------------------ on the Step 3 fit's feet (#22)
+
+def test_a_paw_that_turns_about_its_planted_tip_does_not_slide(tmp_path):
+    # the ankle swings forward 13 mm (over the 10 mm limit) as the pad peels off; the tip stays
+    glb = write_paw_glb(tmp_path / "paw.glb")
+    rep = {**clips_json(speed=0.0), "foot_tips": paw_tips()}
+    assert check_animated_glb(glb, rep).problems == []
+    tracked = world_positions(read_animations(glb), "idle", ["LeftFoot.tail"], 30, paw_tips())
+    assert np.ptp(tracked[:, 0], axis=0).max() < 1e-6       # the tip really is still
+    # a file whose clips.json does not say where the tips are falls back to the ankle
+    without = check_animated_glb(glb, clips_json(speed=0.0)).problems
+    assert any("slides" in p for p in without), without
+
+
+def test_toes_and_paws_never_dip_below_where_they_stand_in_the_swing(made):
+    b, clips = made
+    for name in ("walk", "run"):
+        P = _P(b, clips[name])
+        for lg in b.legs:
+            tip = f"{lg.foot}.tail" if b.template != "humanoid" else f"{lg.name}Toes.tail"
+            z = _arr(P, tip)[:, 2]
+            stand = np.median(z[z <= z.min() + 0.01 * b.leg_len])
+            assert z.min() >= stand - 0.005 * b.leg_len, (name, lg.name, stand - z.min())
+
+
+def test_a_person_lifts_the_heel_about_the_ball_with_the_toes_flat():
+    b = body("humanoid")
+    w = animator(b).walk()
+    P = _P(b, w)[:-1]
+    g = w.gait
+    for lg in b.legs:
+        ball, tip = _arr(P, f"{lg.name}Toes"), _arr(P, f"{lg.name}Toes.tail")
+        lifted = [f for f in range(g.frames)
+                  if g.foot(lg.name, f)[2] and g.roll(lg.name, f) > 0.5]  # heel well up
+        assert lifted
+        for f in lifted:  # the ball and the toe tip both stay down on the ground
+            assert ball[f, 2] - ball[:, 2].min() <= 0.01 * b.leg_len, (lg.name, f)
+            assert tip[f, 2] - tip[:, 2].min() <= 0.01 * b.leg_len, (lg.name, f)
+
+
+def test_the_fainted_body_lies_on_the_floor_and_nothing_goes_through_it():
+    b = body("humanoid")
+    f = animator(b).faint()
+    P = _P(b, f)
+    for i, p in enumerate(P):  # the root bone carries no mesh
+        low = min(v[2] for k, v in p.items() if not k.startswith("Root"))
+        assert low >= -0.005 * b.height, (i, low)
+    trunk = [P[-1][n][2] for n in ("Hips", "Spine", "Chest", "UpperChest", "Neck")]
+    assert max(trunk) <= 0.08 * b.height, max(trunk) / b.height  # lying, not floating
+    feet = [P[-1][f"{lg.name}Toes.tail"][2] for lg in b.legs]
+    assert max(feet) <= 0.02 * b.height, feet                       # toes resting on the floor

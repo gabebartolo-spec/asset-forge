@@ -257,9 +257,15 @@ class Animator:
         return {lg.name: apply(D[lg.upper], lg.hip) for lg in self.b.legs}
 
     def pivot(self, lg) -> np.ndarray:
-        """The point a lifting heel turns about: the toe tip, or the paw tip. (A person's fitted
-        ball joint sits under the ankle, so turning about it would not lengthen the stride.)"""
-        return lg.tip
+        """The point a lifting heel turns about: a person's ball joint (the toes stay flat on
+        the ground and bend there, see toe_bend), or an animal's paw tip."""
+        return lg.ball
+
+    def toe_bend(self, lg, deg: float) -> dict[str, np.ndarray]:
+        """The toes kept flat while the heel is up `deg` about the ball (a person only)."""
+        if self.b.template != "humanoid" or not deg:
+            return {}
+        return {f"{lg.name}Toes": pitch(-deg)}
 
     def heel(self, lg) -> np.ndarray:
         """The point a landing foot rocks on before it lies flat: a person's heel, on the
@@ -273,6 +279,24 @@ class Animator:
     def strike_offset(self, lg, deg: float) -> np.ndarray:
         """How the ankle moves when the toes are up by `deg` with the heel on the ground."""
         return (pitch(-deg) - I3) @ (lg.ankle - self.heel(lg)) if deg else np.zeros(3)
+
+    def swing_turn(self, lg, rise: float, lift: float, base: float, curl: float) -> float:
+        """The foot's turn in the swing: `base` (heel up / toes up) plus as much of the swing
+        `curl` as keeps the toe or paw tip clear of the ground: at least half the swing's
+        `lift` above where it stands (`rise`: the ankle above its standing height). A curl
+        that would scuff the tip along the floor or push it through is cut back."""
+        v = lg.tip - lg.ankle
+
+        def clear(k):
+            return rise + float((pitch(base + k * curl) @ v)[2] - v[2]) >= 0.5 * lift - 1e-9
+
+        if clear(1.0) or not clear(0.0):
+            return base + curl if clear(1.0) else base
+        lo, hi = 0.0, 1.0
+        for _ in range(24):
+            mid = 0.5 * (lo + hi)
+            lo, hi = (mid, hi) if clear(mid) else (lo, mid)
+        return base + lo * curl
 
     def lean_limited(self, lg) -> bool:
         """Legs whose lower bone may not lean past HIND_SHIN_MAX_DEG: a four-legged animal's
@@ -381,17 +405,21 @@ class Animator:
             rot_, move, rep = ups[f]
             hips = move.get("Hips", np.zeros(3)) + UP * lift[f]
             at = self.hip_joints(rot_, {**move, "Hips": hips}, rep)
-            feet = {}
+            feet, toes = {}, {}
             for lg in self.b.legs:
                 x, z, on, s = g.foot(lg.name, f)
                 a = roll * g.roll(lg.name, f)
                 h = strike * g.strike(lg.name, f)
-                feet[lg.name] = (self.spot(lg, centre[lg.name] + x, z)
-                                 + self.roll_offset(lg, a) + self.strike_offset(lg, h),
-                                 pitch(a - h) if on else pitch(a - h + swing_pitch(s, lg)))
+                toes.update(self.toe_bend(lg, a))
+                at_ = (self.spot(lg, centre[lg.name] + x, z)
+                       + self.roll_offset(lg, a) + self.strike_offset(lg, h))
+                turn = a - h if on else self.swing_turn(lg, at_[2] - lg.ground_z, z, a - h,
+                                                        swing_pitch(s, lg))
+                feet[lg.name] = (at_, pitch(turn))
                 need[f] = max(need[f], self.drop_needed(lg, feet[lg.name][0], reach=reach,
                                                         hip=at[lg.name]))
             feet_all.append(feet)
+            ups[f] = ({**rot_, **toes}, move, rep)
         # the drop follows the wanted dip exactly and is smoothed only where the reach needs
         # more (smoothing the dip itself lifts its low point: a bent knee at mid-stance)
         need = np.minimum(need, 0.5 * self.L)
@@ -580,6 +608,7 @@ class Humanoid(Animator):
             feet["Left"] = (self.spot(left, stride * reach.at(t)["s"], lift.at(t)["z"] * L), I3)
             a = h["heel"]  # the back heel lifts as it drives the lunge; the toes stay planted
             feet["Right"] = (self.spot(right) + self.roll_offset(right, a), pitch(a))
+            r.update(self.toe_bend(right, a))
             mv = {"Hips": FWD * h["hx"] * L + np.array([0.0, 0.0, -0.02 * L - h["hz"] * L])}
             return self.pose(r, mv, feet, replace=rep)
 
@@ -634,16 +663,16 @@ class Humanoid(Animator):
         legs = Keys([0.0, 0.18, 0.45, land, 1.30],
                     shape=["smooth", "in", "smooth", "smooth"],
                     hz=[0, -0.01, 0.32, -0.02, -0.02], hx=[0, 0.03, 0.0, 0.0, 0.0],
-                    straight=[0, 0, 0, 1, 1], point=[0, 0, 0.2, 1, 1])
+                    straight=[0, 0, 0, 1, 1])
         step = Keys([0.0, 0.04, 0.20], s=[0, 0.5, 1.0])  # the right foot steps back as it reels
         lift = Keys([0.0, 0.04, 0.12, 0.20], z=[0, 0.02, 0.04, 0])
         # the torso folds 4 frames after the knees, the arms follow, the head comes last;
         # each is settled within 0.15 s of the landing, so nothing drifts after
         chest = Keys([0.0, 0.18, 0.30, 0.48, 0.58, 0.64], chest=[0, -5, 2, 30, 6, 0])
-        head = Keys([0.0, 0.18, 0.30, 0.46, 0.56, 0.62],
-                    head=[0, -6, -4, 30, 4, 0], hyaw=[0, 0, 0, 30, 70, 75])
-        arms = Keys([0.0, 0.18, 0.40, 0.55, 0.62],
-                    arms=[0, -10, -18, -8, -2], elbow=[12, 20, 25, 14, 6], out=[0, 5, 8, 16, 20])
+        head = Keys([0.0, 0.18, 0.30, 0.44, 0.54, 0.60],
+                    head=[0, -6, -4, -18, 6, 0], hyaw=[0, 0, 0, 30, 70, 75])
+        arms = Keys([0.0, 0.18, 0.32, 0.42, 0.50],
+                    arms=[0, -10, -18, -8, 1], elbow=[12, 20, 25, 14, 6], out=[0, 5, 8, 16, 20])
         # the arms splay out on the impact (2 frames) and settle back a little
         splay = Keys([0.0, land, land + 0.07, land + 0.13], out=[0, 0, 12, 9],
                      shape=["smooth", "out", "smooth"])
@@ -653,10 +682,20 @@ class Humanoid(Animator):
         # where each ankle is with its leg straight and in line with the trunk (lying face
         # down), whatever the stance the model was made in
         reach = {lg.name: lg.hip - UP * 0.995 * lg.length for lg in self.b.legs}
-        # and how far each foot turns to point: toes 80 degrees below the shin's forward, so
-        # lying face down the top of the foot rests on the floor, toes just down
-        slope = {lg.name: np.degrees(np.arctan2(lg.ankle[2] - lg.tip[2], (lg.ankle - lg.tip) @ FWD))
-                 for lg in self.b.legs}
+        # Toppling about the toe tips leaves the trunk as high as the hips stood behind them;
+        # it sinks with the fall to lie at the depth of a body's front half (the joints run
+        # down the middle of the body), its legs at that height too.
+        depth = 0.06 * self.H
+        sink = max(0.0, float((self.b.head["Hips"] - pivot) @ -FWD) - depth)
+        # each foot points so its toe tip just reaches the floor from that ankle height: the
+        # turn from the foot's rest slope (degrees below level, toes forward) to that angle
+        # below the shin's line, which lying face down is the floor
+        turn = {}
+        for lg in self.b.legs:
+            foot = float(np.linalg.norm(lg.tip - lg.ankle))
+            rest = np.degrees(np.arctan2(lg.ankle[2] - lg.tip[2], (lg.tip - lg.ankle) @ FWD))
+            down = np.degrees(np.arcsin(np.clip((depth - 0.005 * self.H) / foot, 0.0, 1.0)))
+            turn[lg.name] = max(0.0, 90.0 - down - rest)
 
         def frame(c, t):
             lg_ = legs.at(t)
@@ -675,18 +714,46 @@ class Humanoid(Animator):
             # the legs lie straight
             mv = {"Hips": FWD * lg_["hx"] * L + np.array([0.0, 0.0, -0.02 * L - lg_["hz"] * L])}
             w = lg_["straight"]
+            # the feet point and the body sinks together, as it nears the floor (so the toes
+            # stay on the floor while it topples over them)
+            v = fall.at(t)["v"]
+            low = np.sin(np.radians(min(v, 90.0))) ** 4
             feet = {}
             for n, (p, _) in self.planted().items():
                 if n == right.name:
                     p = self.spot(right, -0.12 * L * step.at(t)["s"], lift.at(t)["z"] * L)
-                feet[n] = ((1 - w) * p + w * reach[n],
-                           pitch(lg_["point"] * max(0.0, 80.0 - slope[n])))
-            root = about(pitch(fall.at(t)["v"]), pivot)
-            return self.pose(r, mv, feet, root=root, replace=rep)
+                feet[n] = ((1 - w) * p + w * reach[n], pitch(np.sqrt(low) * turn[n]))
+            root = about(pitch(v), pivot, -UP * sink * low)
+            pose = self.pose(r, mv, feet, root=root, replace=rep)
+            return self._toes_off_floor(pose, r, mv, feet, root, rep)
 
         clip = self.keyed_clip("faint", fall, frame)
         clip.land_frame = int(round(land * self.fps))
         return clip
+
+    def _toes_off_floor(self, pose, r, mv, feet, root, rep):
+        """While the body topples over its pointed feet, toes that would dip into the floor
+        bend back at the ball and lie on it instead."""
+        D, _ = self.b.solve(pose)
+        P = self.b.joint_positions(D)
+        floor = 0.005 * self.H
+        bend = {}
+        for lg in self.b.legs:
+            ball, tip = P[f"{lg.name}Toes"], P[f"{lg.name}Toes.tail"]
+            if tip[2] >= floor or ball[2] <= floor:
+                continue
+            # every turn here is about the left axis, so the toes turn in the side plane: from
+            # their angle now to the nearer angle that puts the tip on the floor
+            t = tip - ball
+            n = float(np.hypot(t[1], t[2]))
+            now = np.arctan2(t[2], t[1])
+            a = np.arcsin(np.clip((floor - ball[2]) / n, -1.0, 1.0))
+            d = min(((x + np.pi) % (2 * np.pi) - np.pi for x in (a - now, np.pi - a - now)),
+                    key=abs)
+            bend[f"{lg.name}Toes"] = pitch(np.degrees(d))
+        if not bend:
+            return pose
+        return self.pose({**r, **bend}, mv, feet, root=root, replace=rep)
 
     def _front_pivot(self) -> np.ndarray:
         pts = np.array([*self.b.head.values(), *self.b.tail.values()])
