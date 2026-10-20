@@ -19,6 +19,7 @@ from pydantic import BaseModel
 from .clean_step import CleanFailed
 from .draw import ReferenceDrawer
 from .generators import Registry
+from .gpu_lock import vram_need
 from .jobqueue import GpuQueue, Job
 from .store import ASSET_TYPES, NotFound, Store
 
@@ -98,6 +99,11 @@ def register_library(app: FastAPI, store: Store, queue: GpuQueue, registry: Regi
                 raise HTTPException(400, f"Line {n}: choose Humanoid, Monster or Animal.")
             clean.append((words, it.type))
         total = len(clean)
+        # each batch job draws, then makes the 3D model: it holds the larger of the two
+        gen_need = vram_need(f"generate:{generator.id}")  # None: unknown, the whole card
+        # the batch job draws, generates and cleans (Clean's multi-view books the card too)
+        need = None if gen_need is None else max(vram_need("draw:sdxl") or 0, gen_need,
+                                                 vram_need("clean:multiview") or 0)
         items = []
         for n, (words, kind) in enumerate(clean, 1):
             asset = store.create_text_asset(kind, words)
@@ -117,7 +123,7 @@ def register_library(app: FastAPI, store: Store, queue: GpuQueue, registry: Regi
                     "draw": drew["draw_s"], "generate": res["total_s"],
                     "clean": cleaned["total_s"]}}
 
-            job = queue.submit(asset["id"], "generate", run)
+            job = queue.submit(asset["id"], "generate", run, need=need)
             items.append({"asset_id": asset["id"], "prompt": words, "type": kind,
                           "job_id": job.id})
         batch_id = f"b{len(batches) + 1}-{int(time.time())}"
@@ -140,7 +146,7 @@ def _batch_view(batch_id: str, items: list[dict], queue: GpuQueue) -> dict:
     out = []
     for it in items:
         job = queue.jobs[it["job_id"]]
-        j = job.public()
+        j = job.view()
         out.append({**it, "state": j["state"], "message": j["message"], "error": j["error"],
                     "elapsed_s": j["elapsed_s"], "ahead": queue.ahead_of(job)})
     finished = all(i["state"] in ("done", "failed") for i in out)

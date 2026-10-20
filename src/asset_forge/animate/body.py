@@ -38,6 +38,7 @@ class Leg:
     knee: np.ndarray
     ankle: np.ndarray
     tip: np.ndarray    # the far end of the foot (toe tip or paw tip)
+    ball: np.ndarray   # where a lifting heel turns: a person's ball joint (Toes), else the tip
     pole: np.ndarray
     l1: float = 0.0
     l2: float = 0.0
@@ -134,11 +135,11 @@ class Body:
                 nm = f"{g}{side}"
                 up, lo, ft = f"{nm}UpperLeg", f"{nm}LowerLeg", f"{nm}Foot"
                 if self.template == "humanoid":
-                    tip = self.tail[f"{nm}Toes"]
+                    tip, ball = self.tail[f"{nm}Toes"], self.head[f"{nm}Toes"]
                 else:
-                    tip = self.tail[ft]
+                    tip = ball = self.tail[ft]
                 lg = Leg(nm, up, lo, ft, s, g, self.head[up], self.head[lo], self.head[ft], tip,
-                         FWD * poles[g])
+                         ball, FWD * poles[g])
                 lg.l1 = float(np.linalg.norm(lg.knee - lg.hip))
                 lg.l2 = float(np.linalg.norm(lg.ankle - lg.knee))
                 legs.append(lg)

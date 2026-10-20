@@ -49,6 +49,12 @@ class FakeGenerator(Generator):
         return GenResult(glb, 1.5, 2.0, {"faces": 12})
 
 
+@pytest.fixture(autouse=True)
+def _no_live_card(monkeypatch):
+    """Tests never read the real card (this PC's free memory changes with other jobs)."""
+    monkeypatch.setattr("asset_forge.gpu_lock.query_card_mb", lambda: None)
+
+
 @pytest.fixture
 def settings(tmp_path) -> Settings:
     return Settings(

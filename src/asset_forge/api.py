@@ -133,7 +133,8 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
     release_writer = release_writer or release_idea_writer
     cleaner = cleaner or blender_runner(settings.blender_exe)
 
-    gpu_queue = queue or GpuQueue(settings.lock_dir, persist=persist)
+    gpu_queue = queue or GpuQueue(settings.lock_dir, persist=persist,
+                                  budget_mb=settings.gpu_budget_mb, make_room=release_writer)
     if queue is not None:
         gpu_queue.persist = persist
 
@@ -223,7 +224,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
             job.set_message("Writing your description...")
             return {"prompt": expander(idea, req.type, seed)}
 
-        return gpu_queue.submit("expand", "expand", run).public()
+        return gpu_queue.submit("expand", "expand", run, need="expand:qwen").public()
 
     @app.post("/api/assets/from-text")
     def from_text(req: TextAssetRequest) -> dict:
@@ -248,7 +249,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         def run(job: Job) -> dict:
             return draw_now(asset_id, asset["type"], prompt, seed, job.set_message)
 
-        return gpu_queue.submit(asset_id, "generate", run).public()
+        return gpu_queue.submit(asset_id, "generate", run, need="draw:sdxl").public()
 
     @app.get("/api/assets")
     def list_assets() -> list[dict]:
@@ -281,7 +282,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         def run(job: Job) -> dict:
             return generate_now(asset_id, generator, seed, job.set_message)
 
-        job = gpu_queue.submit(asset_id, "generate", run)
+        job = gpu_queue.submit(asset_id, "generate", run, need=f"generate:{generator.id}")
         return job.public()
 
     @app.get("/api/jobs/{job_id}")
@@ -289,7 +290,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         job = gpu_queue.jobs.get(job_id)
         if job is None:
             raise missing("job")
-        out = job.public()
+        out = job.view()
         out["ahead"] = gpu_queue.ahead_of(job)
         return out
 
@@ -324,7 +325,9 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         def run(job: Job) -> dict:
             return clean_now(asset_id, job.set_message)
 
-        return gpu_queue.submit(asset_id, "clean", run).public()
+        # Method B paints six views with MV-Adapter inside clean.py, which does not take the
+        # card lock itself yet (--gpu-lock), so the whole Clean job books the card.
+        return gpu_queue.submit(asset_id, "clean", run, need="clean:multiview").public()
 
     def limb_check(asset_id: str, mesh) -> dict | None:
         """Step 1 limb gate: count legs and arms against the words (None = nothing to check)."""
