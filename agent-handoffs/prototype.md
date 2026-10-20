@@ -1,48 +1,57 @@
-# Handoff: proto (prototype-integration builder)
+# Handoff: prototype (prototype-integration builder)
 
-Branch `claude/prototype` in the lead's worktree (`.claude/worktrees/session-context-optimization-b3f75f`).
-Test bed, not a PR. The lead edits only `agent-handoffs/lead.md` here; never stage it.
+Branch `claude/prototype` (test bed, not a PR). This session works in worktree
+`.claude/worktrees/priceless-kilby-4abc26` on local branch `claude/priceless-kilby-4abc26` and
+pushes with `git push origin HEAD:claude/prototype`. The lead's worktree
+`session-context-optimization-b3f75f` also has `claude/prototype` checked out (stale local copy);
+never edit there. Never stage `agent-handoffs/lead.md`.
 
 ## Task
 Director goal (2026-10-20): "functional build prototype with at least 80% critic pass rate".
-1. Integrate #9 (clean-step), step2-page, #20 (animation) into claude/prototype.
-2. `tools/e2e/run_e2e.py`: drive the running app over HTTP for 5 bake-off prompts x {hi3dgen, triposg}.
-3. Run it once for real; Playwright shots of each step for one humanoid (1920x1080).
-Output: `C:/Users/DANTE/AppData/Roaming/Claude/side-session-notes/local_7fdc3e78-46c6-48b7-9439-a48ba40b7296/e2e/run1/`.
+claude/prototype = main + clean-step-methodB-local + step2-page + animation + ref-drawer +
+monster-rig; re-merge each as it moves. Run `tools/e2e/run_e2e.py` (5 bake-off prompts x
+{hi3dgen, triposg}) + `tools/e2e/shots.py` through the real app; outputs to
+`C:/Users/DANTE/AppData/Roaming/Claude/side-session-notes/local_7fdc3e78-46c6-48b7-9439-a48ba40b7296/e2e/run<N>/`.
+The lead runs the critics (realism 10 sheets, motion 6 clip sets, screen 4 pages; bar 16/20).
 
-## Merge log (for the PR owners)
-1. `origin/claude/clean-step` (effb435, PR #9): clean merge, no conflicts.
-2. `origin/claude/step2-page` (a131c49): one conflict, `src/asset_forge/gates/budgets.py` (add/add).
-   The only difference was the wording of the problem sentences (#9 has the longer plain-words
-   "Redo runs ..." lines; step2-page an older terse copy). Took #9's file whole (`--ours`).
-   Everything else auto-merged (api.py clean endpoint, jobqueue `_settle`, web/*).
-3. `origin/claude/animation` (350dcf2, PR #20): two conflicts.
-   - `src/asset_forge/api.py` imports: kept both (`from .animate import NOT_YET, animate` and
-     `from .clean_step import ...`). `register_library(..., clean_now)` from step2-page kept, and
-     `register_animate(...)` from #20 added after it.
-   - `web/app.js` (3 hunks). #20 tracked Step 2 as `state.cleanReady` (a hand-placed clean.glb);
-     step2-page tracks `state.clean` (the verdict). Resolution: step2-page's `state.clean`
-     everywhere (no `cleanReady` left), plus #20's additions:
-     render(): step2-page pill2/pill3 block + `renderPill4()`;
-     Next: step 4 -> export/animate, step 3 -> `state.rig ? goStep4() : buildSkeleton()`,
-     step 2 -> `state.clean ? goStep3() : runClean()`, else `goStep2()`/`start()`;
-     resume: `state.clean && state.rig && animate.result` -> goStep4, else step2-page's
-     `state.clean ? (rig ? goStep3 : goStep2)`.
-   - `jobqueue.py` auto-merged: `_plain` (#20, knows AnimFailed/ExportRefused) and `_settle`
-     (step2-page) both present. CleanFailed subclasses GeneratorError, so `_plain` shows it.
-   Result: 279 unit tests pass, ruff clean (merge commit 1dacaad).
+## Merged into prototype (s2, 2026-10-20)
+| Branch | sha merged |
+|---|---|
+| main | 77558d2 (#22 skeleton-fit, #23) |
+| claude/clean-step-methodB-local | e34508d (includes WIP 2b14d4d make_solid) |
+| claude/step2-page | b655f4b (my file-route fix) |
+| claude/animation | e3bae65 |
+| claude/ref-drawer | 7a3e8bc |
+| claude/monster-rig | 23678e8 |
+Prototype tip: ca6fc28 (merge a952cf3 + runner commit).
 
-## Environment notes
-- This worktree has its own `.venv` (uv, py3.12, `pip install -e .[dev]`); the main checkout's
-  .venv lacks fastapi. Run tests with `.venv/Scripts/python.exe -m pytest -q`.
-- `config.local.toml` (gitignored) here: blender + godot exe. Set `FORGE_MODELS_DIR` to the main
-  checkout's `models/` (config's fallback path is wrong for `.claude/worktrees/*`).
-- The text drawer is `UnavailableDrawer` (draw/from-text return 501), so the runner uploads the
-  bake-off reference `models/bakeoff/refs/<id>.png` instead and records that.
-- Five-view sheets (clean/before, clean/after subfolders) are not served by the API (file route
-  refuses subpaths): the runner copies them from the library folder on disk. Gap for design 5.7.
+Monster-rig conflicts (a952cf3): api.py docstring/imports (union), skeleton signature
+(monster-rig's `body` param, TODO dropped); app.js state + viewer.js ctor (kept both);
+blender/rig.py report: kept foot_pivots and limbs, and foot_pivots is `{}` for monsters
+(fit.foot_pivots KeyErrors on template "monster").
+
+Known red on prototype: 3 tests in tests/test_animate.py (four_legged foot slide, faint lying
+flat, person bob) come from claude/animation x main #22 (proved: animation alone 79/79,
+animation+main 3 red). Logic conflict, the animation lane's (told local_5de871d0).
+
+## step2-page fix (b655f4b, pushed)
+File route `/api/assets/{id}/files/{step}/{name:path}` serves one sub-folder
+(clean/after/front_clay.png); Store.file_path refuses 2+ levels, dot parts, backslashes,
+empty parts. Tests: test_file_path_serves_one_sub_folder + an API traversal case. 193 passed.
+
+## Runner changes (ca6fc28)
+Monster: GET /skeleton/limbs, POST the proposal unedited; records limbs_proposed. Step 1
+anatomy (limb check) recorded under steps.generate.anatomy. Sheets fetched via the file route,
+disk fallback; `views_via` records which. test_e2e_runner 7 passed.
+
+## Environment
+- Own `.venv` here (uv-managed cpython 3.12; NOT the Stability Matrix python uv found first:
+  use `--python-preference only-managed`). `config.local.toml` copied from the lead's worktree,
+  port 7872. `FORGE_MODELS_DIR=C:/Users/DANTE/Documents/GitHub/asset-forge/models`.
+- Text drawer is available now (ref-drawer), so references are drawn from the words.
+- GPU lock `models/gpu.lock` is shared with other lanes (clean-b10 held it at run2 start).
 
 ## State
-Step 1 done; runner (tools/e2e/run_e2e.py) + tests/test_e2e_runner.py + tools/e2e/shots.py committed.
-Run 1 in progress: app from this worktree on 127.0.0.1:7871 (FORGE_MODELS_DIR=main models), runner
-and shots in background; outputs in e2e/run1/ (run.log, shots.log). Kill only the app PID you started.
+Run 2 in progress: app PID in e2e/run2/app.pid (msys pid), runner then shots chained in the
+background; logs run2/run.log, shots.log, app.log. After: write run2/manifest.md (artefacts +
+branch shas), kill only the app PID, report to the lead (6 lines).
