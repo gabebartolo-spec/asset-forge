@@ -115,7 +115,7 @@ rejected even if it works.
 - Always rebuild; never just tidy. The raw mesh is dense and messy. Remesh or retopologise to a
   clean surface, decimate to the type's budget, merge loose bits, fix normals, put the origin at
   the feet and the model at real-world scale (humanoid about 1.8 m unless told otherwise), with
-  +Y forward to match Godot's import convention.
+  the model facing glTF +Z (Blender -Y), Godot's model front (D-021).
 - Smart UV unwrap, bake the generator's colour (and normal detail where it helps) onto one
   texture, one material.
 - Viewer: before/after slider, triangle count, texture size.
