@@ -118,9 +118,9 @@ class GpuQueue:
                 job.message = "Done"
         except Exception as e:  # noqa: BLE001
             traceback.print_exc()
-            job.state = FAILED
-            job.error = _plain(e)
+            job.error = _plain(e)  # before the state flips: waiters read both
             job.message = job.error
+            job.state = FAILED
         finally:
             job.finished = time.time()
             job.save()
