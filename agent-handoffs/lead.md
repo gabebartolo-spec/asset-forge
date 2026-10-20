@@ -4,7 +4,8 @@ DIRECTOR RULE 2026-10-20: "no more subagents, if you need a helper you spawn a f
 s8 runs every lane as a fresh session (start_session, own worktree) from the lane handoffs below.
 Rule being recorded by session rule-sessions (local_ec88eef6-2906-402f-88b7-9e8c7d98510d), plus his
 "seperate sessions grouped properly in the toolbar": file every helper in an "Asset Forge" sidebar group.
-PR #22 (skeleton-fit) open; merge-on-green watcher in s7 (if s7 is gone: merge it on green).
+PR #22 (skeleton-fit) MERGED. Kaiju lead (local_30225153...) told the new rule (ack asked).
+#20 must re-rig its inputs on the #22 joints (MERGE NOTE in #22).
 s7's builders live only inside s7 (they die if s7 is archived). s8: check list_sessions / ListAgents;
 any builder below with no report = respawn fresh from its lane handoff file.
 
