@@ -23,6 +23,8 @@ non-monster model exports with the Godot check green. Output: notes folder e2e/r
   (a57382f base, 6/10). Causes: bird beak registration, triposg fox 2 parts, hi3dgen fox
   chest/legs, humanoid greaves. Bar 8/10 -> pushes into claude/clean-step + PR #9 body.
   Next: fresh realism-critic on the 10 sheets, merge #9. Handoff agent-handoffs/clean-step.md.
+  clean-b8 hit its guard: stops after the S1 run (make_solid on hi3dgen fox, triposg fox, hi3dgen
+  humanoid). s8 respawns clean-b9 from agent-handoffs/clean-step.md.
 - anim-b4 life 2 (opus): asset-forge-wt/animation, local WIP 5a87bdd (not pushed; #20 at
   350dcf2). Critic list notes motion_critic_s7.md. 9 of 79 unit fail (diagnosed in
   agent-handoffs/animation.md). Lead confirmed fox walk 1.3 strides/s, birds <=0.3 m hop. Left:
