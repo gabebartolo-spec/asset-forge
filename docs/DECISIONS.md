@@ -4,6 +4,18 @@ Cap: 400 lines; oldest roll to `docs/archive/`. One decision per entry, newest f
 that is not here does not exist. Format: date · id · who decided · the decision · why · what it
 changes. Only the lead edits this file, from the "Board and log" section of merged PRs.
 
+## 2026-10-20 · D-031 · Director · Take the good ideas from the community posts; add background cut-out
+His words: "assess the claims in all the images I linked you, take whats good from it", "our forge also
+needs the ability to remove backgrounds/cut the subject out of the image", "well incorporate all the good
+ideas into the roadmap". Changes: roadmap Phase 10 (cut-out, assigned) and Phase 11 (delighting,
+Z-Image-Turbo, wireframe and height, user side/back pictures, send-back-with-notes, KTX2); skipped ideas
+and why are listed there. Phase 11 items start only when STATUS lists them.
+
+## 2026-10-20 · D-030 · Director · As many GPU jobs at once as fit in VRAM
+His words: "why is there only 1 gpu queue? open as many as you can". Changes: PR #28, the lock is a
+VRAM budget (each job declares its need, about 11 of 12 GB), CPU-only work (Blender, tests) takes no
+lock; RULEBOOK and shared-machine-rules updated.
+
 ## 2026-10-20 · D-029 · Director · No subagents; every helper is a fresh session
 His words: "no more subagents, if you need a helper you spawn a fresh session" and "seperate
 sessions grouped properly in the toolbar". Changes: every builder and critic is a start_session

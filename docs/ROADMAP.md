@@ -55,3 +55,24 @@ prompt the image step needs (pose, view, plain background), shown to edit before
 (D-020: "Expand my idea"). Local and free like everything else.
 Gate: the director uses it to start one model and one sprite; screen-critic and first-use
 walk-through pass. Order among later phases is the director's call.
+
+## Phase 10 — Cut out the subject (director, 2026-10-20, D-031; assigned now)
+His words: "our forge also needs the ability to remove backgrounds/cut the subject out of the image".
+Deliverables: a "Cut out the subject" step on every uploaded or drawn picture (before/after, "Cut
+again"), BiRefNet (MIT; code from GitHub, weights from Hugging Face, own env, no remote code), the
+plain-background cut kept as the quick path, the one-subject check after it (draw: PR #30).
+Gate: 10 real photos with busy backgrounds cut cleanly; LICENCES.md row; screen-critic passes.
+
+## Phase 11 — Quality ideas from the community review (D-031; each starts only when listed in STATUS)
+Source: r/aigamedev posts the director shared, 2026-10-20 (assessed in the lead handoff).
+- Delight the reference (Marigold intrinsic decomposition, RAIL++-M licence: read it first), then
+  project colour: tackles baked studio lighting behind the pale foxes. Gate: fox and humanoid colour
+  scores rise on the 10 sheets, else dropped.
+- Z-Image-Turbo (Apache 2.0) against SDXL as the reference drawer: single-subject rate, time, VRAM
+  on the 5 bake-off prompts; director picks if it wins.
+- Wireframe toggle in the viewer and a real-height field on Step 1 (small page change).
+- Optional side and back reference pictures supplied by the user (better colour than invented views).
+- "Send back with notes" on a step (a Redo that takes a note), designed with Phase 8's Claude MCP queue.
+- KTX2 textures: only if the Godot import check shows a size or load-time gain.
+Not adopted (reasons in D-031): TRELLIS.2 (nvdiffrast banned, 24 GB), Claude-built CSG/three.js models
+(not local or free, poor on creatures), tree leaf cards and armour kits (outside the design).
