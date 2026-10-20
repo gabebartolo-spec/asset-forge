@@ -8,6 +8,8 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .gpu_lock import shared_models_dir
+
 REPO = Path(__file__).resolve().parents[2]
 
 # The menu order is the director's (D-018, D-019): Hi3DGen first (preselected), then TripoSG.
@@ -23,6 +25,7 @@ class Settings:
     port: int = 7860
     generator_order: list[str] = field(default_factory=lambda: list(DEFAULT_GENERATOR_ORDER))
     blender_exe: str = ""
+    gpu_budget_mb: int = 11000  # of the 12 GB card, shared by every job at once (D-030)
 
     @property
     def lock_dir(self) -> Path:
@@ -35,14 +38,7 @@ class Settings:
 
 def _default_models_dir() -> Path:
     # Worktrees share the main checkout's gitignored models/ folder (same rule as tools/bakeoff).
-    env = os.environ.get("FORGE_MODELS_DIR")
-    if env:
-        return Path(env)
-    here = REPO / "models"
-    if here.is_dir():
-        return here
-    main = REPO.parent.parent / "asset-forge" / "models"
-    return main if main.is_dir() else here
+    return shared_models_dir(REPO)
 
 
 def load_settings(config_path: Path | None = None) -> Settings:
@@ -59,6 +55,7 @@ def load_settings(config_path: Path | None = None) -> Settings:
             s.models_dir = Path(app["models_dir"])
         s.generator_order = list(cfg.get("generators", {}).get("order", s.generator_order))
         s.blender_exe = cfg.get("blender", {}).get("exe", s.blender_exe)
+        s.gpu_budget_mb = int(cfg.get("gpu", {}).get("budget_mb", s.gpu_budget_mb))
     if os.environ.get("FORGE_MODELS_DIR"):
         s.models_dir = Path(os.environ["FORGE_MODELS_DIR"])
     if os.environ.get("FORGE_LIBRARY_DIR"):
