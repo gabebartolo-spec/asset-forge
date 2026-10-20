@@ -1,44 +1,55 @@
-# Handoff: monster-rig (Phase 3 monsters + Step 1 limb gate), 2026-10-20
-State: back end built and committed on claude/monster-rig (not pushed yet). Context hit 200k; restart here.
-Worktree C:/Users/DANTE/Documents/GitHub/asset-forge-wt/monster-rig, own venv .venv (uv, py3.12, +scipy),
-config.local.toml copied from ../animation. Lead rulings: gate option A (Re-roll main button, "Use it anyway"
-quiet second; warning says extra legs STAY in the model); scipy OK with a LICENCES.md row (row NOT added yet).
+# Handoff: monster-rig (Phase 3 monsters + Step 1 limb gate, STATUS item 13, D-026), 2026-10-20
+State: done. Branch claude/monster-rig pushed (origin/main #22/#23 merged in). No PR (3-PR cap): the
+lead opens it with the body below. Worktree C:/Users/DANTE/Documents/GitHub/asset-forge-wt/monster-rig
+(own .venv with scipy, config.local.toml). Evidence in ../mr_evidence; rig outputs in ../mr_out.
+Lead rulings: gate option A (Re-roll primary, "Use it anyway" quiet second; the warning says extra
+legs STAY in the model); scipy OK with a LICENCES.md row (added).
 
-## Done (files)
-- src/asset_forge/skeleton/limbs.py: voxelise (RES 160) -> body middle (_centre: deepest voxel on the
-  geodesic bisector of the two farthest points) -> core (union of balls, CORE_DEPTH .5, GROW 1.1, MARGIN .3)
-  -> pieces -> band tree (_branches) -> 4-joint chains; _classify leg/arm/head/tail; propose(), count_limbs().
-  Results (clean + raw): hi3dgen spider 10 legs, triposg spider 8, both brutes 2 legs 2 arms. Humanoids/
-  foxes are NOT reliable (arms glued, tails) -> gate sets no type-implied counts, words only.
-- src/asset_forge/skeleton/glb.py: read_mesh() (vectorised, node transforms, to Blender Z-up frame).
-- src/asset_forge/anatomy.py: expected_counts(words) (numbers + "spider"=8, insects=6, snake=0), judge(),
-  check_mesh(). Message ends "...extra ones stay in the model ... Press Re-roll for a new try."
-- src/asset_forge/skeleton/monster.py: monster_bones(chain) -> BoneDef/joints/limb info (Root, Spine1-3,
-  <Kind><L|R|><n>_1..3); ChainError plain words; MAX_LIMBS 20; monster_pose().
-- blender/rig.py: --chain FILE for monsters (bones from chain, monster_pose); skeleton.json gets "limbs".
-- skeleton/__init__.py rig(..., chain=) ; api.py: limb_check() after generate (result["anatomy"]),
-  GET /api/assets/{id}/skeleton/limbs (proposal kept in skeleton/proposal.json, chain.json once confirmed),
-  confirmed_chain(), POST skeleton takes {spine, limbs} for monsters.
-- tests/test_monster.py (25 pass), tests/test_monster_api.py (new, not yet run green), fixtures
-  tests/fixtures/monsters/*.npz (tools/skeleton/monster_fixtures.py), glb_factory.write_mesh_glb.
+## If the lead asks for changes
+- Limb finder: src/asset_forge/skeleton/limbs.py (voxelise -> body middle -> core -> band tree ->
+  4-joint chains; tunables at the top). Counts: hi3dgen spider 10 legs, triposg spider 8, both
+  brutes 2 legs 2 arms. Humanoids/foxes are not reliable, so the gate uses only counts the words ask for.
+- Bones: skeleton/monster.py; Blender: blender/rig.py --chain; API: api.py limb_check(),
+  GET /api/assets/{id}/skeleton/limbs, POST skeleton {spine, limbs}; page: web/viewer.js markers,
+  web/app.js Step 3 limb editor + Step 1 warning.
+- Merge note: rig.py skeleton.json keeps main's foot_pivots for template rigs; monsters write {}.
 
-## Open problem (first thing next session)
-tests/test_library.py: 3-4 tests fail with my api.py (KeyError 'timings', 409 on duplicate/trash), pass
-alone and pass on pristine origin/main. Not the progress() line. Suspect: something in my generate_now /
-api import changes the job-done vs persist ordering (jobqueue flips DONE before save; library waits on
-`settled`). Find the cause; do not just loosen the tests.
+## PR body (for the lead)
+Title: rig: monster skeleton from the mesh, limb editor, Step 1 limb check
 
-## Left
-1. Fix the library-test failure; run test_monster_api.py; full unit suite; ruff.
-2. Show tests failing first: mutation (e.g. GROUND=0 / judge always ok) + log output to evidence.
-3. Blender DONE once by hand: all 4 monsters RIG_OK (hi3dgen spider 34 bones, triposg spider 28, brutes 16;
-   blender_automatic weights, max 4 influences, 0 unweighted; sheets in ../mr_out/<gen>/<name>/pose_*.png). Was:
-   ../mr_out/*_chain.json into ../mr_out/<gen>/<name>; check logs ../mr_out/*.log for RIG_OK.
-   Add -m blender tests (monster chain rig on a fixture) + Godot check_rig on rigged/test_pose.glb.
-4. Page: web/viewer.js draggable markers (child of gltf root, glTF coords = (x, z, -y)), web/app.js Step 3
-   limb editor in its own functions (list limbs + kind, Remove, "Add a limb: click where its tip is",
-   Build skeleton sends {spine, limbs}); Step 1 warning (Redo->"Re-roll" primary, Next->"Use it anyway").
-5. LICENCES.md scipy row; pyproject dependency scipy>=1.13.
-6. Evidence: five-view test-pose sheets (tools/skeleton/contact_sheet.py) for hi3dgen/triposg spider and
-   brute; real-click screenshots 1366x768 + 1920x1080 of the marker editor; to the lead only.
-7. Push branch, PR body here (no PR; lead opens). Delete scratch dirs ../mr_out, ../scratch_*.py.
+### What the director gets
+Monsters get a skeleton proposed from their shape: Step 3 shows each limb as a row of dots he can
+drag, remove, or add ("Add a limb"), then Build skeleton rigs it. Step 1 counts legs/arms when his
+words name a number (or "spider", insects): a 10-legged spider gets a plain-words warning with
+Re-roll as the main button and "Use it anyway" beside it.
+
+### Changes
+- skeleton/limbs.py (limb finder, count_limbs), skeleton/glb.py (read a .glb mesh), anatomy.py
+  (counts from words, judge, plain message), skeleton/monster.py (bones from limb chains, test pose).
+- blender/rig.py --chain; api.py limb check after Generate, limbs proposal/confirm endpoints.
+- jobqueue.py: a job shows done only after its end state is on disk (fixed a race the library tests hit).
+- web/: draggable markers, Step 3 limb editor, Step 1 warning. scipy dependency + LICENCES.md row.
+- Tests: test_monster.py, test_monster_api.py, monster -m blender tests; 4 real-model fixtures
+  (tests/fixtures/monsters/*.npz, made by tools/skeleton/monster_fixtures.py).
+
+### Evidence (folder C:/Users/DANTE/Documents/GitHub/asset-forge-wt/mr_evidence)
+- Unit: 219 passed (ruff clean). Blender: 11 passed (blender_suite.txt).
+- Fail first (fail_first.txt): judge always ok -> 4 fail; GROUND=0 -> 8 fail; MIN_LIMB=0 -> 4 fail.
+- Real rigs: hi3dgen spider 34 bones, triposg spider 28, both brutes 16; automatic weights, max 4
+  influences, 0 unweighted. Five-view test-pose sheets *_pose_clay/colour.png.
+- Godot 4.7.2 headless: rigged.glb and test_pose.glb of all four RIG_CHECK_OK, python gate pass
+  (godot_rig_check.txt).
+- Job race: done-but-not-settled 0 of 20 after the fix (race_after_fix.txt).
+- Page, real clicks at 1366x768 and 1920x1080: 1 Step 1 warning, 2 limbs proposed, 3 marker dragged,
+  4 limb removed and added, 5 skeleton built, 6 quick pose.
+
+### Not exercised
+Auto-skeleton on humanoid/animal-shaped monsters (counts unreliable there; words-only gate);
+six-armed brutes came out of both generators with 2 arms, so a real 6-arm rig was not built from a
+generated mesh. No critic or director review yet.
+
+### Board and log
+STATUS item 13 -> DONE (PR #?). No new decision.
+
+## Cleanup left
+Delete ../mr_out and ../mr_evidence after the lead has reviewed; remove this worktree after merge.
