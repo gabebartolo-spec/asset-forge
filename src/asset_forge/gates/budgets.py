@@ -40,38 +40,45 @@ def check(report: dict, asset_type: str, budget: Budget | None = None) -> list[s
 
     def need(name):
         if name not in report:
-            out.append(f"The report has no '{name}', so that limit cannot be checked.")
+            out.append(f"The step's report has no '{name}', so that limit cannot be checked. "
+                       "Redo runs the step again.")
             return None
         return report[name]
 
     tris = need("triangles")
     if tris is not None and tris > budget.triangles:
-        out.append(f"Too many triangles: {tris:,} against a limit of {budget.triangles:,}. "
-                   "Decimate harder.")
+        out.append(f"Too many triangles: {tris:,} against a limit of {budget.triangles:,}, so "
+                   "the model would be slow in the game. Redo runs the clean again and cuts it "
+                   "down to the limit.")
     mats = need("materials")
     if mats is not None and mats != budget.materials:
-        out.append(f"{mats} materials; the model must have exactly {budget.materials}. "
-                   "Merge them into one.")
+        out.append(f"The model has {mats} materials (paint layers); it must have exactly "
+                   f"{budget.materials}. Redo runs the clean again, which paints it as one.")
     tex = need("texture")
     if tex is not None:
         w, h = tex.get("width", 0), tex.get("height", 0)
         if w > budget.texture_px or h > budget.texture_px:
-            out.append(f"Texture is {w}x{h}; the limit is {budget.texture_px}x{budget.texture_px}. "
-                       "Use a smaller texture.")
+            out.append(f"Texture is {w}x{h}; the limit is {budget.texture_px}x{budget.texture_px}, "
+                       "so it would use too much memory in the game. Redo runs the clean "
+                       "again at the right size.")
     sil = report.get("silhouette")
     if sil:
         limit = sil.get("threshold", 0.08)
         for view in ("front", "side", "top"):
             if view in sil and sil[view] > limit:
-                out.append(f"The {view} outline changed by {sil[view]:.0%} against the raw model; "
-                           f"the limit is {limit:.0%}. The rebuild lost shape; try again or "
-                           "raise the detail.")
+                out.append(f"The {view} outline changed by {sil[view]:.0%} against the generated "
+                           f"model (the limit is {limit:.0%}): the clean lost part of its shape. "
+                           "Redo runs the clean again; if it still fails, go back to Generate "
+                           "for a new model.")
     bones = report.get("bones")
     if bones is not None and bones > budget.bones:
-        out.append(f"{bones} bones; the limit is {budget.bones}. Drop a bone chain.")
+        out.append(f"The skeleton has {bones} bones; the limit is {budget.bones}, so the game "
+                   "would struggle to move it. Redo runs the skeleton step again.")
     infl = report.get("max_influences")
     if infl is not None and infl > budget.influences:
-        out.append(f"A vertex has {infl} bone influences; the limit is {budget.influences}.")
+        out.append(f"Part of the skin follows {infl} bones at once (bone influences); the limit "
+                   f"is {budget.influences}, or the game cannot bend it. Redo runs the skeleton "
+                   "step again.")
     return out
 
 
