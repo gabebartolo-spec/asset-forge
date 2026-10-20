@@ -1,5 +1,5 @@
 # Asset Forge lead handoff (2026-10-20, session 7)
-## State: working (clean-b8 and anim-b4 builders running)
+## State: working (clean-b8, anim-b4, skel-fit, mocap-cmp running)
 
 ## Director said (2026-10-20)
 - "eta til usable build?" -> ~1.5-2 working days.
@@ -21,8 +21,13 @@
   all + bird hop + kinetic chain + gravity faint -> previews_v4/. Then fresh motion-critic, then the
   director. Mocap option (notes mocap_licences_2026-10-20.md: Quaternius UAL CC0, CMU) only if the
   tuned person walk still reads mechanical: ask him (D-005 change; downloading needs his yes).
+- skel-fit (opus): claude/skeleton-fit (worktree skeleton-fit; step2-page worktree removed, branch
+  safe on origin a131c49). Foot ball joint + triposg fox 18 deg yaw; out models/skeleton_out_fit/.
+  Pushes, no PR (cap). mocap-cmp (opus): scratch-only side-by-side procedural vs CC0/CMU mocap for
+  the person (notes mocap_cmp/); evidence for a D-005 question, nothing ships.
+- Director 2026-10-20: "spawn another helper, stop making me ask, be productive": fill free slots
+  unasked.
 - monster-b2 lives in the OLD lead session (claude/monster-rig, head d66d38b); old lead forwards.
-- Proposed card: Step 3 foot joint fix (task_043885cd).
 - asset-forge-wt has 5 worktrees: context-trim (claude/context-trim, uncommitted CLAUDE.md +
   settings.json) is not a lead lane; owner unknown. Do not touch; remove when its owner is done.
 
