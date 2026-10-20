@@ -1,8 +1,8 @@
 # Asset Forge lead handoff (2026-10-21, session 8)
-## State: awaiting director (knight clips sent). Director: "spawn no helpers": the lead builds itself.
+## State: handing off. #20 MERGED 2026-10-20 (8c8c724) on the director's OK; fox reroll is next. Director: "spawn no helpers": the lead builds itself.
 Lead registered for 500k (~/.claude/context-guard-leads/<CLI session id>); a successor registers itself.
-Handoff lives on claude/lead-handoff-s8. Animation work: worktree asset-forge-wt/anim-fix, branch
-claude/anim-look, pushed onto PR #20's branch (claude/animation, head 2f4fe61).
+Handoff lives on claude/lead-handoff-s8. Animation work merged; worktree asset-forge-wt/anim-fix (branch
+claude/anim-look) can be removed.
 
 ## Goal (director /goal): "functional build prototype with at least 80% critic pass rate"
 Measure: run_e2e.py on claude/prototype, 5 prompts x 2 generators; critics: realism per clean sheet (10),
@@ -28,19 +28,24 @@ reject it. Candidate for animals: Quaternius Ultimate Animated Animals (CC0, 12 
 death) retargeted like the humanoid; not started. Bird walk slide 0.7 > 0.5 cm still open.
 
 ## Merged s8
-#9 #23-#33 all merged (clean 8/10, monster rig, GPU lock, cut-out back end #32 + page #33, docs #31).
-Open: #20 only (needs the director's OK on the knight clips, then merge on green).
+#9 #20 #23-#33 all merged (#20 = library humanoid clips + animation, squash 8c8c724). No open PRs.
 
-## Next
-1. Director verdict on knight clips -> merge #20 (CI green first; check headRefOid = 2f4fe61 or newer).
-2. Fox: reroll TripoSG fox, check limb count; then animals from library clips (see above) if he agrees.
-3. Re-run e2e run3 on main + #20 (runner on claude/prototype, tools/e2e; free port; chromium
-   --use-angle=d3d11 --enable-gpu); live-draw check of one_subject; score vs critics bar.
-4. Research leads (2026-10-21, not adopted): Hunyuan-Motion text-to-motion (Tencent licence, Hunyuan banned
-   D-010, so no); Pixal3D (6 GB image-to-3D, check licence); UAL2 (CC0, 130 anims, parkour/combat);
-   cinevva 260 CC0 clips. Also: Marigold delighting, Z-Image-Turbo vs SDXL, wireframe toggle, real-height field.
-   Phase 12 (all 3D asset types, D-032) only when STATUS lists it.
-5. Board PR: STATUS agents table stale (all sessions archived); add the library-clips decision to DECISIONS.
+## Next (director 2026-10-21: "Knight clips are good, merge #20 once CI is green, then reroll the fox")
+1. REROLL THE FOX (in progress, not started): run the real app with the new main. Ready environment:
+   worktree .claude/worktrees/priceless-kilby-4abc26 (detached eadbfe4 = claude/prototype, own .venv,
+   config.local.toml port 7872, FORGE_MODELS_DIR=C:/Users/DANTE/Documents/GitHub/asset-forge/models).
+   `git fetch; git merge origin/main` there, then `python tools/e2e/run_e2e.py OUT --only fox --generators triposg`
+   (SEED pinned 1234 in run_e2e.py: add a --seed option or change it for the reroll). The Step 1 limb check must
+   reject a fox with a missing leg (run2 flagged every fox). Pass = 4 proper legs in the five-view sheet, limb
+   check green, clean + rig + animate + Godot green; then send the fox walk clip at readable size to the director.
+   If the stub-leg persists across seeds, fix the reference (a side-on fox shows only 2 legs per side).
+2. Then run3 for all 10 (5 prompts x 2 generators), score vs the critics bar (16/20), one_subject live-draw check.
+3. Animals from library clips: Quaternius Ultimate Animated Animals (CC0) retargeted like the humanoid; propose
+   to the director after the fox. Bird walk slide 0.7 > 0.5 cm open.
+4. Research leads (2026-10-21, not adopted): Hunyuan-Motion (Hunyuan banned D-010, no); Pixal3D (6 GB
+   image-to-3D, check licence); UAL2 (CC0); Marigold delighting, Z-Image-Turbo vs SDXL, wireframe toggle,
+   real-height field. Phase 12 only when STATUS lists it.
+5. Board PR: STATUS agents table stale (all sessions archived); log the library-clips decision in DECISIONS.
 
 ## Director said
 D-027 clean keep improving; D-028 clips fix first; D-029 no subagents, helpers = sessions in group
