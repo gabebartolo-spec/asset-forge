@@ -43,6 +43,7 @@ What it does, in order (every number is in report.json):
 
 import json
 import math
+import os
 import sys
 import time
 from pathlib import Path
@@ -88,6 +89,13 @@ def parse():
         raise SystemExit(f"--generator must be one of {sorted(GENERATOR_FRONT_YAW)}; measure a new "
                          "generator's front once and add it to GENERATOR_FRONT_YAW")
     opts["voxel_div"] = get("--voxel-div", float, 220.0)
+    # method B colour: --mv-python EXE --mv-src DIR [--hf-home DIR], or --mv-views DIR (reuse)
+    opts["mv"] = None
+    if "--mv-views" in argv:
+        opts["mv"] = {"views": get("--mv-views")}
+    elif "--mv-python" in argv:
+        opts["mv"] = {"python": get("--mv-python"), "src": get("--mv-src"),
+                      "hf_home": get("--hf-home")}
     if opts["type"] not in BUDGETS:
         raise SystemExit(f"--type must be one of {sorted(BUDGETS)}")
     return opts
@@ -532,6 +540,180 @@ def fill_colour(c, s, edges, deg):
     return diffuse(out, edges, deg, 3)
 
 
+# ---------------------------------------------------------------- multi-view colour (method B)
+# MV-Adapter image+geometry (src/asset_forge/multiview.py) paints six views of OUR mesh from the
+# reference picture; the views are aligned to the mesh because they are conditioned on its own
+# position and normal maps, rendered here. Its frame: the model centred, max |coord| = 0.5,
+# orthographic box +-0.55, cameras at distance 1.8 looking at the origin, z up; view 0 is the
+# reference camera (the mesh is turned about z so that d0 points to -y).
+MV_SIZE = 768
+MV_BOX = 0.55
+MV_VIEWS = ((-90.0, 0.0), (0.0, 0.0), (90.0, 0.0), (180.0, 0.0), (90.0, 89.99), (90.0, -89.99))
+MV_POWER = 4          # view weight = facing ** MV_POWER (a view seen head-on wins)
+MV_DEPTH_TOL = 0.006  # z-test: texel within this distance (model frame units) of the view's surface
+MV_ERODE = 2          # px dropped at each view's silhouette (the edge pixels blend the background)
+MV_FULL_WEIGHT = 0.3  # summed view weight from which the views replace the fill completely
+MV_GAIN = (0.5, 2.0)  # allowed per-channel contrast change when matching the views to the picture
+MV_PICTURE = True     # the picture paints what its camera directly sees; the views the rest
+
+
+def mv_frame(co, d0):
+    """(R, c, s): std = s * R @ (p - c); R turns d0 onto -y about z."""
+    ang = math.atan2(-1.0, 0.0) - math.atan2(d0[1], d0[0])
+    ca, sa = math.cos(ang), math.sin(ang)
+    R = np.array([[ca, -sa, 0.0], [sa, ca, 0.0], [0.0, 0.0, 1.0]])
+    c = (co.min(axis=0) + co.max(axis=0)) / 2
+    s = 0.5 / max(np.abs((co - c) @ R.T).max(), 1e-9)
+    return R, c, s
+
+
+def mv_cameras():
+    """Per view (camera position, lookat, right, up), MV-Adapter's get_c2w convention."""
+    cams = []
+    for az, el in MV_VIEWS:
+        a, e = math.radians(az), math.radians(el)
+        pos = 1.8 * np.array([math.cos(e) * math.cos(a), math.cos(e) * math.sin(a), math.sin(e)])
+        look = -pos / np.linalg.norm(pos)
+        right = np.cross(look, [0.0, 0.0, 1.0])
+        right /= np.linalg.norm(right)
+        up = np.cross(right, look)
+        cams.append((pos, look, right, up / np.linalg.norm(up)))
+    return cams
+
+
+def mv_pixel(q, cam, size=MV_SIZE):
+    """std points (m,3) -> (column, row, depth) floats; row 0 = top."""
+    pos, look, right, up = cam
+    d = q - pos
+    col = (d @ right + MV_BOX) / (2 * MV_BOX) * size
+    row = (MV_BOX - d @ up) / (2 * MV_BOX) * size
+    return col, row, d @ look
+
+
+def mv_control(q, vi, vn_std, size=MV_SIZE):
+    """Rasterise the mesh (std frame) in the six views: per view the visible surface position,
+    smooth normal and depth (inf on the background). Returns pos, nrm (6,size,size,3), depth."""
+    cams = mv_cameras()
+    pos = np.zeros((6, size, size, 3), np.float32)
+    nrm = np.zeros((6, size, size, 3), np.float32)
+    dep = np.full((6, size, size), np.inf)
+    for k, cam in enumerate(cams):
+        col, row, z = mv_pixel(q, cam, size)
+        X, Y, Z = col[vi], row[vi], z[vi]  # (nt,3)
+        zb, pb, nb = dep[k], pos[k], nrm[k]
+        for t in range(len(vi)):
+            a, b, c = (X[t, 0], Y[t, 0]), (X[t, 1], Y[t, 1]), (X[t, 2], Y[t, 2])
+            den = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1])
+            if abs(den) < 1e-12:
+                continue
+            x0, x1 = max(int(min(a[0], b[0], c[0])), 0), min(int(max(a[0], b[0], c[0])) + 1, size)
+            y0, y1 = max(int(min(a[1], b[1], c[1])), 0), min(int(max(a[1], b[1], c[1])) + 1, size)
+            if x1 <= x0 or y1 <= y0:
+                continue
+            gx, gy = np.meshgrid(np.arange(x0, x1) + 0.5, np.arange(y0, y1) + 0.5)
+            w0 = ((b[1] - c[1]) * (gx - c[0]) + (c[0] - b[0]) * (gy - c[1])) / den
+            w1 = ((c[1] - a[1]) * (gx - c[0]) + (a[0] - c[0]) * (gy - c[1])) / den
+            w2 = 1 - w0 - w1
+            m = (w0 >= 0) & (w1 >= 0) & (w2 >= 0)
+            if not m.any():
+                continue
+            w = np.stack([w0[m], w1[m], w2[m]], axis=1)
+            zz = w @ Z[t]
+            ys, xs = np.nonzero(m)
+            ys, xs = ys + y0, xs + x0
+            near = zz < zb[ys, xs]
+            if not near.any():
+                continue
+            ys, xs, w = ys[near], xs[near], w[near]
+            zb[ys, xs] = zz[near]
+            pb[ys, xs] = w @ q[vi[t]]
+            nn = w @ vn_std[vi[t]]
+            nb[ys, xs] = nn / np.maximum(np.linalg.norm(nn, axis=1, keepdims=True), 1e-12)
+    return pos, nrm, dep
+
+
+def mv_write_control(path, pos, nrm, dep):
+    bg = ~np.isfinite(dep)
+    p = np.clip(pos + 0.5, 0, 1)
+    n = np.clip(nrm / 2 + 0.5, 0, 1)
+    p[bg], n[bg] = 0.5, 0.5
+    np.savez(path, pos=p.astype(np.float32), normal=n.astype(np.float32))
+
+
+def mv_load_views(view_dir):
+    """The six generated views as (6,H,W,3) float, row 0 = top (display values, like the ref)."""
+    out = []
+    for k in range(len(MV_VIEWS)):
+        img = bpy.data.images.load(str(Path(view_dir) / f"view_{k}.png"))
+        w, h = img.size
+        px = np.empty(w * h * 4, np.float32)
+        img.pixels.foreach_get(px)
+        out.append(px.reshape(h, w, 4)[::-1, :, :3])
+        bpy.data.images.remove(img)
+    return np.stack(out)
+
+
+def mv_sample(views, dep, frame, P, Nn):
+    """Colour of surface points P (model frame, normals Nn) from the views that see them: z-test
+    against each view's depth, weight facing ** MV_POWER, silhouettes eroded. Returns (rgb, w)."""
+    R, c, s = frame
+    q = s * (P - c) @ R.T
+    nq = Nn @ R.T
+    size = views.shape[1]
+    acc = np.zeros((len(P), 3))
+    wsum = np.zeros(len(P))
+    for k, cam in enumerate(mv_cameras()):
+        fg = np.isfinite(dep[k])
+        for _ in range(MV_ERODE):
+            e = fg.copy()
+            e[1:] &= fg[:-1]
+            e[:-1] &= fg[1:]
+            e[:, 1:] &= fg[:, :-1]
+            e[:, :-1] &= fg[:, 1:]
+            fg = e
+        col, row, z = mv_pixel(q, cam, size)
+        ix = np.clip(col.astype(int), 0, size - 1)
+        iy = np.clip(row.astype(int), 0, size - 1)
+        facing = np.clip(-(nq @ cam[1]), 0, 1)
+        ok = fg[iy, ix] & (np.abs(z - np.where(fg[iy, ix], dep[k][iy, ix], np.inf))
+                           <= MV_DEPTH_TOL)
+        w = np.where(ok, facing ** MV_POWER, 0.0)
+        acc += views[k][iy, ix] * w[:, None]
+        wsum += w
+    return acc / np.maximum(wsum[:, None], 1e-12), wsum
+
+
+def mv_generate(obj_co, vi, vn, d0, ref_path, work_dir, mv):
+    """Render the control maps, run the generator (unless mv['views'] is given) and return
+    (views, depth, frame, info)."""
+    import subprocess
+    frame = mv_frame(obj_co, d0)
+    R, c, s = frame
+    t0 = time.perf_counter()
+    pos, nrm, dep = mv_control(s * (obj_co - c) @ R.T, vi, vn @ R.T)
+    info = {"seconds_control_maps": round(time.perf_counter() - t0, 2)}
+    view_dir = Path(mv["views"]) if mv.get("views") else Path(work_dir) / "multiview"
+    if not mv.get("views"):
+        view_dir.mkdir(parents=True, exist_ok=True)
+        mv_write_control(view_dir / "control.npz", pos, nrm, dep)
+        script = HERE.parent / "src" / "asset_forge" / "multiview.py"
+        cmd = [mv["python"], "-I", str(script), str(view_dir / "control.npz"), str(ref_path),
+               str(view_dir), "--mv-src", mv["src"]]
+        t1 = time.perf_counter()
+        env = dict(os.environ)
+        if mv.get("hf_home"):
+            env["HF_HOME"] = mv["hf_home"]
+        env["HF_HUB_OFFLINE"] = "1"  # weights are on disk; never download during a clean
+        r = subprocess.run(cmd, capture_output=True, text=True, env=env)
+        info["seconds_generator"] = round(time.perf_counter() - t1, 2)
+        if r.returncode:
+            raise SystemExit(f"multiview generator failed: {r.stderr[-2000:]}")
+    gen = view_dir / "multiview.json"
+    if gen.exists():
+        info["generator"] = json.loads(gen.read_text())
+    return mv_load_views(view_dir), dep, frame, info
+
+
 # Measured colour gates (Step 2 fidelity check). Regions are boxes in the reference outline's own
 # normalised coordinates (u from the left, v from the TOP of the bounding box), optionally limited
 # to one side of the model: "back" (texels facing away from the reference camera), "far" (an
@@ -761,8 +943,11 @@ def ref_specks(ref):
     return box_blur(out[..., None].astype(np.float64), 2)[..., 0] > 0.01
 
 
-def bake_colour(obj, ref, d0, size, ref_name=None):
-    """Project `ref` onto obj (see module docstring). Returns (RGBA array, stats, info)."""
+def bake_colour(obj, ref, d0, size, ref_name=None, mv=None, ref_path=None, work_dir=None):
+    """Project `ref` onto obj (see module docstring). Returns (RGBA array, stats, info).
+    mv (method B): {"python", "src", "hf_home"} to generate six views, or {"views": DIR} to reuse
+    them; the picture then paints only what its camera directly sees (no mirror) and the views
+    paint everything else they see; the graph fill is left for what no view sees."""
     me = obj.data
     me.calc_loop_triangles()
     uvl = me.uv_layers.active.data
@@ -822,6 +1007,7 @@ def bake_colour(obj, ref, d0, size, ref_name=None):
     right = np.cross(f, [0, 0, 1.0])
     right /= np.linalg.norm(right)
     mirror = tuple(round(x, 3) for x in d0) in MIRROR_DIRS
+    use_mirror = mirror and mv is None
     reg = Registration(co, right, ref, None if mirror else d0)
     height = max(np.ptp(co[:, 2]), 1e-9)
     mask = ref_mask(ref, erode=3)
@@ -856,7 +1042,7 @@ def bake_colour(obj, ref, d0, size, ref_name=None):
         Q, WQ, NQ = Pp.copy(), w.copy(), Nn.copy()
         snap = np.zeros(len(Pp))
         far = np.zeros(len(Pp), bool)
-        if mirror:
+        if use_mirror:
             tail = in_tail(Pp)
             for k in np.nonzero(w < -MIN_FACING)[0]:
                 m = Vector((2 * cx - Pp[k, 0], Pp[k, 1], Pp[k, 2]))
@@ -924,8 +1110,28 @@ def bake_colour(obj, ref, d0, size, ref_name=None):
         n_speck_v = int(speck.sum())
     else:
         n_speck_v = 0
-    fill_v = fill_colour(vcol, s_fill, edges, deg)
-    if mirror:
+    mv_info = None
+    if mv is not None:
+        views, mv_dep, mv_fr, mv_info = mv_generate(co, vi, vn, d0, ref_path, work_dir, mv)
+        mv_vc, mv_vw = mv_sample(views, mv_dep, mv_fr, co, vn)
+        # The generator lights and exposes its views its own way: match them to the picture
+        # (per channel mean and spread) on the vertices both the picture and a view see.
+        both = (s_fill > 0) & (mv_vw > 0)
+        gain, offs = np.ones(3), np.zeros(3)
+        if both.sum() >= 50:
+            gain = np.clip(vcol[both].std(axis=0) / np.maximum(mv_vc[both].std(axis=0), 1e-6),
+                           *MV_GAIN)
+            offs = vcol[both].mean(axis=0) - gain * mv_vc[both].mean(axis=0)
+        mv_vc = np.clip(mv_vc * gain + offs, 0, 1)
+        mv_info["calibration"] = {"vertices": int(both.sum()), "gain": gain.round(3).tolist(),
+                                  "offset": offs.round(3).tolist()}
+        src = s_fill > 0  # the picture's own sunlit sources first, the views everywhere else
+        fill_v = fill_colour(np.where(src[:, None], vcol, mv_vc),
+                             np.where(src, s_fill, np.clip(mv_vw / MV_FULL_WEIGHT, 0, 1)),
+                             edges, deg)
+    else:
+        fill_v = fill_colour(vcol, s_fill, edges, deg)
+    if mirror and mv is None:
         neutral = (sat(vcol) < PALE_SAT_MAX) & (lum_v > NEUTRAL_LUMA_MIN) & (s_fill > 0)
         if neutral.any():
             bright = (lum_v / max(np.quantile(lum_v[neutral], 0.95), 1e-6)) ** NEUTRAL_POWER
@@ -944,6 +1150,17 @@ def bake_colour(obj, ref, d0, size, ref_name=None):
     # Texel level: detail from the picture inside the trusted area, vertex-interpolated fill else.
     fill_t = np.einsum("mk,mkc->mc", bw, fill_v[vi[tt]])
     alpha_t = np.einsum("mk,mk->m", bw, a_vert[vi[tt]])
+    if mv is not None:
+        sn = np.einsum("mk,mkc->mc", bw, vn[vi[tt]])
+        sn /= np.maximum(np.linalg.norm(sn, axis=1, keepdims=True), 1e-12)
+        mv_tc, mv_tw = mv_sample(views, mv_dep, mv_fr, p, sn)
+        mv_tc = np.clip(mv_tc * gain + offs, 0, 1)
+        k_mv = np.clip(mv_tw / MV_FULL_WEIGHT, 0, 1)[:, None]
+        fill_t = fill_t * (1 - k_mv) + mv_tc * k_mv
+        mv_info["texels_from_views"] = int((mv_tw > 0).sum())
+        mv_info["texels_no_view"] = int((mv_tw <= 0).sum())
+        if not MV_PICTURE:
+            alpha_t = np.zeros_like(alpha_t)
     colour = fill_t.copy()
     known = np.zeros(len(tt), bool)
     n_speck = [0]
@@ -997,7 +1214,8 @@ def bake_colour(obj, ref, d0, size, ref_name=None):
         "texels_projected_full_trust": int((alpha_used >= 0.99).sum()),
         "texels_low_frequency": int(len(ty) - painted),
         "mirrored_far_side": False,
-        "mirrored_left_right": bool(mirror),
+        "mirrored_left_right": bool(use_mirror),
+        "multiview": mv_info,
         "mirrored_points": int(n_mirrored[0]),
         "region_gates": gates,
         "registration": {
@@ -1248,7 +1466,8 @@ def main():
     lap("uv_unwrap", t0)
 
     t0 = time.perf_counter()
-    img_arr, bake_stats, bake_info = bake_colour(work, ref, d0, tex_px, Path(o["ref"]).stem)
+    img_arr, bake_stats, bake_info = bake_colour(work, ref, d0, tex_px, Path(o["ref"]).stem,
+                                                mv=o["mv"], ref_path=o["ref"], work_dir=out)
     img = make_material(work, img_arr, out, tex_px)
     albedo = albedo_check(out / "texture.png", bake_info, ref)
     lap("colour_bake", t0)
