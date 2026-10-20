@@ -4,17 +4,19 @@ Cap: 150 lines. Edited only by the lead, in a board PR after each merge, from th
 "Board and log" section. History rolls to `docs/archive/status_<month>.md`.
 
 ## Phase
-Current phase: **2 — Generate and Clean**, with Phase 5 (Sprites mode A) and Phase 9 (Prompt
-generator) running in parallel (director, 2026-10-20, D-022). Phase 1 done 2026-10-20 (D-019).
+Current phase: **2 — Generate and Clean** (finishing), with Phase 3 Skeleton done, and Phase 4
+Animation, Phase 5 Sprites mode A and Phase 6 Library and batch running in parallel (D-022,
+D-025). Phase 1 done 2026-10-20 (D-019).
 
 ## Agents
 
 | Agent | State | Item | Branch / PR | Since |
 |-------|-------|------|-------------|-------|
-| Lead | running a check | items 4-9; board | this PR | 2026-10-20 |
-| app-shell builder | working | item 4 (screen-critic round 2 fixes) | #8 | 2026-10-20 |
-| clean builder | working | item 5 (colour fix round 2) | #9 | 2026-10-20 |
-| sprites builder | working | item 7 (art-QA fixes, speed) | #11 | 2026-10-20 |
+| Lead | working | board; critics; merges | this PR | 2026-10-20 |
+| clean-critic-r4 | running a check | item 5 (round-4 realism/fidelity) | #9 | 2026-10-20 |
+| sprites-b4 | working | item 7 (finish: spurs, real runs, PR body) | #11 | 2026-10-20 |
+| anim-b1 | working | item 10 (Animation first slice) | claude/animation | 2026-10-20 |
+| library-b1 | working | item 11 (Library and batch) | claude/library (no PR yet) | 2026-10-20 |
 
 States: working · running a check · awaiting director · blocked · available.
 
@@ -28,21 +30,31 @@ States: working · running a check · awaiting director · blocked · available.
 3. DONE 2026-10-20 (D-019: Hi3DGen then TripoSG; PR #6).
 
 ### Phase 2 — Generate and Clean (assigned 2026-10-20: "Yes, split it in two", "spawn 1 more")
-4. App shell + Step 1 Generate + generator menu (PR #8). Live GPU run and first-use walk-through
-   passed; screen-critic round 2 fixes in progress. Then the director sees Step 1. Follow-up:
-   text-only input and a textured view (design 5.2) once the sprite SDXL draw lands.
-5. Step 2 Clean + gates (PR #9). Forward axis D-021. Fidelity check round 1: 4 of 10 pass; colour
-   fix round 2 in progress (two failed fixes means a change of method).
+4. DONE 2026-10-20. App shell + Step 1 Generate + generator menu (PR #8); text-only input and
+   "Expand my idea" in the page (PR #14).
+5. Step 2 Clean + gates (PR #9). Round 4: colour is a measured region gate (method change after
+   three tuning rounds). Fresh critic running. Then the Step 2 page and the Step 2 -> Step 3
+   hand-over (item 12).
 6. DONE 2026-10-20. Export gate + headless Godot import check (PR #7).
+12. Step 2 page + hand-over to Step 3, starts the moment PR #9 merges (D-025).
+
+### Phase 3 — Skeleton
+9. DONE 2026-10-20 (D-024). Humanoid, four-legged and bird rigs, test pose, page (PR #15).
+   Monsters (limb-chain editor) not yet assigned.
+
+### Phase 4 — Animation (assigned 2026-10-20, D-025)
+10. First slice: idle, walk, run, attack, hit, faint for 2 legs, 4 legs and bird; one .glb; gate
+    and Godot check; Step 4 page. 6+ legs and monsters later.
 
 ### Phase 5 — Sprites (assigned 2026-10-20, D-022)
-7. Sprite mode A back end: draw, pixel-perfect processing, sprite QA, Southern Cross + GBA
-   presets (PR #11). Art-QA round 1: all four FIX; fixes and a pair under 60 s in progress.
+7. Sprite mode A back end (PR #11): turnaround-sheet backs, face and anatomy pair gates, D-023
+   sizes. Left: spur trim, real runs, PR body. Pair yield is low (1 of 18 sheets): measured and
+   reported, not tuned further.
+
+### Phase 6 — Library and batch (assigned 2026-10-20, D-025)
+11. Library tab (resume, duplicate, trash), batch queue, step timings. PR opens when a slot frees.
 
 ### Phase 9 — Prompt generator (assigned 2026-10-20, D-022)
-8. DONE 2026-10-20 (back end). "Expand my idea" writer, Qwen3-1.7B (PR #12). UI after #8 merges.
-
-### Next (assigned, starts on a trigger)
-9. Phase 3 Skeleton (humanoid + four-legged templates) starts the moment PR #9 merges (D-022).
+8. DONE 2026-10-20. Back end (PR #12) and page (PR #14).
 
 Later phases are in `docs/ROADMAP.md` and start only when listed here.
