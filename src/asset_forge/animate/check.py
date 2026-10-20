@@ -229,6 +229,8 @@ def check_animated_glb(glb: Path, rep: dict) -> AnimReport:
     for name in CLIP_NAMES:
         if name not in anims.clips or name in NOT_PLANTED:
             continue
+        if meta.get(name, {}).get("library") and name not in ("walk", "run"):
+            continue  # a hand-made attack or flinch steps and pivots: only a gait must not slide
         speed = float(meta.get(name, {}).get("speed_m_s", 0.0))
         tr = world_positions(anims, name, joints, float(rep.get("fps", 30)),
                              rep.get("foot_tips"))

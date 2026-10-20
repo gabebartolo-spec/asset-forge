@@ -161,6 +161,26 @@ def ground_faint(clip, keyer, act, model):
             "end_torso_gap_mm": round(gap * 1000, 1)}
 
 
+def ground_library(clip, keyer, act, model):
+    """A hand-made clip was made for another body: set the whole clip down (or up) by one
+    amount so the lowest the skinned mesh ever gets is the floor. Moves only the root bone."""
+    scene = bpy.context.scene
+    use_action(keyer.arm, act)
+    mins = []
+    for f in range(clip.frames):
+        scene.frame_set(f)
+        mins.append(mesh_min_z(model))
+    dz = -min(mins)
+    T = np.eye(4)
+    T[2, 3] = dz
+    for D in clip.deltas:
+        for n in D:
+            D[n] = T @ D[n]
+    root = next(n for n in keyer.body.names if keyer.body.parent[n] is None)
+    keyer.key(act, clip.deltas, only=[root])
+    return {"lowest_before_mm": round(min(mins) * 1000, 1), "shift_mm": round(dz * 1000, 1)}
+
+
 def push_to_nla(arm, actions):
     ad = arm.animation_data
     for tr in list(ad.nla_tracks):
@@ -309,6 +329,8 @@ def main():
         keyer.key(act, clip.deltas)
         if clip.land_frame is not None:
             grounded[clip.name] = ground_faint(clip, keyer, act, model)
+        elif clip.library:
+            grounded[clip.name] = ground_library(clip, keyer, act, model)
         actions.append(act)
     previews = {}
     if o["previews"]:
@@ -332,7 +354,8 @@ def main():
                    "loop": c.loop, "speed_m_s": round(c.speed, 4),
                    "froude": round(c.froude, 3), "cadence_capped": c.capped,
                    "strides_per_s": round(1 / c.gait.seconds, 3) if c.gait else None,
-                   "feet_out_of_reach_frames": c.short, "land_frame": c.land_frame}
+                   "feet_out_of_reach_frames": c.short, "land_frame": c.land_frame,
+                   "library": c.library}
                   for c in clips],
         "grounding": grounded, "previews": previews, "short_legs": body.short_legs,
         "seconds": round(time.perf_counter() - t0, 1),

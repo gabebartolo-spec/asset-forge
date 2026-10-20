@@ -58,7 +58,7 @@ def body(template: str, scale: float = 1.0) -> Body:
 @pytest.fixture(scope="module", params=list(STICKS))
 def made(request):
     b = body(request.param)
-    return b, {c.name: c for c in make_clips(b)}
+    return b, {c.name: c for c in make_clips(b, library=False)}
 
 
 # ------------------------------------------------------------------ foot-slide metric

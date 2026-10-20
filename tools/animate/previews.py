@@ -46,6 +46,9 @@ def gait_line(rep: dict) -> str:
     for c in rep["clips"]:
         if c["speed_m_s"]:
             sps = c["strides_per_s"]
+            if sps is None:  # a hand-made library clip has no gait generator
+                out.append(f"{c['name']} {c['speed_m_s']:.2f} m/s (library clip)")
+                continue
             out.append(f"{c['name']} {c['speed_m_s']:.2f} m/s, {sps:.2f} strides/s "
                        f"({sps * 120:.0f} steps/min), Fr {c['froude']:.2f}, {c['frames'] - 1} keys")
     return "; ".join(out)

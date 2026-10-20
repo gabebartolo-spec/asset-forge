@@ -21,6 +21,7 @@ run carry the ground `speed` the game moves the character at so the feet do not 
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -135,6 +136,7 @@ class Clip:
     gait: Gait | None = None
     froude: float = 0.0               # v^2 / (g L) of walk and run
     capped: bool = False              # cadence held at the readability cap (slower than Froude)
+    library: bool = False             # hand-made clip re-targeted from the animation library
 
     @property
     def frames(self) -> int:
@@ -1128,7 +1130,99 @@ def animator(body: Body) -> Animator:
     return ANIMATORS[body.template](body)
 
 
-def make_clips(body: Body, names=CLIP_NAMES) -> list[Clip]:
+def library_clip(body: Body, name: str) -> Clip:
+    """A humanoid's clip from the hand-made library (animate.library), solved like the rest."""
+    from asset_forge.animate import library
+
+    poses, meta = library.retarget(body, library.LIBRARY_CLIPS[name])
+    if meta["loop"]:
+        poses[-1] = poses[0]  # a loop ends on exactly its first frame
+    clip = Clip(name, meta["fps"], meta["loop"], meta["speed"] if name in ("walk", "run") else 0.0,
+                poses, library=True)
+    a = Animator.__new__(Animator)
+    a.b = body
+    clip = Animator.finish(a, clip)
+    if name in ("walk", "run"):
+        clip.speed = _fit_speed(body, clip)
+        _pin_feet(body, clip)
+    if name == "faint":  # lands when the pelvis is within a tenth of the height of its final rest
+        z = np.array([p.move["Hips"][2] for p in poses])
+        clip.land_frame = int(np.argmax(z <= z[-1] + 0.1 * body.height))
+    return clip
+
+
+def _fit_speed(body: Body, clip: Clip) -> float:
+    """The ground speed (near the nominal one) at which the planted feet slide least: a clip made
+    for another body may be a few percent off the speed its feet were made for."""
+    from asset_forge.animate.gait import foot_slide
+
+    toes = [f"{s}Toes" for s in ("Left", "Right")]
+    tracks = [np.array([body.joint_positions(D)[t] for D in clip.deltas]) for t in toes]
+    best, best_w = clip.speed, float("inf")
+    for k in np.linspace(0.6, 1.5, 91):
+        v = clip.speed * float(k)
+        w = max(foot_slide(tr, clip.fps, v, (0.0, -1.0, 0.0), (0.0, 0.0, 1.0),
+                           0.01 * body.leg_len).worst_m for tr in tracks)
+        if w < best_w:
+            best, best_w = v, w
+    return best
+
+
+PIN_TOL = 0.01   # a foot is down when its ball is this close (of leg length) to its lowest
+PIN_RAMP = 1     # frames a hold is eased in and out over
+
+
+def _pin_feet(body: Body, clip: Clip) -> None:
+    """Hold every planted foot still on the ground. A hand-made walk made for another body
+    leaves the feet a cm or two off the ground speed (the stance foot swings on an arc). For
+    each stretch of frames a foot is down, its ankle is moved (a few cm at most, eased in and
+    out) to stay where it was set down, and the leg is re-solved by IK; the foot keeps its own
+    turn. The loop is unrolled three times so a stretch that wraps the seam is one stretch."""
+    P = [body.joint_positions(D) for D in clip.deltas]
+    m = clip.frames - 1  # a loop's last frame is its first
+    fwd = np.array([0.0, -1.0, 0.0])
+    tol = PIN_TOL * body.leg_len
+    ramp = PIN_RAMP
+    for lg in body.legs:
+        toes_z = np.array([p[f"{lg.name}Toes"][2] for p in P[:m]])
+        contact = np.tile(toes_z <= toes_z.min() + tol, 3)
+        ank = np.array([p[lg.foot] for p in P[:m]])
+        ball = np.array([p[f"{lg.name}Toes"] for p in P[:m]])  # what stays put: the ball
+        g = np.tile(ball, (3, 1)) + np.outer(np.arange(3 * m) / clip.fps * clip.speed, fwd)
+        shift = np.zeros((m, 3))
+        e = 0
+        while e < 3 * m:
+            if not contact[e]:
+                e += 1
+                continue
+            j = e
+            while j + 1 < 3 * m and contact[j + 1]:
+                j += 1
+            run = np.arange(e, j + 1)
+            hold = g[run].mean(axis=0)
+            for k, i in enumerate(run):
+                if m <= i < 2 * m:
+                    w = min((min(k, len(run) - 1 - k) + 1) / (ramp + 1), 1.0)
+                    d = (hold - g[i]) * w
+                    d[2] = 0.0
+                    shift[i - m] = d
+            e = j + 1
+        for f, pose in enumerate(clip.poses):
+            D = clip.deltas[f]
+            pose.feet[lg.name] = (ank[f % m] + shift[f % m], D[lg.foot][:3, :3].copy())
+    clip.deltas, clip.short = [], {}
+    for pose in clip.poses:
+        D, short = body.solve(pose)
+        clip.deltas.append(D)
+        for s_ in short:
+            clip.short[s_] = clip.short.get(s_, 0) + 1
+
+
+def make_clips(body: Body, names=CLIP_NAMES, library: bool = True) -> list[Clip]:
+    """The six clips. A humanoid's come from the hand-made library (library=False, or the
+    AF_PROCEDURAL_HUMANOID=1 environment variable, makes the procedural ones instead)."""
+    if body.template == "humanoid" and library and os.environ.get("AF_PROCEDURAL_HUMANOID") != "1":
+        return [library_clip(body, n) for n in names]
     a = animator(body)
     return [getattr(a, n)() for n in names]
 
