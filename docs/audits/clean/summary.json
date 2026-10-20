@@ -3,7 +3,18 @@
     "type": "humanoid",
     "input": "humanoid.glb",
     "generator_input_only": true,
-    "triangles": 7756,
+    "solid": {
+      "hollow_share": 0.313,
+      "parts_voxels": [
+        57967
+      ],
+      "bridges_gap_voxels": [],
+      "parts_after": 1,
+      "filler_voxels": 23185,
+      "voxel_size": 0.007819,
+      "seconds": 2.42
+    },
+    "triangles": 7760,
     "triangle_budget": 8000,
     "materials": 1,
     "texture": {
@@ -12,26 +23,30 @@
       "max_px": 1024
     },
     "raw_triangles": 272446,
-    "voxel_remesh_triangles": 183364,
+    "voxel_remesh_triangles": 139868,
     "loose_parts": {
       "raw_after_weld": 26,
       "floaters_deleted": 22,
       "after_clean": 1,
-      "floaters_deleted_after_decimate": 1
+      "floaters_deleted_after_decimate": 0
+    },
+    "single_part": {
+      "parts": 1,
+      "ok": true
     },
     "silhouette": {
       "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
       "threshold": 0.08,
-      "front": 0.0073,
-      "side": 0.0059,
-      "top": 0.0099
+      "front": 0.007,
+      "side": 0.0079,
+      "top": 0.0094
     },
     "dimensions_m": [
-      1.0274,
-      0.4085,
-      1.7996
+      1.026,
+      0.4067,
+      1.7995
     ],
-    "height_m": 1.7996,
+    "height_m": 1.7995,
     "origin": "feet (footprint centre, lowest point at z=0)",
     "forward": "-Y (glTF +Z, Godot model front, D-021)",
     "orientation": {
@@ -47,35 +62,291 @@
         0.0
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\humanoid.png",
-      "texels_covered": 307852,
-      "texels_projected": 19272,
+      "texels_covered": 310623,
+      "texels_projected": 24169,
       "texels_projected_full_trust": 0,
-      "texels_low_frequency": 288580,
+      "texels_low_frequency": 286454,
       "mirrored_far_side": false,
       "mirrored_left_right": false,
+      "multiview": {
+        "seconds_control_maps": 6.67,
+        "seconds_generator": 196.42,
+        "generator": {
+          "seconds_load": 104.5,
+          "seconds_generate": 62.7,
+          "seconds_total": 167.8,
+          "vram_peak_gb": 9.17,
+          "vram_reserved_peak_gb": 10.9,
+          "vram_weights_gb": 3.53,
+          "vram_cap_gb": 11.0,
+          "seed": 7,
+          "steps": 50,
+          "guidance": 3.0,
+          "size": 768,
+          "adapter": "huanngzh/mv-adapter/mvadapter_ig2mv_sdxl.safetensors",
+          "base": "stabilityai/stable-diffusion-xl-base-1.0",
+          "vae": "madebyollin/sdxl-vae-fp16-fix"
+        },
+        "calibration": {
+          "method": "per view, per image-plane cell: Lab mean and spread onto the picture's",
+          "grid": [
+            6,
+            12
+          ],
+          "view_texels": [
+            89572,
+            57412,
+            87668,
+            55397,
+            26318,
+            23357
+          ],
+          "mean_L_gain": [
+            0.919,
+            0.702,
+            0.85,
+            0.755,
+            0.985,
+            0.991
+          ],
+          "mean_L_offset": [
+            -0.46,
+            1.01,
+            -11.59,
+            -6.26,
+            -9.76,
+            13.34
+          ]
+        },
+        "texels_from_views": 283313,
+        "texels_no_view": 27310
+      },
       "mirrored_points": 0,
-      "region_gates": null,
+      "region_gates": {
+        "reference": "humanoid",
+        "passed": false,
+        "gates": [
+          {
+            "gate": "torso_back_colour_distance",
+            "value": 0.024,
+            "limit": "<= 0.15",
+            "ok": true
+          },
+          {
+            "gate": "greaves_back_colour_distance",
+            "value": 0.127,
+            "limit": "<= 0.12",
+            "ok": false
+          },
+          {
+            "gate": "boots_back_colour_distance",
+            "value": 0.032,
+            "limit": "<= 0.12",
+            "ok": true
+          },
+          {
+            "gate": "torso_back_contrast_ratio",
+            "value": 0.838,
+            "limit": ">= 0.40",
+            "ok": true
+          },
+          {
+            "gate": "boots_minus_greaves_warmth_back",
+            "value": 0.039,
+            "limit": ">= 0.030",
+            "ok": true
+          },
+          {
+            "gate": "greaves_back_warmth",
+            "value": 0.025,
+            "limit": "<= 0.038",
+            "ok": true
+          }
+        ],
+        "reference_regions": {
+          "torso": {
+            "n": 19040,
+            "rgb": [
+              0.392,
+              0.371,
+              0.358
+            ],
+            "p90_luma": 0.95,
+            "pale": 0.2,
+            "dark": 0.29,
+            "white": 0.154,
+            "std_luma": 0.274
+          },
+          "torso_back": {
+            "n": 19040,
+            "rgb": [
+              0.392,
+              0.371,
+              0.358
+            ],
+            "p90_luma": 0.95,
+            "pale": 0.2,
+            "dark": 0.29,
+            "white": 0.154,
+            "std_luma": 0.274
+          },
+          "greaves": {
+            "n": 12530,
+            "rgb": [
+              0.204,
+              0.19,
+              0.186
+            ],
+            "p90_luma": 0.273,
+            "pale": 0.006,
+            "dark": 0.702,
+            "white": 0.002,
+            "std_luma": 0.081
+          },
+          "greaves_back": {
+            "n": 12530,
+            "rgb": [
+              0.204,
+              0.19,
+              0.186
+            ],
+            "p90_luma": 0.273,
+            "pale": 0.006,
+            "dark": 0.702,
+            "white": 0.002,
+            "std_luma": 0.081
+          },
+          "boots": {
+            "n": 4561,
+            "rgb": [
+              0.271,
+              0.21,
+              0.194
+            ],
+            "p90_luma": 0.45,
+            "pale": 0.075,
+            "dark": 0.578,
+            "white": 0.036,
+            "std_luma": 0.184
+          },
+          "boots_back": {
+            "n": 4561,
+            "rgb": [
+              0.271,
+              0.21,
+              0.194
+            ],
+            "p90_luma": 0.45,
+            "pale": 0.075,
+            "dark": 0.578,
+            "white": 0.036,
+            "std_luma": 0.184
+          }
+        },
+        "albedo_regions": {
+          "torso": {
+            "n": 23682,
+            "rgb": [
+              0.4,
+              0.38,
+              0.367
+            ],
+            "p90_luma": 0.777,
+            "pale": 0.234,
+            "dark": 0.263,
+            "white": 0.12,
+            "std_luma": 0.236
+          },
+          "torso_back": {
+            "n": 11348,
+            "rgb": [
+              0.405,
+              0.385,
+              0.373
+            ],
+            "p90_luma": 0.752,
+            "pale": 0.286,
+            "dark": 0.303,
+            "white": 0.102,
+            "std_luma": 0.23
+          },
+          "greaves": {
+            "n": 24360,
+            "rgb": [
+              0.239,
+              0.219,
+              0.213
+            ],
+            "p90_luma": 0.361,
+            "pale": 0.015,
+            "dark": 0.459,
+            "white": 0.0,
+            "std_luma": 0.101
+          },
+          "greaves_back": {
+            "n": 9335,
+            "rgb": [
+              0.282,
+              0.262,
+              0.257
+            ],
+            "p90_luma": 0.449,
+            "pale": 0.032,
+            "dark": 0.309,
+            "white": 0.0,
+            "std_luma": 0.125
+          },
+          "boots": {
+            "n": 12532,
+            "rgb": [
+              0.236,
+              0.189,
+              0.175
+            ],
+            "p90_luma": 0.361,
+            "pale": 0.028,
+            "dark": 0.638,
+            "white": 0.007,
+            "std_luma": 0.134
+          },
+          "boots_back": {
+            "n": 3414,
+            "rgb": [
+              0.28,
+              0.23,
+              0.217
+            ],
+            "p90_luma": 0.464,
+            "pale": 0.059,
+            "dark": 0.494,
+            "white": 0.006,
+            "std_luma": 0.169
+          }
+        },
+        "model_measures": {}
+      },
       "registration": {
         "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the reference outline onto the centre of the model outline), 64 rows",
         "head_band": 0.16,
-        "head_shift_of_width": -0.0103,
-        "head_width_ratio": 0.801,
+        "head_shift_of_width": -0.012,
+        "head_width_ratio": 0.813,
         "head_width_ratio_allowed": [
           0.4,
           2.0
         ],
         "head_painted_from_reference": true,
-        "max_row_shift": 0.1471,
+        "max_row_shift": 0.1466,
+        "outline_warp_iou_before_after": null,
         "head_to_head": {
           "reference_head_x": 0.5025,
-          "model_head_x": 0.5014,
-          "head_shift_applied": 0.0011,
+          "model_head_x": 0.5011,
+          "head_shift_applied": 0.0014,
           "feature_offset_px": [
-            -17.3,
-            -50.4
+            -14.2,
+            -46.7
           ],
           "head_width_px": 136.2,
-          "disagreement_head_widths": 0.127
+          "disagreement_head_widths": 0.104
         }
       },
       "fill": {
@@ -83,80 +354,91 @@
         "full_facing_cos": 0.7,
         "shadow_rel_to_band_median": 0.55,
         "shadow_bands": 8,
-        "shadow_vertices_ignored": 95,
+        "shadow_vertices_ignored": 135,
         "method": "normalised vertex-graph diffusion, interpolated across triangles",
         "speck_area_frac": 0.0025,
         "ref_speck_pixels": 0,
         "texels_speck_replaced": 0,
         "fill_specks_dropped": 0,
         "seam_feather_height_frac": 0.05,
-        "seam_feather_iterations": 10
+        "seam_feather_iterations": 14
       }
     },
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.2396,
+        "albedo_luma": 0.2359,
         "ref_luma": 0.2383,
-        "albedo_sat": 0.1222,
+        "albedo_sat": 0.1876,
         "ref_sat": 0.1688,
-        "luma_ratio": 1.005,
-        "sat_ratio": 0.724
+        "luma_ratio": 0.99,
+        "sat_ratio": 1.111
       },
       {
         "band": 1,
-        "albedo_luma": 0.27,
+        "albedo_luma": 0.2199,
         "ref_luma": 0.231,
-        "albedo_sat": 0.1638,
+        "albedo_sat": 0.1928,
         "ref_sat": 0.1994,
-        "luma_ratio": 1.169,
-        "sat_ratio": 0.821
+        "luma_ratio": 0.952,
+        "sat_ratio": 0.967
       },
       {
         "band": 2,
-        "albedo_luma": 0.3178,
+        "albedo_luma": 0.2828,
         "ref_luma": 0.2888,
-        "albedo_sat": 0.1699,
+        "albedo_sat": 0.2217,
         "ref_sat": 0.2179,
-        "luma_ratio": 1.1,
-        "sat_ratio": 0.78
+        "luma_ratio": 0.979,
+        "sat_ratio": 1.017
       },
       {
         "band": 3,
-        "albedo_luma": 0.4158,
+        "albedo_luma": 0.4208,
         "ref_luma": 0.4177,
-        "albedo_sat": 0.1077,
+        "albedo_sat": 0.1304,
         "ref_sat": 0.1456,
-        "luma_ratio": 0.995,
-        "sat_ratio": 0.74
+        "luma_ratio": 1.007,
+        "sat_ratio": 0.896
       }
     ],
     "timings_s": {
-      "import_and_weld": 0.83,
-      "voxel_remesh": 0.27,
-      "orient_scale": 0.01,
-      "decimate": 1.67,
-      "uv_unwrap": 0.09,
-      "colour_bake": 1.08,
-      "silhouette": 0.87,
-      "sheets": 0.43,
-      "export": 0.76,
-      "total": 5.71
+      "import_and_weld": 6.96,
+      "voxel_remesh": 3.88,
+      "orient_scale": 0.06,
+      "decimate": 5.75,
+      "uv_unwrap": 0.71,
+      "colour_bake": 221.16,
+      "silhouette": 13.6,
+      "sheets": 6.4,
+      "export": 10.1,
+      "total": 263.44
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.291,
-      "lit_luma": 0.278,
-      "luma_ratio": 0.955,
+      "lit_luma": 0.266,
+      "luma_ratio": 0.917,
       "ref_sat": 0.192,
-      "lit_sat": 0.154,
-      "sat_ratio": 0.8
+      "lit_sat": 0.174,
+      "sat_ratio": 0.903
     }
   },
   "hi3dgen/spider": {
     "type": "monster",
     "input": "spider.glb",
     "generator_input_only": true,
+    "solid": {
+      "hollow_share": 0.0006,
+      "parts_voxels": [
+        29001
+      ],
+      "bridges_gap_voxels": [],
+      "parts_after": 1,
+      "filler_voxels": 0,
+      "voxel_size": 0.007833,
+      "seconds": 0.99
+    },
     "triangles": 7760,
     "triangle_budget": 8000,
     "materials": 1,
@@ -172,6 +454,10 @@
       "floaters_deleted": 11,
       "after_clean": 1,
       "floaters_deleted_after_decimate": 0
+    },
+    "single_part": {
+      "parts": 1,
+      "ok": true
     },
     "silhouette": {
       "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
@@ -207,6 +493,59 @@
       "texels_low_frequency": 269154,
       "mirrored_far_side": false,
       "mirrored_left_right": false,
+      "multiview": {
+        "seconds_control_maps": 6.09,
+        "seconds_generator": 186.1,
+        "generator": {
+          "seconds_load": 87.1,
+          "seconds_generate": 67.6,
+          "seconds_total": 155.2,
+          "vram_peak_gb": 9.17,
+          "vram_reserved_peak_gb": 10.9,
+          "vram_weights_gb": 3.53,
+          "vram_cap_gb": 11.0,
+          "seed": 7,
+          "steps": 50,
+          "guidance": 3.0,
+          "size": 768,
+          "adapter": "huanngzh/mv-adapter/mvadapter_ig2mv_sdxl.safetensors",
+          "base": "stabilityai/stable-diffusion-xl-base-1.0",
+          "vae": "madebyollin/sdxl-vae-fp16-fix"
+        },
+        "calibration": {
+          "method": "per view, per image-plane cell: Lab mean and spread onto the picture's",
+          "grid": [
+            6,
+            12
+          ],
+          "view_texels": [
+            52147,
+            34161,
+            49055,
+            34979,
+            69964,
+            71432
+          ],
+          "mean_L_gain": [
+            0.967,
+            0.861,
+            0.878,
+            0.963,
+            1.151,
+            1.689
+          ],
+          "mean_L_offset": [
+            9.21,
+            -2.32,
+            1.2,
+            8.25,
+            -28.45,
+            9.95
+          ]
+        },
+        "texels_from_views": 250451,
+        "texels_no_view": 25731
+      },
       "mirrored_points": 0,
       "region_gates": null,
       "registration": {
@@ -220,6 +559,7 @@
         ],
         "head_painted_from_reference": true,
         "max_row_shift": 0.0251,
+        "outline_warp_iou_before_after": null,
         "head_to_head": {
           "reference_head_x": 0.4924,
           "model_head_x": 0.5011,
@@ -250,67 +590,78 @@
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.3485,
+        "albedo_luma": 0.1822,
         "ref_luma": 0.1684,
-        "albedo_sat": 0.303,
+        "albedo_sat": 0.1719,
         "ref_sat": 0.1624,
-        "luma_ratio": 2.069,
-        "sat_ratio": 1.866
+        "luma_ratio": 1.082,
+        "sat_ratio": 1.058
       },
       {
         "band": 1,
-        "albedo_luma": 0.3479,
+        "albedo_luma": 0.2465,
         "ref_luma": 0.2187,
-        "albedo_sat": 0.3038,
+        "albedo_sat": 0.2242,
         "ref_sat": 0.2204,
-        "luma_ratio": 1.591,
-        "sat_ratio": 1.378
+        "luma_ratio": 1.127,
+        "sat_ratio": 1.017
       },
       {
         "band": 2,
-        "albedo_luma": 0.3473,
+        "albedo_luma": 0.2882,
         "ref_luma": 0.2912,
-        "albedo_sat": 0.3044,
+        "albedo_sat": 0.2498,
         "ref_sat": 0.2803,
-        "luma_ratio": 1.193,
-        "sat_ratio": 1.086
+        "luma_ratio": 0.99,
+        "sat_ratio": 0.891
       },
       {
         "band": 3,
-        "albedo_luma": 0.3834,
+        "albedo_luma": 0.4066,
         "ref_luma": 0.3878,
-        "albedo_sat": 0.3153,
+        "albedo_sat": 0.3017,
         "ref_sat": 0.307,
-        "luma_ratio": 0.989,
-        "sat_ratio": 1.027
+        "luma_ratio": 1.048,
+        "sat_ratio": 0.983
       }
     ],
     "timings_s": {
-      "import_and_weld": 0.79,
-      "voxel_remesh": 0.18,
-      "orient_scale": 0.01,
-      "decimate": 1.09,
-      "uv_unwrap": 0.04,
-      "colour_bake": 0.94,
-      "silhouette": 0.83,
-      "sheets": 0.39,
-      "export": 0.72,
-      "total": 4.76
+      "import_and_weld": 3.16,
+      "voxel_remesh": 1.61,
+      "orient_scale": 0.03,
+      "decimate": 3.4,
+      "uv_unwrap": 0.07,
+      "colour_bake": 201.97,
+      "silhouette": 4.2,
+      "sheets": 3.96,
+      "export": 5.62,
+      "total": 220.73
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.314,
-      "lit_luma": 0.298,
-      "luma_ratio": 0.949,
+      "lit_luma": 0.237,
+      "luma_ratio": 0.755,
       "ref_sat": 0.278,
-      "lit_sat": 0.309,
-      "sat_ratio": 1.111
+      "lit_sat": 0.249,
+      "sat_ratio": 0.894
     }
   },
   "hi3dgen/brute": {
     "type": "monster",
     "input": "brute.glb",
     "generator_input_only": true,
+    "solid": {
+      "hollow_share": 0.0004,
+      "parts_voxels": [
+        156292
+      ],
+      "bridges_gap_voxels": [],
+      "parts_after": 1,
+      "filler_voxels": 0,
+      "voxel_size": 0.007807,
+      "seconds": 1.51
+    },
     "triangles": 7760,
     "triangle_budget": 8000,
     "materials": 1,
@@ -326,6 +677,10 @@
       "floaters_deleted": 14,
       "after_clean": 1,
       "floaters_deleted_after_decimate": 0
+    },
+    "single_part": {
+      "parts": 1,
+      "ok": true
     },
     "silhouette": {
       "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
@@ -361,8 +716,129 @@
       "texels_low_frequency": 323202,
       "mirrored_far_side": false,
       "mirrored_left_right": false,
+      "multiview": {
+        "seconds_control_maps": 5.53,
+        "seconds_generator": 152.51,
+        "generator": {
+          "seconds_load": 60.3,
+          "seconds_generate": 62.7,
+          "seconds_total": 123.6,
+          "vram_peak_gb": 9.17,
+          "vram_reserved_peak_gb": 10.9,
+          "vram_weights_gb": 3.53,
+          "vram_cap_gb": 11.0,
+          "seed": 7,
+          "steps": 50,
+          "guidance": 3.0,
+          "size": 768,
+          "adapter": "huanngzh/mv-adapter/mvadapter_ig2mv_sdxl.safetensors",
+          "base": "stabilityai/stable-diffusion-xl-base-1.0",
+          "vae": "madebyollin/sdxl-vae-fp16-fix"
+        },
+        "calibration": {
+          "method": "per view, per image-plane cell: Lab mean and spread onto the picture's",
+          "grid": [
+            6,
+            12
+          ],
+          "view_texels": [
+            104095,
+            46902,
+            102913,
+            47897,
+            55711,
+            53129
+          ],
+          "mean_L_gain": [
+            0.911,
+            0.754,
+            1.19,
+            0.676,
+            1.333,
+            0.895
+          ],
+          "mean_L_offset": [
+            -0.98,
+            -1.09,
+            -40.9,
+            9.44,
+            -64.16,
+            13.74
+          ]
+        },
+        "texels_from_views": 333186,
+        "texels_no_view": 27145
+      },
       "mirrored_points": 0,
-      "region_gates": null,
+      "region_gates": {
+        "reference": "brute",
+        "passed": true,
+        "gates": [
+          {
+            "gate": "shorts_back_colour_distance",
+            "value": 0.081,
+            "limit": "<= 0.10",
+            "ok": true
+          }
+        ],
+        "reference_regions": {
+          "shorts": {
+            "n": 22425,
+            "rgb": [
+              0.232,
+              0.229,
+              0.228
+            ],
+            "p90_luma": 0.342,
+            "pale": 0.0,
+            "dark": 0.368,
+            "white": 0.0,
+            "std_luma": 0.093
+          },
+          "shorts_back": {
+            "n": 22425,
+            "rgb": [
+              0.232,
+              0.229,
+              0.228
+            ],
+            "p90_luma": 0.342,
+            "pale": 0.0,
+            "dark": 0.368,
+            "white": 0.0,
+            "std_luma": 0.093
+          }
+        },
+        "albedo_regions": {
+          "shorts": {
+            "n": 17053,
+            "rgb": [
+              0.255,
+              0.25,
+              0.248
+            ],
+            "p90_luma": 0.355,
+            "pale": 0.0,
+            "dark": 0.261,
+            "white": 0.0,
+            "std_luma": 0.086
+          },
+          "shorts_back": {
+            "n": 8178,
+            "rgb": [
+              0.281,
+              0.275,
+              0.273
+            ],
+            "p90_luma": 0.377,
+            "pale": 0.0,
+            "dark": 0.147,
+            "white": 0.0,
+            "std_luma": 0.072
+          }
+        },
+        "model_measures": {}
+      },
       "registration": {
         "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the reference outline onto the centre of the model outline), 64 rows",
         "head_band": 0.16,
@@ -374,6 +850,7 @@
         ],
         "head_painted_from_reference": false,
         "max_row_shift": 0.2553,
+        "outline_warp_iou_before_after": null,
         "head_to_head": {
           "reference_head_x": 0.4321,
           "model_head_x": 0.471,
@@ -404,68 +881,79 @@
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.2826,
+        "albedo_luma": 0.3048,
         "ref_luma": 0.3163,
-        "albedo_sat": 0.132,
+        "albedo_sat": 0.1455,
         "ref_sat": 0.1473,
-        "luma_ratio": 0.893,
-        "sat_ratio": 0.896
+        "luma_ratio": 0.964,
+        "sat_ratio": 0.988
       },
       {
         "band": 1,
-        "albedo_luma": 0.2913,
+        "albedo_luma": 0.2597,
         "ref_luma": 0.2664,
-        "albedo_sat": 0.1363,
+        "albedo_sat": 0.1399,
         "ref_sat": 0.133,
-        "luma_ratio": 1.093,
-        "sat_ratio": 1.025
+        "luma_ratio": 0.975,
+        "sat_ratio": 1.052
       },
       {
         "band": 2,
-        "albedo_luma": 0.3465,
+        "albedo_luma": 0.3174,
         "ref_luma": 0.3237,
-        "albedo_sat": 0.1459,
+        "albedo_sat": 0.1567,
         "ref_sat": 0.1597,
-        "luma_ratio": 1.07,
-        "sat_ratio": 0.914
+        "luma_ratio": 0.981,
+        "sat_ratio": 0.981
       },
       {
         "band": 3,
-        "albedo_luma": 0.4071,
+        "albedo_luma": 0.4586,
         "ref_luma": 0.4771,
-        "albedo_sat": 0.1622,
+        "albedo_sat": 0.1811,
         "ref_sat": 0.1844,
-        "luma_ratio": 0.853,
-        "sat_ratio": 0.88
+        "luma_ratio": 0.961,
+        "sat_ratio": 0.982
       }
     ],
     "timings_s": {
-      "import_and_weld": 1.9,
-      "voxel_remesh": 0.43,
-      "orient_scale": 0.01,
-      "decimate": 2.37,
-      "uv_unwrap": 0.03,
-      "colour_bake": 1.17,
-      "silhouette": 0.94,
-      "sheets": 0.49,
-      "export": 0.83,
-      "total": 7.82
+      "import_and_weld": 7.76,
+      "voxel_remesh": 2.83,
+      "orient_scale": 0.06,
+      "decimate": 7.83,
+      "uv_unwrap": 0.28,
+      "colour_bake": 170.77,
+      "silhouette": 26.95,
+      "sheets": 9.33,
+      "export": 11.7,
+      "total": 229.13
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.358,
-      "lit_luma": 0.3,
-      "luma_ratio": 0.839,
+      "lit_luma": 0.306,
+      "luma_ratio": 0.854,
       "ref_sat": 0.16,
-      "lit_sat": 0.148,
-      "sat_ratio": 0.927
+      "lit_sat": 0.162,
+      "sat_ratio": 1.01
     }
   },
   "hi3dgen/fox": {
     "type": "animal",
     "input": "fox.glb",
     "generator_input_only": true,
-    "triangles": 1940,
+    "solid": {
+      "hollow_share": 0.605,
+      "parts_voxels": [
+        65173
+      ],
+      "bridges_gap_voxels": [],
+      "parts_after": 1,
+      "filler_voxels": 54250,
+      "voxel_size": 0.007821,
+      "seconds": 2.86
+    },
+    "triangles": 1938,
     "triangle_budget": 2000,
     "materials": 1,
     "texture": {
@@ -474,26 +962,30 @@
       "max_px": 512
     },
     "raw_triangles": 330788,
-    "voxel_remesh_triangles": 245328,
+    "voxel_remesh_triangles": 151792,
     "loose_parts": {
       "raw_after_weld": 1,
       "floaters_deleted": 0,
       "after_clean": 1,
       "floaters_deleted_after_decimate": 0
     },
+    "single_part": {
+      "parts": 1,
+      "ok": true
+    },
     "silhouette": {
       "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
       "threshold": 0.08,
-      "front": 0.0181,
-      "side": 0.0149,
-      "top": 0.0114
+      "front": 0.009,
+      "side": 0.0072,
+      "top": 0.0058
     },
     "dimensions_m": [
-      0.1631,
-      0.5754,
-      0.4012
+      0.1623,
+      0.5744,
+      0.3997
     ],
-    "height_m": 0.4012,
+    "height_m": 0.3997,
     "origin": "feet (footprint centre, lowest point at z=0)",
     "forward": "-Y (glTF +Z, Godot model front, D-021)",
     "orientation": {
@@ -501,9 +993,9 @@
       "decided_by": "side outline (profile, head toward -Y)",
       "generator": "hi3dgen",
       "outline_iou_by_turn": {
-        "0": 0.4482,
-        "90": 0.3401,
-        "180": 0.4693,
+        "0": 0.4478,
+        "90": 0.3403,
+        "180": 0.4691,
         "270": 0.7769
       }
     },
@@ -514,57 +1006,134 @@
         0.0
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\fox.png",
-      "texels_covered": 89032,
-      "texels_projected": 11848,
-      "texels_projected_full_trust": 1221,
-      "texels_low_frequency": 77184,
+      "texels_covered": 99213,
+      "texels_projected": 18292,
+      "texels_projected_full_trust": 13,
+      "texels_low_frequency": 80921,
       "mirrored_far_side": false,
-      "mirrored_left_right": true,
-      "mirrored_points": 10327,
+      "mirrored_left_right": false,
+      "multiview": {
+        "seconds_control_maps": 1.37,
+        "seconds_generator": 186.24,
+        "generator": {
+          "seconds_load": 87.1,
+          "seconds_generate": 69.0,
+          "seconds_total": 156.8,
+          "vram_peak_gb": 9.17,
+          "vram_reserved_peak_gb": 10.9,
+          "vram_weights_gb": 3.53,
+          "vram_cap_gb": 11.0,
+          "seed": 7,
+          "steps": 50,
+          "guidance": 3.0,
+          "size": 768,
+          "adapter": "huanngzh/mv-adapter/mvadapter_ig2mv_sdxl.safetensors",
+          "base": "stabilityai/stable-diffusion-xl-base-1.0",
+          "vae": "madebyollin/sdxl-vae-fp16-fix"
+        },
+        "calibration": {
+          "method": "per view, per image-plane cell: Lab mean and spread onto the picture's",
+          "grid": [
+            6,
+            12
+          ],
+          "view_texels": [
+            30724,
+            10281,
+            30825,
+            13077,
+            18650,
+            16350
+          ],
+          "mean_L_gain": [
+            0.808,
+            0.798,
+            0.951,
+            0.772,
+            1.098,
+            0.851
+          ],
+          "mean_L_offset": [
+            3.51,
+            -13.08,
+            -25.95,
+            11.91,
+            -45.26,
+            8.14
+          ]
+        },
+        "texels_from_views": 93092,
+        "texels_no_view": 6121
+      },
+      "mirrored_points": 0,
       "region_gates": {
         "reference": "fox",
         "passed": true,
         "gates": [
           {
             "gate": "legs_dark_fraction",
-            "value": 0.823,
+            "value": 0.965,
             "limit": ">= 0.48",
             "ok": true
           },
           {
             "gate": "chest_p90_luma_ratio",
-            "value": 0.936,
+            "value": 0.904,
             "limit": "0.85 .. 1.25",
             "ok": true
           },
           {
             "gate": "chest_pale_fraction",
-            "value": 0.181,
+            "value": 0.234,
             "limit": ">= 0.16",
             "ok": true
           },
           {
             "gate": "flank_colour_distance",
-            "value": 0.094,
+            "value": 0.057,
             "limit": "<= 0.12",
             "ok": true
           },
           {
             "gate": "tail_body_colour_distance",
-            "value": 0.015,
+            "value": 0.112,
             "limit": "<= 0.15",
             "ok": true
           },
           {
             "gate": "tail_body_pale_fraction",
-            "value": 0.008,
+            "value": 0.041,
             "limit": "<= 0.22",
             "ok": true
           },
           {
             "gate": "tail_tip_pale_fraction",
-            "value": 0.071,
+            "value": 0.407,
             "limit": ">= 0.06",
+            "ok": true
+          },
+          {
+            "gate": "front_lower_legs_dark_fraction",
+            "value": 0.882,
+            "limit": ">= 0.75",
+            "ok": true
+          },
+          {
+            "gate": "hind_lower_legs_dark_fraction",
+            "value": 0.89,
+            "limit": ">= 0.77",
+            "ok": true
+          },
+          {
+            "gate": "far_minus_near_neck_pale",
+            "value": 0.088,
+            "limit": "<= 0.1",
+            "ok": true
+          },
+          {
+            "gate": "tail_end_on_pale_fraction",
+            "value": 0.121,
+            "limit": "<= 0.17",
             "ok": true
           }
         ],
@@ -578,7 +1147,9 @@
             ],
             "p90_luma": 0.703,
             "pale": 0.271,
-            "dark": 0.021
+            "dark": 0.021,
+            "white": 0.006,
+            "std_luma": 0.17
           },
           "flank": {
             "n": 44484,
@@ -589,7 +1160,9 @@
             ],
             "p90_luma": 0.803,
             "pale": 0.015,
-            "dark": 0.015
+            "dark": 0.015,
+            "white": 0.158,
+            "std_luma": 0.184
           },
           "tail_body": {
             "n": 20269,
@@ -600,7 +1173,9 @@
             ],
             "p90_luma": 0.891,
             "pale": 0.125,
-            "dark": 0.265
+            "dark": 0.265,
+            "white": 0.214,
+            "std_luma": 0.283
           },
           "tail_tip": {
             "n": 7778,
@@ -611,7 +1186,9 @@
             ],
             "p90_luma": 0.988,
             "pale": 0.395,
-            "dark": 0.22
+            "dark": 0.22,
+            "white": 0.37,
+            "std_luma": 0.329
           },
           "legs": {
             "n": 23626,
@@ -622,78 +1199,153 @@
             ],
             "p90_luma": 0.16,
             "pale": 0.001,
-            "dark": 0.966
+            "dark": 0.966,
+            "white": 0.0,
+            "std_luma": 0.063
+          },
+          "front_lower_legs": {
+            "n": 12008,
+            "rgb": [
+              0.179,
+              0.105,
+              0.098
+            ],
+            "p90_luma": 0.292,
+            "pale": 0.001,
+            "dark": 0.831,
+            "white": 0.0,
+            "std_luma": 0.089
+          },
+          "hind_lower_legs": {
+            "n": 21340,
+            "rgb": [
+              0.223,
+              0.104,
+              0.079
+            ],
+            "p90_luma": 0.309,
+            "pale": 0.001,
+            "dark": 0.857,
+            "white": 0.0,
+            "std_luma": 0.121
           }
         },
         "albedo_regions": {
           "chest": {
-            "n": 5699,
-            "rgb": [
-              0.624,
-              0.48,
-              0.426
-            ],
-            "p90_luma": 0.658,
-            "pale": 0.181,
-            "dark": 0.0
-          },
-          "flank": {
-            "n": 20056,
-            "rgb": [
-              0.687,
-              0.451,
-              0.344
-            ],
-            "p90_luma": 0.696,
-            "pale": 0.087,
-            "dark": 0.0
-          },
-          "tail_body": {
-            "n": 6789,
-            "rgb": [
-              0.594,
-              0.363,
-              0.277
-            ],
-            "p90_luma": 0.572,
-            "pale": 0.008,
-            "dark": 0.104
-          },
-          "tail_tip": {
-            "n": 1316,
+            "n": 5455,
             "rgb": [
               0.542,
-              0.353,
-              0.288
+              0.451,
+              0.44
             ],
-            "p90_luma": 0.694,
-            "pale": 0.071,
-            "dark": 0.177
+            "p90_luma": 0.636,
+            "pale": 0.234,
+            "dark": 0.011,
+            "white": 0.0,
+            "std_luma": 0.125
+          },
+          "flank": {
+            "n": 15880,
+            "rgb": [
+              0.791,
+              0.49,
+              0.335
+            ],
+            "p90_luma": 0.793,
+            "pale": 0.023,
+            "dark": 0.018,
+            "white": 0.15,
+            "std_luma": 0.183
+          },
+          "tail_body": {
+            "n": 7842,
+            "rgb": [
+              0.66,
+              0.42,
+              0.337
+            ],
+            "p90_luma": 0.79,
+            "pale": 0.041,
+            "dark": 0.191,
+            "white": 0.171,
+            "std_luma": 0.245
+          },
+          "tail_tip": {
+            "n": 3193,
+            "rgb": [
+              0.611,
+              0.502,
+              0.468
+            ],
+            "p90_luma": 0.827,
+            "pale": 0.407,
+            "dark": 0.098,
+            "white": 0.19,
+            "std_luma": 0.233
           },
           "legs": {
-            "n": 5710,
+            "n": 9195,
             "rgb": [
-              0.246,
-              0.135,
-              0.114
+              0.093,
+              0.043,
+              0.045
             ],
-            "p90_luma": 0.241,
+            "p90_luma": 0.132,
             "pale": 0.0,
-            "dark": 0.823
+            "dark": 0.965,
+            "white": 0.0,
+            "std_luma": 0.06
+          },
+          "front_lower_legs": {
+            "n": 6442,
+            "rgb": [
+              0.162,
+              0.079,
+              0.074
+            ],
+            "p90_luma": 0.212,
+            "pale": 0.0,
+            "dark": 0.882,
+            "white": 0.0,
+            "std_luma": 0.077
+          },
+          "hind_lower_legs": {
+            "n": 7405,
+            "rgb": [
+              0.182,
+              0.066,
+              0.047
+            ],
+            "p90_luma": 0.205,
+            "pale": 0.0,
+            "dark": 0.89,
+            "white": 0.0,
+            "std_luma": 0.082
           }
+        },
+        "model_measures": {
+          "far_minus_near_neck_pale": 0.0879,
+          "neck_far_texels": 8599.0,
+          "neck_near_texels": 7916.0,
+          "tail_end_on_pale": 0.1211,
+          "tail_end_on_texels": 7588.0
         }
       },
       "registration": {
         "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the reference outline onto the centre of the model outline), 64 rows",
         "head_band": 0.16,
-        "head_shift_of_width": 0.0032,
-        "head_width_ratio": 0.579,
+        "head_shift_of_width": -0.0053,
+        "head_width_ratio": 0.664,
         "head_width_ratio_allowed": [
           0.4,
           2.0
         ],
         "head_painted_from_reference": true,
-        "max_row_shift": 0.1223,
+        "max_row_shift": 0.1646,
+        "outline_warp_iou_before_after": [
+          0.828,
+          0.9284
+        ],
         "head_to_head": null
       },
       "fill": {
@@ -701,12 +1353,12 @@
         "full_facing_cos": 0.7,
         "shadow_rel_to_band_median": 0.55,
         "shadow_bands": 8,
-        "shadow_vertices_ignored": 24,
+        "shadow_vertices_ignored": 51,
         "method": "normalised vertex-graph diffusion, interpolated across triangles",
         "speck_area_frac": 0.0025,
         "ref_speck_pixels": 14379,
-        "texels_speck_replaced": 1044,
-        "fill_specks_dropped": 9,
+        "texels_speck_replaced": 646,
+        "fill_specks_dropped": 18,
         "seam_feather_height_frac": 0.05,
         "seam_feather_iterations": 4
       }
@@ -714,67 +1366,78 @@
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.1924,
+        "albedo_luma": 0.1636,
         "ref_luma": 0.1841,
-        "albedo_sat": 0.5221,
+        "albedo_sat": 0.5089,
         "ref_sat": 0.4034,
-        "luma_ratio": 1.045,
-        "sat_ratio": 1.294
+        "luma_ratio": 0.889,
+        "sat_ratio": 1.262
       },
       {
         "band": 1,
-        "albedo_luma": 0.3831,
+        "albedo_luma": 0.3201,
         "ref_luma": 0.3336,
-        "albedo_sat": 0.559,
+        "albedo_sat": 0.6539,
         "ref_sat": 0.6492,
-        "luma_ratio": 1.148,
-        "sat_ratio": 0.861
+        "luma_ratio": 0.96,
+        "sat_ratio": 1.007
       },
       {
         "band": 2,
-        "albedo_luma": 0.5292,
+        "albedo_luma": 0.5903,
         "ref_luma": 0.5655,
-        "albedo_sat": 0.4422,
+        "albedo_sat": 0.436,
         "ref_sat": 0.4708,
-        "luma_ratio": 0.936,
-        "sat_ratio": 0.939
+        "luma_ratio": 1.044,
+        "sat_ratio": 0.926
       },
       {
         "band": 3,
-        "albedo_luma": 0.5323,
+        "albedo_luma": 0.4869,
         "ref_luma": 0.4675,
-        "albedo_sat": 0.4284,
+        "albedo_sat": 0.5156,
         "ref_sat": 0.5127,
-        "luma_ratio": 1.139,
-        "sat_ratio": 0.836
+        "luma_ratio": 1.041,
+        "sat_ratio": 1.006
       }
     ],
     "timings_s": {
-      "import_and_weld": 0.88,
-      "voxel_remesh": 0.28,
-      "orient_scale": 0.02,
-      "decimate": 2.2,
-      "uv_unwrap": 0.01,
-      "colour_bake": 1.64,
-      "silhouette": 0.87,
-      "sheets": 0.41,
-      "export": 0.73,
-      "total": 6.76
+      "import_and_weld": 4.51,
+      "voxel_remesh": 3.85,
+      "orient_scale": 0.07,
+      "decimate": 4.64,
+      "uv_unwrap": 0.05,
+      "colour_bake": 201.92,
+      "silhouette": 27.64,
+      "sheets": 5.95,
+      "export": 7.21,
+      "total": 250.75
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.417,
-      "lit_luma": 0.31,
-      "luma_ratio": 0.743,
+      "lit_luma": 0.25,
+      "luma_ratio": 0.599,
       "ref_sat": 0.527,
-      "lit_sat": 0.482,
-      "sat_ratio": 0.914
+      "lit_sat": 0.556,
+      "sat_ratio": 1.056
     }
   },
   "hi3dgen/bird": {
     "type": "animal",
     "input": "bird.glb",
     "generator_input_only": true,
+    "solid": {
+      "hollow_share": 0.0,
+      "parts_voxels": [
+        125021
+      ],
+      "bridges_gap_voxels": [],
+      "parts_after": 1,
+      "filler_voxels": 0,
+      "voxel_size": 0.007731,
+      "seconds": 0.72
+    },
     "triangles": 1940,
     "triangle_budget": 2000,
     "materials": 1,
@@ -790,6 +1453,10 @@
       "floaters_deleted": 6,
       "after_clean": 1,
       "floaters_deleted_after_decimate": 0
+    },
+    "single_part": {
+      "parts": 1,
+      "ok": true
     },
     "silhouette": {
       "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
@@ -825,13 +1492,114 @@
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\bird.png",
       "texels_covered": 117582,
-      "texels_projected": 60867,
-      "texels_projected_full_trust": 21704,
-      "texels_low_frequency": 56715,
+      "texels_projected": 31543,
+      "texels_projected_full_trust": 11587,
+      "texels_low_frequency": 86039,
       "mirrored_far_side": false,
-      "mirrored_left_right": true,
-      "mirrored_points": 36763,
-      "region_gates": null,
+      "mirrored_left_right": false,
+      "multiview": {
+        "seconds_control_maps": 1.47,
+        "seconds_generator": 299.51,
+        "generator": {
+          "seconds_load": 204.7,
+          "seconds_generate": 68.6,
+          "seconds_total": 273.9,
+          "vram_peak_gb": 9.17,
+          "vram_reserved_peak_gb": 10.9,
+          "vram_weights_gb": 3.53,
+          "vram_cap_gb": 11.0,
+          "seed": 7,
+          "steps": 50,
+          "guidance": 3.0,
+          "size": 768,
+          "adapter": "huanngzh/mv-adapter/mvadapter_ig2mv_sdxl.safetensors",
+          "base": "stabilityai/stable-diffusion-xl-base-1.0",
+          "vae": "madebyollin/sdxl-vae-fp16-fix"
+        },
+        "calibration": {
+          "method": "per view, per image-plane cell: Lab mean and spread onto the picture's",
+          "grid": [
+            6,
+            12
+          ],
+          "view_texels": [
+            34276,
+            12385,
+            34190,
+            17644,
+            26104,
+            25933
+          ],
+          "mean_L_gain": [
+            0.801,
+            0.889,
+            0.816,
+            0.953,
+            0.852,
+            0.612
+          ],
+          "mean_L_offset": [
+            3.67,
+            14.46,
+            -2.1,
+            -16.72,
+            15.89,
+            13.92
+          ]
+        },
+        "texels_from_views": 115108,
+        "texels_no_view": 2474
+      },
+      "mirrored_points": 0,
+      "region_gates": {
+        "reference": "bird",
+        "passed": true,
+        "gates": [
+          {
+            "gate": "beak_dark_fraction",
+            "value": 0.435,
+            "limit": ">= 0.21",
+            "ok": true
+          }
+        ],
+        "reference_regions": {
+          "beak": {
+            "n": 1964,
+            "rgb": [
+              0.306,
+              0.243,
+              0.221
+            ],
+            "p90_luma": 0.456,
+            "pale": 0.018,
+            "dark": 0.414,
+            "white": 0.002,
+            "std_luma": 0.155
+          }
+        },
+        "albedo_regions": {
+          "beak": {
+            "n": 1125,
+            "rgb": [
+              0.38,
+              0.268,
+              0.217
+            ],
+            "p90_luma": 0.493,
+            "pale": 0.017,
+            "dark": 0.435,
+            "white": 0.003,
+            "std_luma": 0.138
+          }
+        },
+        "model_measures": {
+          "far_minus_near_neck_pale": 0.0045,
+          "neck_far_texels": 3778.0,
+          "neck_near_texels": 3749.0,
+          "tail_end_on_pale": 0.0093,
+          "tail_end_on_texels": 3777.0
+        }
+      },
       "registration": {
         "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the reference outline onto the centre of the model outline), 64 rows",
         "head_band": 0.16,
@@ -843,6 +1611,10 @@
         ],
         "head_painted_from_reference": true,
         "max_row_shift": 0.0821,
+        "outline_warp_iou_before_after": [
+          0.7864,
+          0.8845
+        ],
         "head_to_head": null
       },
       "fill": {
@@ -850,12 +1622,12 @@
         "full_facing_cos": 0.7,
         "shadow_rel_to_band_median": 0.55,
         "shadow_bands": 8,
-        "shadow_vertices_ignored": 101,
+        "shadow_vertices_ignored": 44,
         "method": "normalised vertex-graph diffusion, interpolated across triangles",
         "speck_area_frac": 0.0025,
         "ref_speck_pixels": 41327,
-        "texels_speck_replaced": 1890,
-        "fill_specks_dropped": 80,
+        "texels_speck_replaced": 1139,
+        "fill_specks_dropped": 49,
         "seam_feather_height_frac": 0.05,
         "seam_feather_iterations": 4
       }
@@ -863,68 +1635,84 @@
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.3067,
+        "albedo_luma": 0.2566,
         "ref_luma": 0.2824,
-        "albedo_sat": 0.452,
+        "albedo_sat": 0.5731,
         "ref_sat": 0.5034,
-        "luma_ratio": 1.086,
-        "sat_ratio": 0.898
+        "luma_ratio": 0.909,
+        "sat_ratio": 1.138
       },
       {
         "band": 1,
-        "albedo_luma": 0.4245,
+        "albedo_luma": 0.3727,
         "ref_luma": 0.3986,
-        "albedo_sat": 0.133,
+        "albedo_sat": 0.2258,
         "ref_sat": 0.199,
-        "luma_ratio": 1.065,
-        "sat_ratio": 0.668
+        "luma_ratio": 0.935,
+        "sat_ratio": 1.135
       },
       {
         "band": 2,
-        "albedo_luma": 0.3226,
+        "albedo_luma": 0.2948,
         "ref_luma": 0.3598,
-        "albedo_sat": 0.4707,
+        "albedo_sat": 0.5118,
         "ref_sat": 0.5195,
-        "luma_ratio": 0.897,
-        "sat_ratio": 0.906
+        "luma_ratio": 0.819,
+        "sat_ratio": 0.985
       },
       {
         "band": 3,
-        "albedo_luma": 0.422,
+        "albedo_luma": 0.3987,
         "ref_luma": 0.4121,
-        "albedo_sat": 0.4683,
+        "albedo_sat": 0.4408,
         "ref_sat": 0.4334,
-        "luma_ratio": 1.024,
-        "sat_ratio": 1.081
+        "luma_ratio": 0.967,
+        "sat_ratio": 1.017
       }
     ],
     "timings_s": {
-      "import_and_weld": 1.29,
-      "voxel_remesh": 0.25,
-      "orient_scale": 0.01,
-      "decimate": 1.12,
-      "uv_unwrap": 0.0,
-      "colour_bake": 1.78,
-      "silhouette": 0.88,
-      "sheets": 0.4,
-      "export": 0.73,
-      "total": 6.2
+      "import_and_weld": 5.29,
+      "voxel_remesh": 1.35,
+      "orient_scale": 0.05,
+      "decimate": 3.41,
+      "uv_unwrap": 0.01,
+      "colour_bake": 317.62,
+      "silhouette": 54.6,
+      "sheets": 38.95,
+      "export": 41.67,
+      "total": 425.25
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.378,
-      "lit_luma": 0.413,
-      "luma_ratio": 1.091,
+      "lit_luma": 0.398,
+      "luma_ratio": 1.052,
       "ref_sat": 0.426,
-      "lit_sat": 0.508,
-      "sat_ratio": 1.194
+      "lit_sat": 0.514,
+      "sat_ratio": 1.207
     }
   },
   "triposg/humanoid": {
     "type": "humanoid",
     "input": "humanoid.glb",
     "generator_input_only": true,
-    "triangles": 7740,
+    "solid": {
+      "hollow_share": 0.0172,
+      "parts_voxels": [
+        32694,
+        2194,
+        2153
+      ],
+      "bridges_gap_voxels": [
+        1.4,
+        2.0
+      ],
+      "parts_after": 1,
+      "filler_voxels": 278,
+      "voxel_size": 0.014826,
+      "seconds": 2.22
+    },
+    "triangles": 7758,
     "triangle_budget": 8000,
     "materials": 1,
     "texture": {
@@ -933,26 +1721,30 @@
       "max_px": 1024
     },
     "raw_triangles": 1041226,
-    "voxel_remesh_triangles": 176628,
+    "voxel_remesh_triangles": 167564,
     "loose_parts": {
       "raw_after_weld": 298,
       "floaters_deleted": 297,
       "after_clean": 1,
-      "floaters_deleted_after_decimate": 10
+      "floaters_deleted_after_decimate": 1
+    },
+    "single_part": {
+      "parts": 1,
+      "ok": true
     },
     "silhouette": {
       "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
       "threshold": 0.08,
-      "front": 0.0214,
-      "side": 0.0106,
-      "top": 0.0132
+      "front": 0.0221,
+      "side": 0.0091,
+      "top": 0.0112
     },
     "dimensions_m": [
-      0.9337,
-      0.4518,
-      1.8025
+      0.9359,
+      0.4552,
+      1.8006
     ],
-    "height_m": 1.8025,
+    "height_m": 1.8006,
     "origin": "feet (footprint centre, lowest point at z=0)",
     "forward": "-Y (glTF +Z, Godot model front, D-021)",
     "orientation": {
@@ -968,35 +1760,291 @@
         0.0
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\humanoid.png",
-      "texels_covered": 244653,
-      "texels_projected": 5450,
+      "texels_covered": 262487,
+      "texels_projected": 6304,
       "texels_projected_full_trust": 0,
-      "texels_low_frequency": 239203,
+      "texels_low_frequency": 256183,
       "mirrored_far_side": false,
       "mirrored_left_right": false,
+      "multiview": {
+        "seconds_control_maps": 5.3,
+        "seconds_generator": 873.64,
+        "generator": {
+          "seconds_load": 114.0,
+          "seconds_generate": 224.1,
+          "seconds_total": 338.8,
+          "vram_peak_gb": 9.17,
+          "vram_reserved_peak_gb": 10.9,
+          "vram_weights_gb": 3.53,
+          "vram_cap_gb": 11.0,
+          "seed": 7,
+          "steps": 50,
+          "guidance": 3.0,
+          "size": 768,
+          "adapter": "huanngzh/mv-adapter/mvadapter_ig2mv_sdxl.safetensors",
+          "base": "stabilityai/stable-diffusion-xl-base-1.0",
+          "vae": "madebyollin/sdxl-vae-fp16-fix"
+        },
+        "calibration": {
+          "method": "per view, per image-plane cell: Lab mean and spread onto the picture's",
+          "grid": [
+            6,
+            12
+          ],
+          "view_texels": [
+            51316,
+            32729,
+            51513,
+            31936,
+            13911,
+            11891
+          ],
+          "mean_L_gain": [
+            0.902,
+            0.679,
+            0.829,
+            0.811,
+            0.921,
+            1.08
+          ],
+          "mean_L_offset": [
+            0.49,
+            2.63,
+            -9.2,
+            -7.38,
+            -8.12,
+            12.76
+          ]
+        },
+        "texels_from_views": 177695,
+        "texels_no_view": 84792
+      },
       "mirrored_points": 0,
-      "region_gates": null,
+      "region_gates": {
+        "reference": "humanoid",
+        "passed": true,
+        "gates": [
+          {
+            "gate": "torso_back_colour_distance",
+            "value": 0.007,
+            "limit": "<= 0.15",
+            "ok": true
+          },
+          {
+            "gate": "greaves_back_colour_distance",
+            "value": 0.084,
+            "limit": "<= 0.12",
+            "ok": true
+          },
+          {
+            "gate": "boots_back_colour_distance",
+            "value": 0.003,
+            "limit": "<= 0.12",
+            "ok": true
+          },
+          {
+            "gate": "torso_back_contrast_ratio",
+            "value": 0.749,
+            "limit": ">= 0.40",
+            "ok": true
+          },
+          {
+            "gate": "boots_minus_greaves_warmth_back",
+            "value": 0.047,
+            "limit": ">= 0.030",
+            "ok": true
+          },
+          {
+            "gate": "greaves_back_warmth",
+            "value": 0.03,
+            "limit": "<= 0.038",
+            "ok": true
+          }
+        ],
+        "reference_regions": {
+          "torso": {
+            "n": 19040,
+            "rgb": [
+              0.392,
+              0.371,
+              0.358
+            ],
+            "p90_luma": 0.95,
+            "pale": 0.2,
+            "dark": 0.29,
+            "white": 0.154,
+            "std_luma": 0.274
+          },
+          "torso_back": {
+            "n": 19040,
+            "rgb": [
+              0.392,
+              0.371,
+              0.358
+            ],
+            "p90_luma": 0.95,
+            "pale": 0.2,
+            "dark": 0.29,
+            "white": 0.154,
+            "std_luma": 0.274
+          },
+          "greaves": {
+            "n": 12530,
+            "rgb": [
+              0.204,
+              0.19,
+              0.186
+            ],
+            "p90_luma": 0.273,
+            "pale": 0.006,
+            "dark": 0.702,
+            "white": 0.002,
+            "std_luma": 0.081
+          },
+          "greaves_back": {
+            "n": 12530,
+            "rgb": [
+              0.204,
+              0.19,
+              0.186
+            ],
+            "p90_luma": 0.273,
+            "pale": 0.006,
+            "dark": 0.702,
+            "white": 0.002,
+            "std_luma": 0.081
+          },
+          "boots": {
+            "n": 4561,
+            "rgb": [
+              0.271,
+              0.21,
+              0.194
+            ],
+            "p90_luma": 0.45,
+            "pale": 0.075,
+            "dark": 0.578,
+            "white": 0.036,
+            "std_luma": 0.184
+          },
+          "boots_back": {
+            "n": 4561,
+            "rgb": [
+              0.271,
+              0.21,
+              0.194
+            ],
+            "p90_luma": 0.45,
+            "pale": 0.075,
+            "dark": 0.578,
+            "white": 0.036,
+            "std_luma": 0.184
+          }
+        },
+        "albedo_regions": {
+          "torso": {
+            "n": 19209,
+            "rgb": [
+              0.394,
+              0.375,
+              0.362
+            ],
+            "p90_luma": 0.731,
+            "pale": 0.189,
+            "dark": 0.178,
+            "white": 0.085,
+            "std_luma": 0.207
+          },
+          "torso_back": {
+            "n": 8779,
+            "rgb": [
+              0.386,
+              0.367,
+              0.355
+            ],
+            "p90_luma": 0.725,
+            "pale": 0.221,
+            "dark": 0.222,
+            "white": 0.065,
+            "std_luma": 0.205
+          },
+          "greaves": {
+            "n": 20929,
+            "rgb": [
+              0.228,
+              0.204,
+              0.197
+            ],
+            "p90_luma": 0.313,
+            "pale": 0.007,
+            "dark": 0.504,
+            "white": 0.0,
+            "std_luma": 0.097
+          },
+          "greaves_back": {
+            "n": 7337,
+            "rgb": [
+              0.26,
+              0.236,
+              0.23
+            ],
+            "p90_luma": 0.412,
+            "pale": 0.017,
+            "dark": 0.375,
+            "white": 0.0,
+            "std_luma": 0.122
+          },
+          "boots": {
+            "n": 7194,
+            "rgb": [
+              0.23,
+              0.177,
+              0.162
+            ],
+            "p90_luma": 0.318,
+            "pale": 0.017,
+            "dark": 0.66,
+            "white": 0.002,
+            "std_luma": 0.116
+          },
+          "boots_back": {
+            "n": 2093,
+            "rgb": [
+              0.272,
+              0.212,
+              0.195
+            ],
+            "p90_luma": 0.413,
+            "pale": 0.025,
+            "dark": 0.497,
+            "white": 0.0,
+            "std_luma": 0.134
+          }
+        },
+        "model_measures": {}
+      },
       "registration": {
         "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the reference outline onto the centre of the model outline), 64 rows",
         "head_band": 0.16,
-        "head_shift_of_width": -0.0128,
-        "head_width_ratio": 0.912,
+        "head_shift_of_width": -0.0079,
+        "head_width_ratio": 0.91,
         "head_width_ratio_allowed": [
           0.4,
           2.0
         ],
         "head_painted_from_reference": true,
-        "max_row_shift": 0.1767,
+        "max_row_shift": 0.1685,
+        "outline_warp_iou_before_after": null,
         "head_to_head": {
           "reference_head_x": 0.5025,
-          "model_head_x": 0.5027,
-          "head_shift_applied": -0.0002,
+          "model_head_x": 0.4981,
+          "head_shift_applied": 0.0044,
           "feature_offset_px": [
-            -11.4,
-            -34.9
+            -10.3,
+            -33.1
           ],
           "head_width_px": 136.2,
-          "disagreement_head_widths": 0.084
+          "disagreement_head_widths": 0.076
         }
       },
       "fill": {
@@ -1004,80 +2052,91 @@
         "full_facing_cos": 0.7,
         "shadow_rel_to_band_median": 0.55,
         "shadow_bands": 8,
-        "shadow_vertices_ignored": 81,
+        "shadow_vertices_ignored": 94,
         "method": "normalised vertex-graph diffusion, interpolated across triangles",
         "speck_area_frac": 0.0025,
         "ref_speck_pixels": 0,
         "texels_speck_replaced": 0,
         "fill_specks_dropped": 0,
         "seam_feather_height_frac": 0.05,
-        "seam_feather_iterations": 10
+        "seam_feather_iterations": 11
       }
     },
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.3004,
+        "albedo_luma": 0.2358,
         "ref_luma": 0.2383,
-        "albedo_sat": 0.1367,
+        "albedo_sat": 0.1933,
         "ref_sat": 0.1688,
-        "luma_ratio": 1.261,
-        "sat_ratio": 0.81
+        "luma_ratio": 0.99,
+        "sat_ratio": 1.145
       },
       {
         "band": 1,
-        "albedo_luma": 0.2875,
+        "albedo_luma": 0.2022,
         "ref_luma": 0.231,
-        "albedo_sat": 0.1595,
+        "albedo_sat": 0.2421,
         "ref_sat": 0.1994,
-        "luma_ratio": 1.245,
-        "sat_ratio": 0.8
+        "luma_ratio": 0.875,
+        "sat_ratio": 1.214
       },
       {
         "band": 2,
-        "albedo_luma": 0.3099,
+        "albedo_luma": 0.2647,
         "ref_luma": 0.2888,
-        "albedo_sat": 0.1881,
+        "albedo_sat": 0.2315,
         "ref_sat": 0.2179,
-        "luma_ratio": 1.073,
-        "sat_ratio": 0.863
+        "luma_ratio": 0.917,
+        "sat_ratio": 1.062
       },
       {
         "band": 3,
-        "albedo_luma": 0.3658,
+        "albedo_luma": 0.3916,
         "ref_luma": 0.4177,
-        "albedo_sat": 0.1348,
+        "albedo_sat": 0.1158,
         "ref_sat": 0.1456,
-        "luma_ratio": 0.876,
-        "sat_ratio": 0.926
+        "luma_ratio": 0.938,
+        "sat_ratio": 0.795
       }
     ],
     "timings_s": {
-      "import_and_weld": 2.08,
-      "voxel_remesh": 0.58,
-      "orient_scale": 0.01,
-      "decimate": 1.32,
-      "uv_unwrap": 0.09,
-      "colour_bake": 0.9,
-      "silhouette": 0.92,
-      "sheets": 0.56,
-      "export": 0.88,
-      "total": 6.91
+      "import_and_weld": 9.33,
+      "voxel_remesh": 4.41,
+      "orient_scale": 0.02,
+      "decimate": 3.46,
+      "uv_unwrap": 0.23,
+      "colour_bake": 899.23,
+      "silhouette": 32.77,
+      "sheets": 10.31,
+      "export": 14.07,
+      "total": 964.34
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.291,
-      "lit_luma": 0.285,
-      "luma_ratio": 0.982,
+      "lit_luma": 0.279,
+      "luma_ratio": 0.961,
       "ref_sat": 0.192,
-      "lit_sat": 0.158,
-      "sat_ratio": 0.819
+      "lit_sat": 0.171,
+      "sat_ratio": 0.888
     }
   },
   "triposg/spider": {
     "type": "monster",
     "input": "spider.glb",
     "generator_input_only": true,
+    "solid": {
+      "hollow_share": 0.0002,
+      "parts_voxels": [
+        30010
+      ],
+      "bridges_gap_voxels": [],
+      "parts_after": 1,
+      "filler_voxels": 0,
+      "voxel_size": 0.014685,
+      "seconds": 1.25
+    },
     "triangles": 7760,
     "triangle_budget": 8000,
     "materials": 1,
@@ -1093,6 +2152,10 @@
       "floaters_deleted": 278,
       "after_clean": 1,
       "floaters_deleted_after_decimate": 0
+    },
+    "single_part": {
+      "parts": 1,
+      "ok": true
     },
     "silhouette": {
       "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
@@ -1128,6 +2191,59 @@
       "texels_low_frequency": 218646,
       "mirrored_far_side": false,
       "mirrored_left_right": false,
+      "multiview": {
+        "seconds_control_maps": 7.2,
+        "seconds_generator": 501.75,
+        "generator": {
+          "seconds_load": 234.0,
+          "seconds_generate": 234.2,
+          "seconds_total": 468.9,
+          "vram_peak_gb": 9.17,
+          "vram_reserved_peak_gb": 10.9,
+          "vram_weights_gb": 3.53,
+          "vram_cap_gb": 11.0,
+          "seed": 7,
+          "steps": 50,
+          "guidance": 3.0,
+          "size": 768,
+          "adapter": "huanngzh/mv-adapter/mvadapter_ig2mv_sdxl.safetensors",
+          "base": "stabilityai/stable-diffusion-xl-base-1.0",
+          "vae": "madebyollin/sdxl-vae-fp16-fix"
+        },
+        "calibration": {
+          "method": "per view, per image-plane cell: Lab mean and spread onto the picture's",
+          "grid": [
+            6,
+            12
+          ],
+          "view_texels": [
+            37551,
+            38994,
+            35162,
+            39666,
+            43772,
+            44250
+          ],
+          "mean_L_gain": [
+            1.081,
+            0.874,
+            1.024,
+            0.961,
+            1.022,
+            1.398
+          ],
+          "mean_L_offset": [
+            8.96,
+            -3.15,
+            -13.2,
+            9.25,
+            -25.99,
+            11.34
+          ]
+        },
+        "texels_from_views": 201607,
+        "texels_no_view": 17668
+      },
       "mirrored_points": 0,
       "region_gates": null,
       "registration": {
@@ -1141,6 +2257,7 @@
         ],
         "head_painted_from_reference": true,
         "max_row_shift": 0.0278,
+        "outline_warp_iou_before_after": null,
         "head_to_head": {
           "reference_head_x": 0.4924,
           "model_head_x": 0.4921,
@@ -1171,67 +2288,78 @@
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.2927,
+        "albedo_luma": 0.1756,
         "ref_luma": 0.1684,
-        "albedo_sat": 0.2944,
+        "albedo_sat": 0.1478,
         "ref_sat": 0.1624,
-        "luma_ratio": 1.738,
-        "sat_ratio": 1.813
+        "luma_ratio": 1.043,
+        "sat_ratio": 0.91
       },
       {
         "band": 1,
-        "albedo_luma": 0.3216,
+        "albedo_luma": 0.2082,
         "ref_luma": 0.2187,
-        "albedo_sat": 0.306,
+        "albedo_sat": 0.1901,
         "ref_sat": 0.2204,
-        "luma_ratio": 1.471,
-        "sat_ratio": 1.388
+        "luma_ratio": 0.952,
+        "sat_ratio": 0.863
       },
       {
         "band": 2,
-        "albedo_luma": 0.3334,
+        "albedo_luma": 0.2915,
         "ref_luma": 0.2912,
-        "albedo_sat": 0.3138,
+        "albedo_sat": 0.2657,
         "ref_sat": 0.2803,
-        "luma_ratio": 1.145,
-        "sat_ratio": 1.12
+        "luma_ratio": 1.001,
+        "sat_ratio": 0.948
       },
       {
         "band": 3,
-        "albedo_luma": 0.3597,
+        "albedo_luma": 0.3736,
         "ref_luma": 0.3878,
-        "albedo_sat": 0.3112,
+        "albedo_sat": 0.3016,
         "ref_sat": 0.307,
-        "luma_ratio": 0.928,
-        "sat_ratio": 1.014
+        "luma_ratio": 0.963,
+        "sat_ratio": 0.982
       }
     ],
     "timings_s": {
-      "import_and_weld": 1.31,
-      "voxel_remesh": 0.36,
-      "orient_scale": 0.01,
-      "decimate": 1.03,
-      "uv_unwrap": 0.02,
-      "colour_bake": 0.9,
-      "silhouette": 0.87,
-      "sheets": 0.46,
-      "export": 0.78,
-      "total": 5.41
+      "import_and_weld": 5.22,
+      "voxel_remesh": 3.79,
+      "orient_scale": 0.07,
+      "decimate": 4.51,
+      "uv_unwrap": 0.14,
+      "colour_bake": 520.72,
+      "silhouette": 8.79,
+      "sheets": 9.28,
+      "export": 11.35,
+      "total": 555.12
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.314,
-      "lit_luma": 0.309,
-      "luma_ratio": 0.983,
+      "lit_luma": 0.268,
+      "luma_ratio": 0.853,
       "ref_sat": 0.278,
-      "lit_sat": 0.303,
-      "sat_ratio": 1.088
+      "lit_sat": 0.269,
+      "sat_ratio": 0.965
     }
   },
   "triposg/brute": {
     "type": "monster",
     "input": "brute.glb",
     "generator_input_only": true,
+    "solid": {
+      "hollow_share": 0.0007,
+      "parts_voxels": [
+        181385
+      ],
+      "bridges_gap_voxels": [],
+      "parts_after": 1,
+      "filler_voxels": 0,
+      "voxel_size": 0.014855,
+      "seconds": 0.9
+    },
     "triangles": 7760,
     "triangle_budget": 8000,
     "materials": 1,
@@ -1247,6 +2375,10 @@
       "floaters_deleted": 3,
       "after_clean": 1,
       "floaters_deleted_after_decimate": 0
+    },
+    "single_part": {
+      "parts": 1,
+      "ok": true
     },
     "silhouette": {
       "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
@@ -1282,8 +2414,129 @@
       "texels_low_frequency": 360254,
       "mirrored_far_side": false,
       "mirrored_left_right": false,
+      "multiview": {
+        "seconds_control_maps": 6.17,
+        "seconds_generator": 1825.72,
+        "generator": {
+          "seconds_load": 523.2,
+          "seconds_generate": 69.5,
+          "seconds_total": 593.5,
+          "vram_peak_gb": 9.17,
+          "vram_reserved_peak_gb": 10.9,
+          "vram_weights_gb": 3.53,
+          "vram_cap_gb": 11.0,
+          "seed": 7,
+          "steps": 50,
+          "guidance": 3.0,
+          "size": 768,
+          "adapter": "huanngzh/mv-adapter/mvadapter_ig2mv_sdxl.safetensors",
+          "base": "stabilityai/stable-diffusion-xl-base-1.0",
+          "vae": "madebyollin/sdxl-vae-fp16-fix"
+        },
+        "calibration": {
+          "method": "per view, per image-plane cell: Lab mean and spread onto the picture's",
+          "grid": [
+            6,
+            12
+          ],
+          "view_texels": [
+            113143,
+            71438,
+            111424,
+            67772,
+            66610,
+            73920
+          ],
+          "mean_L_gain": [
+            0.916,
+            0.885,
+            1.161,
+            0.758,
+            1.25,
+            1.0
+          ],
+          "mean_L_offset": [
+            -1.23,
+            -8.87,
+            -35.88,
+            9.69,
+            -51.58,
+            15.79
+          ]
+        },
+        "texels_from_views": 390381,
+        "texels_no_view": 20079
+      },
       "mirrored_points": 0,
-      "region_gates": null,
+      "region_gates": {
+        "reference": "brute",
+        "passed": true,
+        "gates": [
+          {
+            "gate": "shorts_back_colour_distance",
+            "value": 0.078,
+            "limit": "<= 0.10",
+            "ok": true
+          }
+        ],
+        "reference_regions": {
+          "shorts": {
+            "n": 22425,
+            "rgb": [
+              0.232,
+              0.229,
+              0.228
+            ],
+            "p90_luma": 0.342,
+            "pale": 0.0,
+            "dark": 0.368,
+            "white": 0.0,
+            "std_luma": 0.093
+          },
+          "shorts_back": {
+            "n": 22425,
+            "rgb": [
+              0.232,
+              0.229,
+              0.228
+            ],
+            "p90_luma": 0.342,
+            "pale": 0.0,
+            "dark": 0.368,
+            "white": 0.0,
+            "std_luma": 0.093
+          }
+        },
+        "albedo_regions": {
+          "shorts": {
+            "n": 17933,
+            "rgb": [
+              0.256,
+              0.25,
+              0.248
+            ],
+            "p90_luma": 0.344,
+            "pale": 0.0,
+            "dark": 0.25,
+            "white": 0.0,
+            "std_luma": 0.08
+          },
+          "shorts_back": {
+            "n": 8765,
+            "rgb": [
+              0.281,
+              0.273,
+              0.271
+            ],
+            "p90_luma": 0.351,
+            "pale": 0.0,
+            "dark": 0.108,
+            "white": 0.0,
+            "std_luma": 0.057
+          }
+        },
+        "model_measures": {}
+      },
       "registration": {
         "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the reference outline onto the centre of the model outline), 64 rows",
         "head_band": 0.16,
@@ -1295,6 +2548,7 @@
         ],
         "head_painted_from_reference": true,
         "max_row_shift": 0.2782,
+        "outline_warp_iou_before_after": null,
         "head_to_head": {
           "reference_head_x": 0.4321,
           "model_head_x": 0.4834,
@@ -1325,68 +2579,82 @@
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.3492,
+        "albedo_luma": 0.3074,
         "ref_luma": 0.3163,
-        "albedo_sat": 0.141,
+        "albedo_sat": 0.1475,
         "ref_sat": 0.1473,
-        "luma_ratio": 1.104,
-        "sat_ratio": 0.957
+        "luma_ratio": 0.972,
+        "sat_ratio": 1.001
       },
       {
         "band": 1,
-        "albedo_luma": 0.2941,
+        "albedo_luma": 0.2571,
         "ref_luma": 0.2664,
-        "albedo_sat": 0.1295,
+        "albedo_sat": 0.1436,
         "ref_sat": 0.133,
-        "luma_ratio": 1.104,
-        "sat_ratio": 0.974
+        "luma_ratio": 0.965,
+        "sat_ratio": 1.08
       },
       {
         "band": 2,
-        "albedo_luma": 0.3592,
+        "albedo_luma": 0.3274,
         "ref_luma": 0.3237,
-        "albedo_sat": 0.1488,
+        "albedo_sat": 0.1566,
         "ref_sat": 0.1597,
-        "luma_ratio": 1.11,
-        "sat_ratio": 0.932
+        "luma_ratio": 1.011,
+        "sat_ratio": 0.981
       },
       {
         "band": 3,
-        "albedo_luma": 0.4903,
+        "albedo_luma": 0.469,
         "ref_luma": 0.4771,
-        "albedo_sat": 0.1526,
+        "albedo_sat": 0.175,
         "ref_sat": 0.1844,
-        "luma_ratio": 1.028,
-        "sat_ratio": 0.828
+        "luma_ratio": 0.983,
+        "sat_ratio": 0.949
       }
     ],
     "timings_s": {
-      "import_and_weld": 2.85,
-      "voxel_remesh": 0.73,
-      "orient_scale": 0.01,
-      "decimate": 2.28,
-      "uv_unwrap": 0.03,
-      "colour_bake": 1.16,
-      "silhouette": 0.97,
-      "sheets": 0.65,
-      "export": 0.97,
-      "total": 9.14
+      "import_and_weld": 10.38,
+      "voxel_remesh": 4.31,
+      "orient_scale": 0.02,
+      "decimate": 5.78,
+      "uv_unwrap": 0.2,
+      "colour_bake": 1839.35,
+      "silhouette": 6.72,
+      "sheets": 5.35,
+      "export": 6.46,
+      "total": 1873.92
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.358,
-      "lit_luma": 0.341,
-      "luma_ratio": 0.951,
+      "lit_luma": 0.325,
+      "luma_ratio": 0.906,
       "ref_sat": 0.16,
-      "lit_sat": 0.146,
-      "sat_ratio": 0.909
+      "lit_sat": 0.164,
+      "sat_ratio": 1.023
     }
   },
   "triposg/fox": {
     "type": "animal",
     "input": "fox.glb",
     "generator_input_only": true,
-    "triangles": 1940,
+    "solid": {
+      "hollow_share": 0.0,
+      "parts_voxels": [
+        93322,
+        314
+      ],
+      "bridges_gap_voxels": [
+        5.8
+      ],
+      "parts_after": 1,
+      "filler_voxels": 201,
+      "voxel_size": 0.014854,
+      "seconds": 3.51
+    },
+    "triangles": 1938,
     "triangle_budget": 2000,
     "materials": 1,
     "texture": {
@@ -1395,26 +2663,30 @@
       "max_px": 512
     },
     "raw_triangles": 779300,
-    "voxel_remesh_triangles": 162856,
+    "voxel_remesh_triangles": 164116,
     "loose_parts": {
       "raw_after_weld": 2,
       "floaters_deleted": 0,
-      "after_clean": 2,
+      "after_clean": 1,
       "floaters_deleted_after_decimate": 0
+    },
+    "single_part": {
+      "parts": 1,
+      "ok": true
     },
     "silhouette": {
       "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
       "threshold": 0.08,
-      "front": 0.0035,
-      "side": 0.0042,
-      "top": 0.0047
+      "front": 0.0071,
+      "side": 0.0065,
+      "top": 0.0041
     },
     "dimensions_m": [
-      0.2888,
-      0.5487,
-      0.4007
+      0.2881,
+      0.5486,
+      0.4006
     ],
-    "height_m": 0.4007,
+    "height_m": 0.4006,
     "origin": "feet (footprint centre, lowest point at z=0)",
     "forward": "-Y (glTF +Z, Godot model front, D-021)",
     "orientation": {
@@ -1422,10 +2694,10 @@
       "decided_by": "side outline (profile, head toward -Y)",
       "generator": "triposg",
       "outline_iou_by_turn": {
-        "0": 0.4552,
-        "90": 0.8189,
-        "180": 0.252,
-        "270": 0.3471
+        "0": 0.4577,
+        "90": 0.8206,
+        "180": 0.2516,
+        "270": 0.3482
       }
     },
     "colour_route": {
@@ -1435,57 +2707,134 @@
         0.0
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\fox.png",
-      "texels_covered": 97354,
-      "texels_projected": 39072,
+      "texels_covered": 99819,
+      "texels_projected": 18966,
       "texels_projected_full_trust": 0,
-      "texels_low_frequency": 58282,
+      "texels_low_frequency": 80853,
       "mirrored_far_side": false,
-      "mirrored_left_right": true,
-      "mirrored_points": 17659,
+      "mirrored_left_right": false,
+      "multiview": {
+        "seconds_control_maps": 1.57,
+        "seconds_generator": 1168.98,
+        "generator": {
+          "seconds_load": 100.2,
+          "seconds_generate": 155.1,
+          "seconds_total": 255.8,
+          "vram_peak_gb": 9.17,
+          "vram_reserved_peak_gb": 10.9,
+          "vram_weights_gb": 3.53,
+          "vram_cap_gb": 11.0,
+          "seed": 7,
+          "steps": 50,
+          "guidance": 3.0,
+          "size": 768,
+          "adapter": "huanngzh/mv-adapter/mvadapter_ig2mv_sdxl.safetensors",
+          "base": "stabilityai/stable-diffusion-xl-base-1.0",
+          "vae": "madebyollin/sdxl-vae-fp16-fix"
+        },
+        "calibration": {
+          "method": "per view, per image-plane cell: Lab mean and spread onto the picture's",
+          "grid": [
+            6,
+            12
+          ],
+          "view_texels": [
+            29370,
+            12057,
+            29463,
+            14757,
+            18634,
+            18818
+          ],
+          "mean_L_gain": [
+            0.822,
+            0.829,
+            1.12,
+            0.743,
+            1.293,
+            0.99
+          ],
+          "mean_L_offset": [
+            2.2,
+            -13.59,
+            -44.2,
+            6.81,
+            -65.15,
+            10.67
+          ]
+        },
+        "texels_from_views": 97470,
+        "texels_no_view": 2349
+      },
+      "mirrored_points": 0,
       "region_gates": {
         "reference": "fox",
-        "passed": true,
+        "passed": false,
         "gates": [
           {
             "gate": "legs_dark_fraction",
-            "value": 0.975,
+            "value": 0.986,
             "limit": ">= 0.48",
             "ok": true
           },
           {
             "gate": "chest_p90_luma_ratio",
-            "value": 0.99,
+            "value": 0.838,
             "limit": "0.85 .. 1.25",
-            "ok": true
+            "ok": false
           },
           {
             "gate": "chest_pale_fraction",
-            "value": 0.419,
+            "value": 0.184,
             "limit": ">= 0.16",
             "ok": true
           },
           {
             "gate": "flank_colour_distance",
-            "value": 0.02,
+            "value": 0.078,
             "limit": "<= 0.12",
             "ok": true
           },
           {
             "gate": "tail_body_colour_distance",
-            "value": 0.139,
+            "value": 0.073,
             "limit": "<= 0.15",
             "ok": true
           },
           {
             "gate": "tail_body_pale_fraction",
-            "value": 0.164,
+            "value": 0.048,
             "limit": "<= 0.22",
             "ok": true
           },
           {
             "gate": "tail_tip_pale_fraction",
-            "value": 0.239,
+            "value": 0.33,
             "limit": ">= 0.06",
+            "ok": true
+          },
+          {
+            "gate": "front_lower_legs_dark_fraction",
+            "value": 0.914,
+            "limit": ">= 0.75",
+            "ok": true
+          },
+          {
+            "gate": "hind_lower_legs_dark_fraction",
+            "value": 0.885,
+            "limit": ">= 0.77",
+            "ok": true
+          },
+          {
+            "gate": "far_minus_near_neck_pale",
+            "value": 0.043,
+            "limit": "<= 0.1",
+            "ok": true
+          },
+          {
+            "gate": "tail_end_on_pale_fraction",
+            "value": 0.059,
+            "limit": "<= 0.17",
             "ok": true
           }
         ],
@@ -1499,7 +2848,9 @@
             ],
             "p90_luma": 0.703,
             "pale": 0.271,
-            "dark": 0.021
+            "dark": 0.021,
+            "white": 0.006,
+            "std_luma": 0.17
           },
           "flank": {
             "n": 44484,
@@ -1510,7 +2861,9 @@
             ],
             "p90_luma": 0.803,
             "pale": 0.015,
-            "dark": 0.015
+            "dark": 0.015,
+            "white": 0.158,
+            "std_luma": 0.184
           },
           "tail_body": {
             "n": 20269,
@@ -1521,7 +2874,9 @@
             ],
             "p90_luma": 0.891,
             "pale": 0.125,
-            "dark": 0.265
+            "dark": 0.265,
+            "white": 0.214,
+            "std_luma": 0.283
           },
           "tail_tip": {
             "n": 7778,
@@ -1532,7 +2887,9 @@
             ],
             "p90_luma": 0.988,
             "pale": 0.395,
-            "dark": 0.22
+            "dark": 0.22,
+            "white": 0.37,
+            "std_luma": 0.329
           },
           "legs": {
             "n": 23626,
@@ -1543,78 +2900,153 @@
             ],
             "p90_luma": 0.16,
             "pale": 0.001,
-            "dark": 0.966
+            "dark": 0.966,
+            "white": 0.0,
+            "std_luma": 0.063
+          },
+          "front_lower_legs": {
+            "n": 12008,
+            "rgb": [
+              0.179,
+              0.105,
+              0.098
+            ],
+            "p90_luma": 0.292,
+            "pale": 0.001,
+            "dark": 0.831,
+            "white": 0.0,
+            "std_luma": 0.089
+          },
+          "hind_lower_legs": {
+            "n": 21340,
+            "rgb": [
+              0.223,
+              0.104,
+              0.079
+            ],
+            "p90_luma": 0.309,
+            "pale": 0.001,
+            "dark": 0.857,
+            "white": 0.0,
+            "std_luma": 0.121
           }
         },
         "albedo_regions": {
           "chest": {
-            "n": 6020,
+            "n": 6397,
             "rgb": [
-              0.591,
-              0.51,
-              0.491
+              0.514,
+              0.425,
+              0.42
             ],
-            "p90_luma": 0.696,
-            "pale": 0.419,
-            "dark": 0.0
+            "p90_luma": 0.589,
+            "pale": 0.184,
+            "dark": 0.012,
+            "white": 0.0,
+            "std_luma": 0.118
           },
           "flank": {
-            "n": 14078,
+            "n": 14789,
             "rgb": [
-              0.773,
-              0.463,
-              0.314
+              0.798,
+              0.504,
+              0.35
             ],
-            "p90_luma": 0.742,
-            "pale": 0.002,
-            "dark": 0.001
+            "p90_luma": 0.784,
+            "pale": 0.004,
+            "dark": 0.006,
+            "white": 0.185,
+            "std_luma": 0.175
           },
           "tail_body": {
-            "n": 8320,
+            "n": 7527,
             "rgb": [
-              0.651,
-              0.441,
-              0.366
+              0.639,
+              0.397,
+              0.314
             ],
-            "p90_luma": 0.886,
-            "pale": 0.164,
-            "dark": 0.179
+            "p90_luma": 0.769,
+            "pale": 0.048,
+            "dark": 0.155,
+            "white": 0.126,
+            "std_luma": 0.229
           },
           "tail_tip": {
-            "n": 3418,
+            "n": 2921,
             "rgb": [
-              0.467,
-              0.373,
-              0.356
+              0.593,
+              0.477,
+              0.441
             ],
-            "p90_luma": 0.854,
-            "pale": 0.239,
-            "dark": 0.361
+            "p90_luma": 0.819,
+            "pale": 0.33,
+            "dark": 0.135,
+            "white": 0.174,
+            "std_luma": 0.228
           },
           "legs": {
-            "n": 9635,
+            "n": 10696,
             "rgb": [
-              0.16,
-              0.091,
-              0.087
+              0.096,
+              0.041,
+              0.043
             ],
-            "p90_luma": 0.172,
+            "p90_luma": 0.135,
             "pale": 0.0,
-            "dark": 0.975
+            "dark": 0.986,
+            "white": 0.0,
+            "std_luma": 0.055
+          },
+          "front_lower_legs": {
+            "n": 7817,
+            "rgb": [
+              0.184,
+              0.085,
+              0.072
+            ],
+            "p90_luma": 0.196,
+            "pale": 0.0,
+            "dark": 0.914,
+            "white": 0.0,
+            "std_luma": 0.07
+          },
+          "hind_lower_legs": {
+            "n": 7678,
+            "rgb": [
+              0.175,
+              0.06,
+              0.037
+            ],
+            "p90_luma": 0.213,
+            "pale": 0.0,
+            "dark": 0.885,
+            "white": 0.0,
+            "std_luma": 0.096
           }
+        },
+        "model_measures": {
+          "far_minus_near_neck_pale": 0.0433,
+          "neck_far_texels": 3900.0,
+          "neck_near_texels": 13162.0,
+          "tail_end_on_pale": 0.0593,
+          "tail_end_on_texels": 7217.0
         }
       },
       "registration": {
         "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the reference outline onto the centre of the model outline), 64 rows",
         "head_band": 0.16,
-        "head_shift_of_width": 0.0033,
-        "head_width_ratio": 0.887,
+        "head_shift_of_width": 0.0001,
+        "head_width_ratio": 0.891,
         "head_width_ratio_allowed": [
           0.4,
           2.0
         ],
         "head_painted_from_reference": true,
-        "max_row_shift": 0.0861,
+        "max_row_shift": 0.1148,
+        "outline_warp_iou_before_after": [
+          0.8904,
+          0.9442
+        ],
         "head_to_head": null
       },
       "fill": {
@@ -1622,12 +3054,12 @@
         "full_facing_cos": 0.7,
         "shadow_rel_to_band_median": 0.55,
         "shadow_bands": 8,
-        "shadow_vertices_ignored": 79,
+        "shadow_vertices_ignored": 56,
         "method": "normalised vertex-graph diffusion, interpolated across triangles",
         "speck_area_frac": 0.0025,
         "ref_speck_pixels": 14379,
-        "texels_speck_replaced": 1442,
-        "fill_specks_dropped": 30,
+        "texels_speck_replaced": 725,
+        "fill_specks_dropped": 21,
         "seam_feather_height_frac": 0.05,
         "seam_feather_iterations": 4
       }
@@ -1635,67 +3067,78 @@
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.1862,
+        "albedo_luma": 0.1311,
         "ref_luma": 0.1841,
-        "albedo_sat": 0.4073,
+        "albedo_sat": 0.5331,
         "ref_sat": 0.4034,
-        "luma_ratio": 1.011,
-        "sat_ratio": 1.01
+        "luma_ratio": 0.712,
+        "sat_ratio": 1.322
       },
       {
         "band": 1,
-        "albedo_luma": 0.3674,
+        "albedo_luma": 0.3148,
         "ref_luma": 0.3336,
-        "albedo_sat": 0.5877,
+        "albedo_sat": 0.6521,
         "ref_sat": 0.6492,
-        "luma_ratio": 1.101,
-        "sat_ratio": 0.905
+        "luma_ratio": 0.944,
+        "sat_ratio": 1.004
       },
       {
         "band": 2,
-        "albedo_luma": 0.6024,
+        "albedo_luma": 0.5883,
         "ref_luma": 0.5655,
-        "albedo_sat": 0.416,
+        "albedo_sat": 0.4192,
         "ref_sat": 0.4708,
-        "luma_ratio": 1.065,
-        "sat_ratio": 0.884
+        "luma_ratio": 1.04,
+        "sat_ratio": 0.89
       },
       {
         "band": 3,
-        "albedo_luma": 0.5432,
+        "albedo_luma": 0.5088,
         "ref_luma": 0.4675,
-        "albedo_sat": 0.4847,
+        "albedo_sat": 0.5121,
         "ref_sat": 0.5127,
-        "luma_ratio": 1.162,
-        "sat_ratio": 0.945
+        "luma_ratio": 1.088,
+        "sat_ratio": 0.999
       }
     ],
     "timings_s": {
-      "import_and_weld": 1.55,
-      "voxel_remesh": 0.41,
-      "orient_scale": 0.02,
-      "decimate": 1.17,
-      "uv_unwrap": 0.0,
-      "colour_bake": 1.67,
-      "silhouette": 0.86,
-      "sheets": 0.45,
-      "export": 0.76,
-      "total": 6.57
+      "import_and_weld": 4.92,
+      "voxel_remesh": 5.93,
+      "orient_scale": 0.13,
+      "decimate": 3.23,
+      "uv_unwrap": 0.01,
+      "colour_bake": 1181.72,
+      "silhouette": 105.29,
+      "sheets": 128.95,
+      "export": 134.74,
+      "total": 1436.44
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.417,
-      "lit_luma": 0.422,
-      "luma_ratio": 1.012,
+      "lit_luma": 0.345,
+      "luma_ratio": 0.826,
       "ref_sat": 0.527,
-      "lit_sat": 0.389,
-      "sat_ratio": 0.739
+      "lit_sat": 0.525,
+      "sat_ratio": 0.997
     }
   },
   "triposg/bird": {
     "type": "animal",
     "input": "bird.glb",
     "generator_input_only": true,
+    "solid": {
+      "hollow_share": 0.002,
+      "parts_voxels": [
+        121900
+      ],
+      "bridges_gap_voxels": [],
+      "parts_after": 1,
+      "filler_voxels": 0,
+      "voxel_size": 0.014854,
+      "seconds": 0.81
+    },
     "triangles": 1940,
     "triangle_budget": 2000,
     "materials": 1,
@@ -1711,6 +3154,10 @@
       "floaters_deleted": 87,
       "after_clean": 1,
       "floaters_deleted_after_decimate": 0
+    },
+    "single_part": {
+      "parts": 1,
+      "ok": true
     },
     "silhouette": {
       "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
@@ -1746,13 +3193,114 @@
       ],
       "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\bird.png",
       "texels_covered": 117554,
-      "texels_projected": 43737,
-      "texels_projected_full_trust": 6487,
-      "texels_low_frequency": 73817,
+      "texels_projected": 23528,
+      "texels_projected_full_trust": 4969,
+      "texels_low_frequency": 94026,
       "mirrored_far_side": false,
-      "mirrored_left_right": true,
-      "mirrored_points": 30783,
-      "region_gates": null,
+      "mirrored_left_right": false,
+      "multiview": {
+        "seconds_control_maps": 2.29,
+        "seconds_generator": 633.83,
+        "generator": {
+          "seconds_load": 490.9,
+          "seconds_generate": 75.2,
+          "seconds_total": 566.9,
+          "vram_peak_gb": 9.17,
+          "vram_reserved_peak_gb": 10.9,
+          "vram_weights_gb": 3.53,
+          "vram_cap_gb": 11.0,
+          "seed": 7,
+          "steps": 50,
+          "guidance": 3.0,
+          "size": 768,
+          "adapter": "huanngzh/mv-adapter/mvadapter_ig2mv_sdxl.safetensors",
+          "base": "stabilityai/stable-diffusion-xl-base-1.0",
+          "vae": "madebyollin/sdxl-vae-fp16-fix"
+        },
+        "calibration": {
+          "method": "per view, per image-plane cell: Lab mean and spread onto the picture's",
+          "grid": [
+            6,
+            12
+          ],
+          "view_texels": [
+            29999,
+            22076,
+            29894,
+            21342,
+            28642,
+            26908
+          ],
+          "mean_L_gain": [
+            0.754,
+            0.921,
+            0.772,
+            1.0,
+            0.917,
+            0.577
+          ],
+          "mean_L_offset": [
+            7.04,
+            16.16,
+            4.88,
+            -20.8,
+            11.99,
+            12.61
+          ]
+        },
+        "texels_from_views": 107627,
+        "texels_no_view": 9927
+      },
+      "mirrored_points": 0,
+      "region_gates": {
+        "reference": "bird",
+        "passed": true,
+        "gates": [
+          {
+            "gate": "beak_dark_fraction",
+            "value": 0.275,
+            "limit": ">= 0.21",
+            "ok": true
+          }
+        ],
+        "reference_regions": {
+          "beak": {
+            "n": 1964,
+            "rgb": [
+              0.306,
+              0.243,
+              0.221
+            ],
+            "p90_luma": 0.456,
+            "pale": 0.018,
+            "dark": 0.414,
+            "white": 0.002,
+            "std_luma": 0.155
+          }
+        },
+        "albedo_regions": {
+          "beak": {
+            "n": 1071,
+            "rgb": [
+              0.464,
+              0.322,
+              0.241
+            ],
+            "p90_luma": 0.571,
+            "pale": 0.087,
+            "dark": 0.275,
+            "white": 0.0,
+            "std_luma": 0.164
+          }
+        },
+        "model_measures": {
+          "far_minus_near_neck_pale": 0.0117,
+          "neck_far_texels": 3980.0,
+          "neck_near_texels": 4724.0,
+          "tail_end_on_pale": 0.0261,
+          "tail_end_on_texels": 2106.0
+        }
+      },
       "registration": {
         "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the reference outline onto the centre of the model outline), 64 rows",
         "head_band": 0.16,
@@ -1764,6 +3312,10 @@
         ],
         "head_painted_from_reference": true,
         "max_row_shift": 0.0502,
+        "outline_warp_iou_before_after": [
+          0.7624,
+          0.8396
+        ],
         "head_to_head": null
       },
       "fill": {
@@ -1771,12 +3323,12 @@
         "full_facing_cos": 0.7,
         "shadow_rel_to_band_median": 0.55,
         "shadow_bands": 8,
-        "shadow_vertices_ignored": 90,
+        "shadow_vertices_ignored": 38,
         "method": "normalised vertex-graph diffusion, interpolated across triangles",
         "speck_area_frac": 0.0025,
         "ref_speck_pixels": 41327,
-        "texels_speck_replaced": 3326,
-        "fill_specks_dropped": 84,
+        "texels_speck_replaced": 1589,
+        "fill_specks_dropped": 41,
         "seam_feather_height_frac": 0.05,
         "seam_feather_iterations": 4
       }
@@ -1784,61 +3336,61 @@
     "albedo_vs_reference": [
       {
         "band": 0,
-        "albedo_luma": 0.2406,
+        "albedo_luma": 0.2603,
         "ref_luma": 0.2824,
-        "albedo_sat": 0.5427,
+        "albedo_sat": 0.5676,
         "ref_sat": 0.5034,
-        "luma_ratio": 0.852,
-        "sat_ratio": 1.078
+        "luma_ratio": 0.922,
+        "sat_ratio": 1.128
       },
       {
         "band": 1,
-        "albedo_luma": 0.4363,
+        "albedo_luma": 0.3966,
         "ref_luma": 0.3986,
-        "albedo_sat": 0.1777,
+        "albedo_sat": 0.1775,
         "ref_sat": 0.199,
-        "luma_ratio": 1.095,
-        "sat_ratio": 0.893
+        "luma_ratio": 0.995,
+        "sat_ratio": 0.892
       },
       {
         "band": 2,
-        "albedo_luma": 0.3893,
+        "albedo_luma": 0.298,
         "ref_luma": 0.3598,
-        "albedo_sat": 0.4854,
+        "albedo_sat": 0.5194,
         "ref_sat": 0.5195,
-        "luma_ratio": 1.082,
-        "sat_ratio": 0.934
+        "luma_ratio": 0.828,
+        "sat_ratio": 1.0
       },
       {
         "band": 3,
-        "albedo_luma": 0.4321,
+        "albedo_luma": 0.4065,
         "ref_luma": 0.4121,
-        "albedo_sat": 0.4646,
+        "albedo_sat": 0.4406,
         "ref_sat": 0.4334,
-        "luma_ratio": 1.049,
-        "sat_ratio": 1.072
+        "luma_ratio": 0.986,
+        "sat_ratio": 1.017
       }
     ],
     "timings_s": {
-      "import_and_weld": 1.65,
-      "voxel_remesh": 0.44,
-      "orient_scale": 0.02,
-      "decimate": 1.18,
-      "uv_unwrap": 0.01,
-      "colour_bake": 1.64,
-      "silhouette": 0.87,
-      "sheets": 0.45,
-      "export": 0.77,
-      "total": 6.7
+      "import_and_weld": 5.07,
+      "voxel_remesh": 2.23,
+      "orient_scale": 0.05,
+      "decimate": 3.63,
+      "uv_unwrap": 0.05,
+      "colour_bake": 652.44,
+      "silhouette": 146.36,
+      "sheets": 114.28,
+      "export": 118.87,
+      "total": 929.29
     },
     "gate_failures": [],
     "lit_vs_reference": {
       "ref_luma": 0.378,
-      "lit_luma": 0.409,
-      "luma_ratio": 1.082,
+      "lit_luma": 0.396,
+      "luma_ratio": 1.047,
       "ref_sat": 0.426,
-      "lit_sat": 0.513,
-      "sat_ratio": 1.204
+      "lit_sat": 0.495,
+      "sat_ratio": 1.163
     }
   }
 }
