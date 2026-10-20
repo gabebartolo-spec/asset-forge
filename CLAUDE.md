@@ -4,10 +4,20 @@ Python 3.12 app (FastAPI backend + a three.js page on localhost) that drives loc
 (ComfyUI or a dedicated env), headless Blender 5.2 and Godot 4.7.2 (export checks only). Read
 this file, then your handoff (`agent-handoffs/<role>.md`), then the design
 (`docs/superpowers/specs/2026-10-19-asset-forge-design.md`, the source of truth for what the
-tool is), then `docs/STATUS.md` "Assigned items". The general rules every project shares live in
+tool is), the roadmap and `docs/STATUS.md` "Assigned items"; those three load in full
+automatically ("Always loaded" below). The general rules every project shares live in
 `~/.claude/CLAUDE.md` and the skills it names (`ask-the-director`, `ai-game-dev-playbook`,
 `github-hygiene`, `game-architecture`, `art-qa-critic`, `ai-slop-art`); this file holds only
 what is true for Asset Forge.
+
+## Always loaded
+
+Claude Code imports these core documents in full at every session start (the `@` lines below),
+so they are part of this file: read them as rules, never skim or skip them.
+
+@docs/superpowers/specs/2026-10-19-asset-forge-design.md
+@docs/ROADMAP.md
+@docs/STATUS.md
 
 ## Philosophy (permanent)
 
@@ -45,8 +55,13 @@ taste and final judgement. Agents supply execution, evidence and honest pushback
 
 ## Machine rules (shared PC, one 12 GB GPU)
 
-- One GPU job at a time (ComfyUI, Blender bakes/renders, local models). Free ComfyUI VRAM before
-  a Blender bake. Do not run generation while the director is in a fullscreen game.
+- The card is shared by a VRAM budget (D-030; director: "open as many as you can"): every job
+  that uses it declares its need in MB through `models/gpu.lock` (`asset_forge.gpu_lock`, or
+  `python tools/bakeoff/gpu_lock.py run <who> --vram MB -- <cmd>`); jobs run together while the
+  needs fit 11000 MB and nvidia-smi's free memory. CPU-only work (Blender clean-up, rig,
+  animation keys, measuring, sprite pixels) declares 0 and never waits; no `--vram` takes the
+  whole card. Free ComfyUI VRAM before a Blender bake. Never slow down, defer or pause work for what the director is doing on the
+  PC; the one limit is never popping up a window or stealing his focus.
 - Blender always `blender -b` (never a window). Godot only headless (`--headless`), isolated
   `APPDATA=<scratch>`. Never kill Blender, Godot or ComfyUI by image name; kill your own PID.
 - Worktrees: `git worktree add -b claude/<topic> ../asset-forge-wt/<topic> origin/main`. Remove
@@ -64,7 +79,10 @@ mocked; no GPU in CI. Keep CI under 10 minutes. See the `forge-tests` skill.
 ## Sessions and context
 
 - Fresh session at every task boundary; write `agent-handoffs/<role>.md` first (120-line cap,
-  rewritten, never appended). Hand off at about 200k context; wait in the background only.
+  rewritten, never appended). Hand off at about 300k context (leads 500k); wait in the background only.
+- No subagents (director, 2026-10-20: "no more subagents, if you need a helper you spawn a fresh
+  session"): every helper (builder, critic, support, researcher) is a fresh Claude Code session
+  started with `start_session`, briefed by its prompt, reporting through its turn-end note.
 - End every turn with your state: working, running a check, awaiting director, blocked, available.
 
 ## Skills

@@ -9,6 +9,9 @@
     GET  /api/assets/{id}/files/{step}/{name}   an output (raw.glb, input.png, ...)
     POST /api/assets/{id}/clean           Step 2 hook (not wired yet: 501)
     POST /api/assets/{id}/skeleton        Step 3: fit, bind, test pose (queued; needs clean.glb)
+    GET  /api/library[?trash=1]           cards: thumbnail flag, type, date, last step, timings
+    POST /api/assets/{id}/duplicate, /trash, /restore   copy, move to library/_trash, put back
+    POST /api/batch, GET /api/batch/{id}  several prompts through draw + 3D on the one queue
     POST /api/expand                      {idea, type, variation?} -> job; result {prompt}
                                           ("Expand my idea", on the one GPU queue)
     POST /api/assets/from-text            {prompt, type} -> new asset with no picture yet
@@ -33,6 +36,7 @@ from .config import Settings, load_settings
 from .draw import DrawError, ReferenceDrawer, default_drawer
 from .generators import Registry
 from .jobqueue import GpuQueue, Job
+from .library import register_library
 from .matte import prepare_reference
 from .skeleton import rig
 from .store import ASSET_TYPES, NotFound, Store
@@ -100,6 +104,14 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
     def persist(job: Job) -> None:
         try:
             store.write_status(job.asset_id, job.step, job.public())
+            if job.state == "done" and job.started and job.finished:
+                res = job.result or {}
+                if res.get("timings"):  # a batch job reports its draw and 3D seconds itself
+                    for key, secs in res["timings"].items():
+                        store.record_timing(job.asset_id, key, secs)
+                else:  # a draw runs as "generate" too, but only it reports draw_s
+                    store.record_timing(job.asset_id, "draw" if "draw_s" in res else job.step,
+                                        job.finished - job.started)
         except NotFound:
             pass
 
@@ -107,7 +119,8 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
     drawer = drawer or default_drawer(settings)
     release_writer = release_writer or release_idea_writer
 
-    gpu_queue = queue or GpuQueue(settings.lock_dir, persist=persist)
+    gpu_queue = queue or GpuQueue(settings.lock_dir, persist=persist,
+                                  budget_mb=settings.gpu_budget_mb, make_room=release_writer)
     if queue is not None:
         gpu_queue.persist = persist
 
@@ -154,6 +167,36 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
             raise HTTPException(400, "That is too long. Please keep it under 600 letters.")
         return text
 
+    def draw_now(asset_id: str, asset_type: str, prompt: str, seed: int,
+                 progress: Callable[[str], None]) -> dict:
+        """Draw input.png from the words (inside a queue job; the batch uses it too)."""
+        release_writer()  # the idea writer must not hold VRAM while the picture is drawn
+        t0 = time.time()
+        png = drawer.draw(prompt, asset_type, seed, progress)
+        buf = io.BytesIO()
+        try:
+            prepare_reference(png).save(buf, "PNG")
+        except ValueError as e:
+            raise DrawError("The drawing came out empty. Press Draw another.") from e
+        (store.step_dir(asset_id, "generate") / "input.png").write_bytes(buf.getvalue())
+        return {"seed": seed, "draw_s": round(time.time() - t0, 1)}
+
+    def generate_now(asset_id: str, generator, seed: int,
+                     progress: Callable[[str], None]) -> dict:
+        """Run the 3D maker on input.png (inside a queue job; the batch uses it too)."""
+        release_writer()  # free the idea writer's VRAM before a 3D run
+        sd = store.step_dir(asset_id, "generate")
+        t0 = time.time()
+        res = generator.run(sd / "input.png", sd, seed, progress)
+        result = {
+            "generator": generator.id, "seed": seed, "mesh": res.mesh.name,
+            "total_s": round(time.time() - t0, 1), "gen_s": res.gen_s,
+            "gpu_peak_gb": res.gpu_peak_gb, "details": res.details,
+        }
+        store.write_result(asset_id, "generate", result)
+        store.mark_reached(asset_id, "generate")
+        return result
+
     @app.post("/api/expand")
     def expand_idea(req: ExpandRequest) -> dict:
         idea = clean_words(req.idea, "a few words")
@@ -165,7 +208,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
             job.set_message("Writing your description...")
             return {"prompt": expander(idea, req.type, seed)}
 
-        return gpu_queue.submit("expand", "expand", run).public()
+        return gpu_queue.submit("expand", "expand", run, need="expand:qwen").public()
 
     @app.post("/api/assets/from-text")
     def from_text(req: TextAssetRequest) -> dict:
@@ -188,18 +231,9 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         seed = req.seed if req.seed is not None else secrets.randbelow(2**31)
 
         def run(job: Job) -> dict:
-            release_writer()  # the idea writer must not hold VRAM while the picture is drawn
-            t0 = time.time()
-            png = drawer.draw(prompt, asset["type"], seed, job.set_message)
-            buf = io.BytesIO()
-            try:
-                prepare_reference(png).save(buf, "PNG")
-            except ValueError as e:
-                raise DrawError("The drawing came out empty. Press Draw another.") from e
-            (store.step_dir(asset_id, "generate") / "input.png").write_bytes(buf.getvalue())
-            return {"seed": seed, "draw_s": round(time.time() - t0, 1)}
+            return draw_now(asset_id, asset["type"], prompt, seed, job.set_message)
 
-        return gpu_queue.submit(asset_id, "generate", run).public()
+        return gpu_queue.submit(asset_id, "generate", run, need="draw:sdxl").public()
 
     @app.get("/api/assets")
     def list_assets() -> list[dict]:
@@ -230,20 +264,9 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         })
 
         def run(job: Job) -> dict:
-            release_writer()  # free the idea writer's VRAM before a 3D run
-            sd = store.step_dir(asset_id, "generate")
-            t0 = time.time()
-            res = generator.run(sd / "input.png", sd, seed, job.set_message)
-            result = {
-                "generator": generator.id, "seed": seed, "mesh": res.mesh.name,
-                "total_s": round(time.time() - t0, 1), "gen_s": res.gen_s,
-                "gpu_peak_gb": res.gpu_peak_gb, "details": res.details,
-            }
-            store.write_result(asset_id, "generate", result)
-            store.mark_reached(asset_id, "generate")
-            return result
+            return generate_now(asset_id, generator, seed, job.set_message)
 
-        job = gpu_queue.submit(asset_id, "generate", run)
+        job = gpu_queue.submit(asset_id, "generate", run, need=f"generate:{generator.id}")
         return job.public()
 
     @app.get("/api/jobs/{job_id}")
@@ -251,7 +274,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         job = gpu_queue.jobs.get(job_id)
         if job is None:
             raise missing("job")
-        out = job.public()
+        out = job.view()
         out["ahead"] = gpu_queue.ahead_of(job)
         return out
 
@@ -297,6 +320,8 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
             return result
 
         return gpu_queue.submit(asset_id, "skeleton", run).public()
+
+    register_library(app, store, gpu_queue, registry, drawer, draw_now, generate_now)
 
     if settings.web_dir.is_dir():
         app.mount("/", StaticFiles(directory=settings.web_dir, html=True), name="web")

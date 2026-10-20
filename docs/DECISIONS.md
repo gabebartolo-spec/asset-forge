@@ -4,6 +4,47 @@ Cap: 400 lines; oldest roll to `docs/archive/`. One decision per entry, newest f
 that is not here does not exist. Format: date · id · who decided · the decision · why · what it
 changes. Only the lead edits this file, from the "Board and log" section of merged PRs.
 
+## 2026-10-20 · D-029 · Director · No subagents; every helper is a fresh session
+His words: "no more subagents, if you need a helper you spawn a fresh session" and "seperate
+sessions grouped properly in the toolbar". Changes: every builder and critic is a start_session
+session in its own worktree, filed in the "Asset Forge" sidebar group (RULEBOOK; CLAUDE.md, PR #23).
+
+## 2026-10-20 · D-028 · Director · Animation clips: fix first
+Asked whether the PR #20 clips ship. His answer: "Fix first" on person walk, fox walk, bird walk,
+and attack/faint. Changes: #20 stays open; it re-rigs on the #22 joints, makes previews_v4 and
+passes a fresh motion critic before he sees the clips again.
+
+## 2026-10-20 · D-027 · Director · Clean colour: keep improving first
+Asked: ship the 6/10 multi-view colour now, keep improving, or shape only. His answer: "Keep
+improving first". Changes: PR #9 stays open; a fresh Clean builder targets the causes behind the
+4 fails (picture-to-mesh registration, single-part mesh, fox chest and front legs, greaves) with
+a bar of 8/10 and a fresh realism critic before merge; step2-page (item 12) still merges after #9.
+
+## 2026-10-20 · D-026 · Director · Anything that can run in parallel, runs
+His words: "if theres anything you can work on in parrelal then do it". Changes: item 12 (Step 2
+page + hand-over) starts now against PR #9's script interface with Clean mocked, merging after #9;
+Phase 3 monsters (limb-chain editor) and a Step 1 limb-count check start now. Lead calls logged
+here: animation clips in place with move speeds in clips.json; loops set by a Godot import sidecar
+(names unchanged); gait speeds scale with leg length (Froude), no step-time floors.
+
+## 2026-10-20 · D-023 · Director · Southern Cross sprite sizes
+Southern Cross art 80 px, exported 2x = 160 px for front AND back, file names UPPERCASE; GBA
+unchanged (PR #11). Sprite backs by turnaround sheet yielded 0-1 of 18: the back draw is replaced
+by a multi-view method in a later slice.
+
+## 2026-10-20 · D-025 · Director · Work on several phases at once
+His words: "get to work / work on multiple phases at once, get more efficient". Changes: Phase 4
+Animation (first slice: 2 legs, 4 legs, bird) and Phase 6 Library and batch start now beside the
+Phase 2 and Phase 5 finishes. Limits kept: one GPU job at a time (models/gpu.lock), at most 3 open
+PRs (Library waits on its branch for a slot), critic gates unchanged. Phases 7 and 8 still wait for
+a working build.
+
+## 2026-10-20 · D-024 · Lead · Skeleton started early; light humanoid rig
+Director "Start now" on Skeleton before PR #9 merged, so Step 3 was built on copied cleaned
+models (PR #15). Humanoid = the 23 required SkeletonProfileHumanoid bones only, mitt hands (light
+to run); bird = neck/tail template with 2 legs and wing bones, chosen by counting legs on the
+ground; at most 4 bone influences per vertex. The Step 2 -> Step 3 hand-over follows PR #9.
+
 ## 2026-10-20 · D-022 · Director · Go faster: later phases run in parallel
 His words, on a 13-21 agent-hour estimate: "thats absurd. do it faster", then "faster!". Asked
 which phases start; answer "Two now, Skeleton next". Changes: Phase 5 Sprites mode A and Phase 9

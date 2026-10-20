@@ -64,4 +64,5 @@ def test_clean_hook_defaults_to_multiview_colour_when_models_are_given(tmp_path)
     assert tail == ["--generator", "hi3dgen",
                     "--mv-python", str(models / "envs" / "sdxl" / "Scripts" / "python.exe"),
                     "--mv-src", str(models / "src" / "mv_adapter"),
-                    "--hf-home", str(models / "hf")]
+                    "--hf-home", str(models / "hf"),
+                    "--gpu-lock", str(models / "gpu.lock")]

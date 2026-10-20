@@ -41,8 +41,7 @@ def test_fox_colours_match_the_reference_regions(generator, tmp_path):
     if not all(p.exists() for p in multiview_paths(MODELS).values()):
         pytest.skip("the multiview generator is not installed in models/")
     cmd = clean_command(blender_exe(), ROOT, raw, tmp_path, "animal", REF, generator=generator,
-                        models_dir=MODELS) + ["--height", "0.40", "--no-sheets",
-                                              "--gpu-lock", str(MODELS / "gpu.lock")]
+                        models_dir=MODELS) + ["--height", "0.40", "--no-sheets"]
     if os.environ.get("CLEAN_SCRIPT"):
         cmd[cmd.index("-P") + 1] = os.environ["CLEAN_SCRIPT"]
     done = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)

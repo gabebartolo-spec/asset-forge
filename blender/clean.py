@@ -1190,8 +1190,9 @@ def mv_generate(obj_co, vi, vn, d0, ref_path, work_dir, mv):
         lock = contextlib.nullcontext()
         if mv.get("gpu_lock"):
             sys.path.insert(0, str(HERE.parent / "src"))
-            from asset_forge.gpu_lock import gpu_lock
-            lock = gpu_lock(Path(mv["gpu_lock"]), "clean multiview", 5.0)
+            from asset_forge.gpu_lock import gpu_lock, vram_need
+            lock = gpu_lock(Path(mv["gpu_lock"]), "clean multiview", 5.0,
+                            vram_mb=vram_need("clean:multiview"))
         with lock:
             r = subprocess.run(cmd, capture_output=True, text=True, env=env)
         info["seconds_generator"] = round(time.perf_counter() - t1, 2)

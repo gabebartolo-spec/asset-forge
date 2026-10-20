@@ -4,17 +4,20 @@ Cap: 150 lines. Edited only by the lead, in a board PR after each merge, from th
 "Board and log" section. History rolls to `docs/archive/status_<month>.md`.
 
 ## Phase
-Current phase: **2 — Generate and Clean**, with Phase 5 (Sprites mode A) and Phase 9 (Prompt
-generator) running in parallel (director, 2026-10-20, D-022). Phase 1 done 2026-10-20 (D-019).
+Current phase: **2 — Generate and Clean** (finishing), with Phase 3 Skeleton done, and Phase 4
+Animation, Phase 5 Sprites mode A and Phase 6 Library and batch running in parallel (D-022,
+D-025). Phase 1 done 2026-10-20 (D-019).
 
 ## Agents
 
 | Agent | State | Item | Branch / PR | Since |
 |-------|-------|------|-------------|-------|
-| Lead | running a check | items 4-9; board | this PR | 2026-10-20 |
-| app-shell builder | working | item 4 (screen-critic round 2 fixes) | #8 | 2026-10-20 |
-| clean builder | working | item 5 (colour fix round 2) | #9 | 2026-10-20 |
-| sprites builder | working | item 7 (art-QA fixes, speed) | #11 | 2026-10-20 |
+| Lead (s8) | working | board; critics; merges | this PR | 2026-10-20 |
+| af-clean | working | item 5 (method B to 8/10; D-027) | #9 | 2026-10-20 |
+| af-anim | working | item 10 (fix first, D-028; re-rig on #22) | #20 | 2026-10-20 |
+| af-refdraw | working | item 4 follow-up (text-only reference drawer) | claude/ref-drawer | 2026-10-20 |
+| af-monster | working | item 13 (monster skeleton + limb count) | claude/monster-rig | 2026-10-20 |
+| af-proto | working | e2e run2 (goal: 80% critic pass) | claude/prototype | 2026-10-20 |
 
 States: working · running a check · awaiting director · blocked · available.
 
@@ -28,21 +31,30 @@ States: working · running a check · awaiting director · blocked · available.
 3. DONE 2026-10-20 (D-019: Hi3DGen then TripoSG; PR #6).
 
 ### Phase 2 — Generate and Clean (assigned 2026-10-20: "Yes, split it in two", "spawn 1 more")
-4. App shell + Step 1 Generate + generator menu (PR #8). Live GPU run and first-use walk-through
-   passed; screen-critic round 2 fixes in progress. Then the director sees Step 1. Follow-up:
-   text-only input and a textured view (design 5.2) once the sprite SDXL draw lands.
-5. Step 2 Clean + gates (PR #9). Forward axis D-021. Fidelity check round 1: 4 of 10 pass; colour
-   fix round 2 in progress (two failed fixes means a change of method).
+4. DONE 2026-10-20. App shell + Step 1 Generate + generator menu (PR #8); text-only input and
+   "Expand my idea" in the page (PR #14).
+5. Step 2 Clean + gates (PR #9). Method B (multi-view + per-view colour match): 6/10. D-027:
+   keep improving first; fix causes (registration, single part), bar 8/10, then realism critic.
 6. DONE 2026-10-20. Export gate + headless Godot import check (PR #7).
+12. Step 2 page + hand-over to Step 3, built now with Clean mocked; merges after #9 (D-026).
+
+### Phase 3 — Skeleton
+9. DONE 2026-10-20 (D-024). Humanoid, four-legged and bird rigs, test pose, page (PR #15).
+13. Monsters: skeleton proposed from the mesh, limb-chain editor; the same limb counter checks
+    Step 1 output (a 10-legged spider is re-rolled) (D-026).
+
+### Phase 4 — Animation (assigned 2026-10-20, D-025)
+10. First slice: idle, walk, run, attack, hit, faint for 2 legs, 4 legs and bird; one .glb; gate
+    and Godot check; Step 4 page. 6+ legs and monsters later.
 
 ### Phase 5 — Sprites (assigned 2026-10-20, D-022)
-7. Sprite mode A back end: draw, pixel-perfect processing, sprite QA, Southern Cross + GBA
-   presets (PR #11). Art-QA round 1: all four FIX; fixes and a pair under 60 s in progress.
+7. DONE 2026-10-20 (back end, PR #11, D-023). Pair gates work; turnaround-sheet backs yield 0-1
+   of 18, so backs move to the multi-view method once item 5 proves it.
+
+### Phase 6 — Library and batch (assigned 2026-10-20, D-025)
+11. DONE 2026-10-20 (PR #17). Clean joins the batch in item 12.
 
 ### Phase 9 — Prompt generator (assigned 2026-10-20, D-022)
-8. DONE 2026-10-20 (back end). "Expand my idea" writer, Qwen3-1.7B (PR #12). UI after #8 merges.
-
-### Next (assigned, starts on a trigger)
-9. Phase 3 Skeleton (humanoid + four-legged templates) starts the moment PR #9 merges (D-022).
+8. DONE 2026-10-20. Back end (PR #12) and page (PR #14).
 
 Later phases are in `docs/ROADMAP.md` and start only when listed here.

@@ -19,6 +19,11 @@ port = 7860
 library_dir = "library"
 exports_dir = "exports"
 
+[gpu]
+# Video memory (MB) that Asset Forge jobs may declare at once on the 12 GB card (D-030).
+# Jobs that fit run together; a job also waits while nvidia-smi shows too little free.
+budget_mb = 11000
+
 [generators]
 # The menu on Step 1, top to bottom; the first is preselected (D-018, D-019).
 order = ["hi3dgen", "triposg"]

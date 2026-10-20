@@ -145,6 +145,124 @@ def test_two_legs_on_the_ground_choose_the_bird_template():
     assert J["LeftFoot"][2] < 0.02 and J["RightFoot"][2] < 0.02
 
 
+def test_humanoid_foot_has_ankle_ball_and_toe_tip_along_the_foot():
+    """A real foot: ankle a quarter of the way from the heel, ball of the foot about 72% of the
+    way, toe tip at the front. The old fit put the ball straight under the ankle."""
+    v = stick_human(np.random.default_rng(1))
+    H = v[:, 2].max()
+    heel, toe = 0.04 * H, -0.12 * H  # the stick feet run from y = +0.04 H to -0.12 H
+    flen = heel - toe
+    J = fit.fit(v, "humanoid")
+    for side in ("Left", "Right"):
+        ankle, ball, tip = J[f"{side}Foot"], J[f"{side}Toes"], J[f"{side}ToesTip"]
+        assert heel - ankle[1] == pytest.approx(0.25 * flen, abs=0.06 * flen)
+        assert heel - ball[1] == pytest.approx(0.72 * flen, abs=0.06 * flen)
+        assert tip[1] == pytest.approx(toe, abs=0.04 * flen)
+        assert ball[1] - tip[1] > 0.15 * flen  # the toes are a real segment, not a stub
+        assert tip[2] <= ball[2] < ankle[2]
+    pivots = fit.foot_pivots(v, "humanoid")
+    assert pivots["LeftHeel"][1] == pytest.approx(heel, abs=0.04 * flen)
+    assert pivots["LeftHeel"][2] == pytest.approx(0.0, abs=0.01 * H)
+
+
+def turned_head_fox(rng, yaw=0.0):
+    """A fox looking to its left (head and neck swung to +X), long paws pointing forward
+    (-Y): the shape that tilted the whole-mesh axis of the generated fox by 18 degrees."""
+    parts = [_cloud(rng, (0, 0, 0.28), (0.12, 0.40, 0.16), 900),
+             _cloud(rng, (0.10, -0.22, 0.36), (0.16, 0.08, 0.10), 400),
+             _cloud(rng, (0.20, -0.24, 0.36), (0.10, 0.06, 0.06), 200),
+             _cloud(rng, (-0.02, 0.36, 0.20), (0.05, 0.28, 0.05))]
+    for x in (0.045, -0.045):
+        for y in (-0.14, 0.14):
+            parts.append(_cloud(rng, (x, y, 0.11), (0.03, 0.03, 0.2), 120))
+            parts.append(_cloud(rng, (x, y - 0.04, 0.008), (0.03, 0.10, 0.016), 120))
+    v = np.vstack(parts)
+    c, s = np.cos(yaw), np.sin(yaw)
+    v[:, :2] = v[:, :2] @ np.array([[c, s], [-s, c]])
+    v[:, 2] -= v[:, 2].min()
+    return v
+
+
+def _deg(a, b):
+    a, b = np.asarray(a[:2], float), np.asarray(b[:2], float)
+    return float(np.degrees(np.arccos(np.clip(a @ b / np.linalg.norm(a) / np.linalg.norm(b),
+                                              -1, 1))))
+
+
+@pytest.mark.parametrize("yaw", [0.0, 0.5])
+def test_four_legged_body_axis_ignores_a_turned_head(yaw):
+    v = turned_head_fox(np.random.default_rng(4), yaw)
+    fwd = np.array([np.sin(yaw), -np.cos(yaw)])
+    J = fit.fit(v, "four_legged")
+    # facing -Y (what Clean hands over) the body axis is exact; turned 29 degrees it follows
+    # the body to within 5 (the whole-mesh axis was 11 off)
+    assert _deg(J["Chest"] - J["Hips"], fwd) < (0.5 if yaw == 0 else 5.0)
+    left = np.array([-fwd[1], fwd[0]])
+    for part in ("Front", "Hind"):  # left legs on the left, front legs ahead of hind
+        assert (J[f"{part}LeftFoot"] - J[f"{part}RightFoot"])[:2] @ left > 0.05
+    assert (J["FrontLeftFoot"] - J["HindLeftFoot"])[:2] @ fwd > 0.2
+
+
+def test_four_legged_paw_runs_from_behind_the_ankle_to_the_toe_front():
+    v = turned_head_fox(np.random.default_rng(4))
+    J = fit.fit(v, "four_legged")
+    for part, y_leg in (("Front", -0.14), ("Hind", 0.14)):
+        for side in ("Left", "Right"):
+            ankle, tip = J[f"{part}{side}Foot"], J[f"{part}{side}FootTip"]
+            assert tip[1] == pytest.approx(y_leg - 0.09, abs=0.015)  # paw front at y - 0.09
+            assert ankle[1] - tip[1] > 0.06  # the paw is about 0.10 long
+            assert tip[2] < ankle[2]
+
+
+def _segment(rng, p0, p1, size=0.025, n=80):
+    t = rng.random((n, 1))
+    p0, p1 = np.asarray(p0), np.asarray(p1)
+    return p0 + t * (p1 - p0) + (rng.random((n, 3)) - 0.5) * size
+
+
+def bent_leg_fox(rng):
+    """A fox whose hind legs bend back at the hock (y = 0.19, z = 0.10), like the generated
+    foxes: paw forward, cannon bone up and back to the hock, shin forward up to the body."""
+    parts = [_cloud(rng, (0, 0, 0.28), (0.12, 0.40, 0.16), 900),
+             _cloud(rng, (0, -0.24, 0.33), (0.08, 0.12, 0.10)),
+             _cloud(rng, (0, 0.36, 0.22), (0.05, 0.28, 0.05))]
+    for x in (0.045, -0.045):
+        parts.append(_cloud(rng, (x, -0.14, 0.11), (0.03, 0.03, 0.2), 120))
+        parts.append(_cloud(rng, (x, -0.18, 0.008), (0.03, 0.10, 0.016), 120))
+        parts.append(_cloud(rng, (x, 0.10, 0.008), (0.03, 0.10, 0.016), 120))
+        parts.append(_segment(rng, (x, 0.13, 0.02), (x, 0.19, 0.10)))
+        parts.append(_segment(rng, (x, 0.19, 0.10), (x, 0.12, 0.21)))
+    v = np.vstack(parts)
+    v[:, 2] -= v[:, 2].min()
+    return v
+
+
+def test_four_legged_hind_knee_joint_sits_in_the_hock():
+    """The hind leg's middle joint goes where the leg bends back (the hock), inside the leg;
+    the old fit put it ahead of the leg, in the air."""
+    v = bent_leg_fox(np.random.default_rng(5))
+    J = fit.fit(v, "four_legged")
+    for side in ("Left", "Right"):
+        hock = J[f"Hind{side}LowerLeg"]
+        assert hock[1] == pytest.approx(0.19, abs=0.02)
+        assert hock[2] == pytest.approx(0.10, abs=0.02)
+
+
+def test_bird_ankle_sits_over_the_leg_and_the_toe_tip_at_the_toes():
+    J = fit.fit(stick_bird(np.random.default_rng(3)), "bird")
+    for side in ("Left", "Right"):
+        assert J[f"{side}Foot"][1] == pytest.approx(0.0, abs=0.003)  # the leg column, y = 0
+        assert J[f"{side}FootTip"][1] == pytest.approx(-0.025, abs=0.003)  # toes reach -0.025
+
+
+def test_bird_lifted_foot_keeps_its_joints_in_the_foot():
+    v = stick_bird(np.random.default_rng(3))
+    v[(v[:, 0] < -0.005) & (v[:, 2] < 0.05), 2] += 0.015  # right foot raised 15 mm
+    J = fit.fit(v, "bird")
+    assert J["RightFootTip"][2] == pytest.approx(J["LeftFootTip"][2] + 0.015, abs=0.003)
+    assert J["RightFoot"][2] == pytest.approx(J["LeftFoot"][2] + 0.015, abs=0.003)
+
+
 # ------------------------------------------------------------------ weights
 
 def test_limit_keeps_four_strongest_and_renormalises():
