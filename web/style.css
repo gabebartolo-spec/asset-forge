@@ -125,6 +125,17 @@ button.small:disabled { color: #aab3c2; background: #23272f; }
 .draw-note { margin: 8px 0 0; color: var(--text); font-size: 15px; }
 .row button.small { white-space: nowrap; }
 
+/* Step 2 result */
+.verdict { margin: 12px 0 4px; font-weight: 600; font-size: 17px; }
+.verdict.ok { color: var(--ok); }
+.verdict.bad { color: var(--bad); }
+.problems { margin: 6px 0 4px; padding-left: 20px; color: var(--text); }
+.problems li { margin-bottom: 6px; }
+.facts { margin: 10px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 15px; }
+.facts dt { color: var(--dim); }
+.facts dd { margin: 0; }
+.facts dd.bad { color: var(--bad); }
+
 /* Library tab */
 #library { display: none; flex: 1; min-height: 0; gap: 16px; padding: 12px 20px; }
 body.lib #library { display: flex; }

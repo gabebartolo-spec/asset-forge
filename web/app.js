@@ -5,7 +5,8 @@ const $ = (id) => document.getElementById(id);
 const state = {
   file: null, type: null, generator: null, asset: null,
   busy: false, done: false, step: 1, menu: null,
-  cleanReady: false, rig: null, bones: false, pose: false, meshUrl: null,
+  clean: null, cleanView: "after", cleanV: 0,   // Step 2: the verdict, which side the viewer shows
+  rig: null, bones: false, pose: false, meshUrl: null,
   expanding: false, source: "", variation: 0, // "Expand my idea": the words it started from
   reference: false, refUrl: "",               // text-only: the drawn picture is ready to check
   showing: null,                              // what the viewer shows: "model", "ref" or null
@@ -74,9 +75,14 @@ function render() {
   $("panel-2").classList.toggle("hidden", state.step !== 2);
   $("panel-3").classList.toggle("hidden", state.step !== 3);
   const pill3 = $("pill3");
-  pill3.classList.toggle("clickable", state.cleanReady && state.step !== 3);
-  pill3.onclick = state.cleanReady && state.step !== 3 ? () => goStep3() : null;
-  $("pill3-soon").classList.toggle("hidden", state.cleanReady);
+  const cleanOk = !!(state.clean && state.clean.passed);
+  pill3.classList.toggle("clickable", cleanOk && state.step !== 3);
+  pill3.onclick = cleanOk && state.step !== 3 ? () => goStep3() : null;
+  $("pill3-soon").classList.toggle("hidden", cleanOk);
+  const pill2 = $("pill2");
+  const back2 = state.done && state.step === 3;
+  pill2.classList.toggle("clickable", back2);
+  pill2.onclick = back2 ? () => goStep2() : null;
   document.querySelectorAll("#steps li").forEach((li) => {
     const n = Number(li.dataset.step);
     li.classList.toggle("current", n === state.step);
@@ -86,7 +92,8 @@ function render() {
   const pill1 = $("pill1");
   pill1.classList.toggle("clickable", !onStep1);
   pill1.onclick = onStep1 ? null : () => backToStep1();
-  redo.classList.toggle("hidden", !onStep1 || !state.asset);
+  redo.classList.toggle("hidden", !state.asset || state.step === 3
+    || (state.step === 2 && !state.clean));
   const hint = $("foot-hint");
   hint.textContent = "";
   const words = $("idea").value.trim();
@@ -109,6 +116,16 @@ function render() {
       }
     }
     redo.disabled = state.busy || state.expanding || !state.asset;
+  } else if (state.step === 2) {
+    const c = state.clean;
+    next.textContent = state.busy ? "Working..." : c ? "Next: Skeleton" : "Clean up";
+    next.disabled = state.busy || (!!c && !c.passed); // a model that broke a limit cannot go on
+    redo.disabled = state.busy;
+    if (c && !c.passed && !state.busy) hint.textContent = "Next is locked until the model fits every limit. Press Redo to try again.";
+    $("clean-intro").classList.toggle("hidden", !!c);
+    $("clean-result").classList.toggle("hidden", !c);
+    document.querySelectorAll("#clean-view button").forEach((b) =>
+      b.setAttribute("aria-checked", String(b.dataset.value === state.cleanView)));
   } else if (state.step === 3) {
     next.textContent = state.busy ? "Working..." : state.rig ? "Next: Animate (coming next)" : "Build skeleton";
     next.disabled = state.busy || !!state.rig;
@@ -188,6 +205,7 @@ function newInput() { // the picture or words changed: the old model and drawn p
   state.asset = null;
   state.done = false;
   state.reference = false;
+  state.clean = null;
 }
 function selectType(id) {
   if (state.asset && id !== state.type) newInput(); // new type = new model
@@ -301,6 +319,8 @@ async function finish(job) {
   state.showing = "model";
   state.busy = false;
   state.done = true;
+  state.clean = null; // a new model: any earlier clean-up and skeleton belong to the old one
+  state.rig = null;
   const name = state.menu.generators.find((g) => g.id === r.generator)?.name || r.generator;
   $("foot-info").textContent = `Made with ${name} in ${Math.round(r.total_s)} s`
     + (makerVram(r.generator) ? `, using ${makerVram(r.generator)}` : "");
@@ -322,8 +342,100 @@ async function backToStep1() {
   }
 }
 
-// Step 3. TODO(PR #9): Step 2 will call this itself once its clean.glb is written.
+// Step 2: clean up. The panel shows the verdict; the viewer shows before (rough) or after (cleaned).
+const CLEAN = { foot: "Cleaning up your model...", takes: () => "This takes a minute or two." };
+const num = (n) => Number(n).toLocaleString("en-US");
+
+function showVerdict() {
+  const c = state.clean;
+  if (!c) return;
+  const v = $("clean-verdict"), ul = $("clean-problems"), facts = $("clean-facts");
+  const bad = c.problems || [];
+  v.className = "verdict " + (c.passed ? "ok" : "bad");
+  v.textContent = c.passed ? "It fits every limit. It is ready for a skeleton."
+    : `It broke ${bad.length === 1 ? "a limit" : bad.length + " limits"}, so it cannot go on yet:`;
+  ul.replaceChildren(...bad.map((t) => Object.assign(document.createElement("li"), { textContent: t })));
+  ul.classList.toggle("hidden", !bad.length);
+  facts.replaceChildren();
+  const row = (k, val, isBad) => {
+    const dt = Object.assign(document.createElement("dt"), { textContent: k });
+    const dd = Object.assign(document.createElement("dd"), { textContent: val, className: isBad ? "bad" : "" });
+    facts.append(dt, dd);
+  };
+  if (c.triangles != null) {
+    row("Triangles", `${num(c.triangles)} of ${num(c.triangle_budget)} allowed`
+      + (c.raw_triangles ? ` (was ${num(c.raw_triangles)})` : ""), c.triangles > c.triangle_budget);
+  }
+  if (c.texture && c.texture.width) row("Colour picture", `${c.texture.width} x ${c.texture.height} pixels`);
+  if (c.height_m) row("Height", `${Math.round(c.height_m * 100) / 100} m`);
+}
+
+async function showCleanView(keepView) { // "before" = the rough model, "after" = the cleaned one
+  viewer = viewer || new Viewer($("viewer"));
+  state.showing = "model";
+  try {
+    if (state.cleanView === "before") await viewer.load(state.meshUrl, { keepView });
+    else await viewer.load(fileUrl("clean", "clean.glb", state.cleanV), { keepView, textured: true });
+    showMsg("");
+  } catch {
+    note($("note"), "I could not show the model. Press Redo to try again.", "error");
+  }
+  $("viewer-hint").classList.remove("hidden");
+}
+
+async function goStep2() {
+  state.step = 2;
+  note($("note"), "");
+  render();
+  if (state.clean) {
+    showVerdict();
+    await showCleanView(false);
+  } else {
+    $("foot-info").textContent = "";
+    viewer = viewer || new Viewer($("viewer"));
+    if (state.meshUrl) { try { await viewer.load(state.meshUrl); showMsg(""); } catch { /* keep what is shown */ } }
+  }
+  render();
+}
+
+async function runClean() {
+  if (state.busy) return;
+  state.busy = true;
+  state.clean = null;
+  state.rig = null;
+  note($("note"), "");
+  showMsg("Cleaning up your model...", "busy");
+  $("foot-info").textContent = "Getting ready...";
+  render();
+  try {
+    const job = await api(`/api/assets/${state.asset.id}/clean`, { method: "POST" });
+    const j = await follow(job.id, CLEAN, busyTick);
+    state.clean = j.result;
+    state.cleanView = "after";
+    state.cleanV = Date.now();
+    showVerdict();
+    await showCleanView(false);
+    $("foot-info").textContent = `${j.result.passed ? "Cleaned up" : "Tried cleaning up"} in ${Math.round(j.result.total_s)} s`;
+    note($("note"), j.result.passed ? "Look at Before and After, then press Next." : "", j.result.passed ? "ok" : "");
+  } catch (e) {
+    showMsg("");
+    note($("note"), e.message, "error");
+    $("foot-info").textContent = "";
+  }
+  state.busy = false;
+  render();
+}
+
+async function setCleanView(which) {
+  if (state.busy || !state.clean || state.cleanView === which) return;
+  state.cleanView = which;
+  render();
+  await showCleanView(true);
+}
+
+// Step 3. Reached from Step 2's Next (or from the Library when the model is already cleaned).
 async function goStep3() {
+  $("foot-info").textContent = "";
   state.step = 3;
   state.showing = "model";
   $("skel-type").textContent = `This is ${TYPE_WORDS[state.asset.type] || "a model"}, so it gets a ${
@@ -455,10 +567,14 @@ async function init() {
   $("reroll").onclick = () => expand(true);
   $("next").onclick = async () => {
     if (state.step === 3) return buildSkeleton();
-    if (state.step === 2) return;
-    if (state.done) { state.step = 2; render(); } else start();
+    if (state.step === 2) return state.clean ? goStep3() : runClean();
+    if (state.done) goStep2(); else start();
   };
-  $("redo").onclick = () => (state.file || state.done ? start() : drawPicture());
+  $("redo").onclick = () => {
+    if (state.step === 2) return runClean();
+    return state.file || state.done ? start() : drawPicture();
+  };
+  document.querySelectorAll("#clean-view button").forEach((b) => { b.onclick = () => setCleanView(b.dataset.value); });
   $("tog-bones").onclick = () => toggle("bones");
   $("tog-pose").onclick = () => toggle("pose");
   try {
@@ -507,7 +623,11 @@ async function openAsset(id, step) {
   if (hasPic) $("preview").src = fileUrl("generate", "input.png", Date.now());
   $("drop").classList.toggle("has-image", hasPic);
   $("drop-text").textContent = hasPic ? "Change picture" : "Click to choose a picture";
-  state.cleanReady = !!(a.steps.clean && a.steps.clean.files.includes("clean.glb"));
+  const cs = a.steps.clean;
+  const hasGlb = !!(cs && cs.files.includes("clean.glb"));
+  state.clean = hasGlb ? (cs.result || { passed: true, problems: [] }) : null; // no result: placed by hand
+  state.cleanView = "after";
+  state.cleanV = Date.now();
   note($("note"), "");
   $("foot-info").textContent = "";
   viewer = viewer || new Viewer($("viewer"));
@@ -524,7 +644,7 @@ async function openAsset(id, step) {
     state.reference = true;
   }
   grow();
-  if (state.cleanReady && step !== "generate") { await goStep3(); return; }
+  if (state.clean && step !== "generate") { await (state.rig ? goStep3() : goStep2()); return; }
   if (state.done) {
     try { await viewer.load(state.meshUrl); showMsg(""); state.showing = "model"; } catch {
       note($("note"), "I could not show the model. Press Redo to make it again.", "error");
