@@ -2,7 +2,8 @@
 ## State: working; no new work in s7. In-process builders are wrapping up (commit, push, handoff).
 DIRECTOR RULE 2026-10-20: "no more subagents, if you need a helper you spawn a fresh session".
 s8 runs every lane as a fresh session (start_session, own worktree) from the lane handoffs below.
-Rule being recorded by session rule-sessions (local_ec88eef6-2906-402f-88b7-9e8c7d98510d).
+Rule being recorded by session rule-sessions (local_ec88eef6-2906-402f-88b7-9e8c7d98510d), plus his
+"seperate sessions grouped properly in the toolbar": file every helper in an "Asset Forge" sidebar group.
 PR #22 (skeleton-fit) open; merge-on-green watcher in s7 (if s7 is gone: merge it on green).
 s7's builders live only inside s7 (they die if s7 is archived). s8: check list_sessions / ListAgents;
 any builder below with no report = respawn fresh from its lane handoff file.
@@ -27,9 +28,11 @@ non-monster model exports with the Godot check green. Output: notes folder e2e/r
   (a57382f base, 6/10). Causes: bird beak registration, triposg fox 2 parts, hi3dgen fox
   chest/legs, humanoid greaves. Bar 8/10 -> pushes into claude/clean-step + PR #9 body.
   Next: fresh realism-critic on the 10 sheets, merge #9. Handoff agent-handoffs/clean-step.md.
-  b8 stopped: bird beak FIXED (outline warp); fox chest cause = hollow shell torso; triposg fox
-  leg detached in raw mesh; make_solid() not working yet. clean-b9 (opus) running in s7: commit
-  b8 WIP, fix make_solid, regen views, 10 re-run, bar 8/10.
+  b9 STOPPED (rule change): WIP pushed claude/clean-step-methodB-local e34508d. Bird beak fixed;
+  hollow trigger = 26-direction escape share >= 0.10 (fox 0.605, hi3dgen human 0.313, others
+  <= 0.017); triposg fox bridge next = cylinder r 2.5 voxels. Not built: filler, bridge, fresh MV
+  views, 10 rerun, method B as app default (steps.clean_command), test_clean_fox_gates.
+  s8: fresh session from agent-handoffs/clean-step.md (scratch b9 named there).
 - anim-b4 life 2 (opus): asset-forge-wt/animation, local WIP 5a87bdd (not pushed; #20 at
   350dcf2). Critic list notes motion_critic_s7.md. 9 of 79 unit fail (diagnosed in
   agent-handoffs/animation.md). Lead confirmed fox walk 1.3 strides/s, birds <=0.3 m hop. Left:
