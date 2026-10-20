@@ -9,6 +9,8 @@ const state = {
   expanding: false, source: "", variation: 0, // "Expand my idea": the words it started from
   reference: false, refUrl: "",               // text-only: the drawn picture is ready to check
   showing: null,                              // what the viewer shows: "model", "ref" or null
+  limbWarn: "",                               // Step 1: the model's legs or arms do not match the words
+  chain: null, limbSel: -1, adding: false,    // Step 3, monsters: the limb chains being checked
 };
 let viewer = null;
 
@@ -137,6 +139,8 @@ function render() {
       : state.file ? "Your picture builds the model; your words are kept as notes."
       : state.source ? "Edit it if you like. Not quite right? Try another version." : "";
   }
+  limbWarningButtons(onStep1);
+  limbEditorShown();
   grow();
   $("viewer-hint").classList.toggle("hidden", !(state.showing === "model" && !state.busy));
   $("panel-1").classList.toggle("busy", state.busy);
@@ -245,6 +249,7 @@ async function start() {
   if (state.busy) return;
   if (!state.file && !state.reference) return drawPicture();
   state.busy = true;
+  state.limbWarn = "";
   render();
   note($("note"), "");
   $("foot-info").textContent = "Getting ready...";
@@ -304,7 +309,7 @@ async function finish(job) {
   const name = state.menu.generators.find((g) => g.id === r.generator)?.name || r.generator;
   $("foot-info").textContent = `Made with ${name} in ${Math.round(r.total_s)} s`
     + (makerVram(r.generator) ? `, using ${makerVram(r.generator)}` : "");
-  note($("note"), "Happy with it? Press Next. Not right? Press Redo for a new try.", "ok");
+  showLimbCheck(r.anatomy);
   render();
 }
 
@@ -326,8 +331,10 @@ async function backToStep1() {
 async function goStep3() {
   state.step = 3;
   state.showing = "model";
-  $("skel-type").textContent = `This is ${TYPE_WORDS[state.asset.type] || "a model"}, so it gets a ${
-    state.asset.type === "humanoid" ? "human" : "animal"} skeleton.`;
+  $("skel-type").textContent = state.asset.type === "monster"
+    ? "This is a monster, so its skeleton comes from its shape."
+    : `This is ${TYPE_WORDS[state.asset.type] || "a model"}, so it gets a ${
+      state.asset.type === "humanoid" ? "human" : "animal"} skeleton.`;
   render();
   viewer = viewer || new Viewer($("viewer"));
   note($("note"), "");
@@ -336,6 +343,7 @@ async function goStep3() {
     else {
       await viewer.load(fileUrl("clean", "clean.glb"));
       showMsg("");
+      if (state.asset.type === "monster") await loadLimbs();
     }
   } catch {
     note($("note"), "I could not show the model. Go back and try again.", "error");
@@ -358,7 +366,9 @@ async function buildSkeleton() {
   showMsg("Fitting the skeleton to your model...\nThis takes under a minute.", "busy");
   render();
   try {
-    const job = await api(`/api/assets/${state.asset.id}/skeleton`, { method: "POST" });
+    const job = state.asset.type === "monster"
+      ? await post(`/api/assets/${state.asset.id}/skeleton`, confirmedLimbs())
+      : await api(`/api/assets/${state.asset.id}/skeleton`, { method: "POST" });
     for (;;) {
       const j = await api(`/api/jobs/${job.id}`);
       if (j.state === "done") { state.rig = j.result; break; }
@@ -375,6 +385,7 @@ async function buildSkeleton() {
       "so it stays light in a game."}`;
     $("foot-info").textContent = `Skeleton built in ${Math.round(r.total_s)} s`;
     note($("note"), "Check the dots sit inside the body, then try the quick pose.", "ok");
+    state.chain = null; // the built skeleton is shown now; Change the limbs brings them back
   } catch (e) {
     showMsg("");
     note($("note"), e.message, "error");
@@ -461,6 +472,8 @@ async function init() {
   $("redo").onclick = () => (state.file || state.done ? start() : drawPicture());
   $("tog-bones").onclick = () => toggle("bones");
   $("tog-pose").onclick = () => toggle("pose");
+  $("limb-add").onclick = () => addLimb();
+  $("limb-again").onclick = () => changeLimbs();
   try {
     buildMenu(await api("/api/menu"));
   } catch {
@@ -499,6 +512,7 @@ async function openAsset(id, step) {
   state.file = null; state.rig = null; state.bones = state.pose = false;
   state.done = state.reference = false; state.meshUrl = null; state.step = 1; state.source = "";
   state.asset = null;
+  state.limbWarn = ""; state.chain = null; state.limbSel = -1; state.adding = false;
   selectType(a.type);
   state.asset = a;
   if (g.settings && state.menu.generators.some((x) => x.id === g.settings.generator)) selectGenerator(g.settings.generator);
@@ -531,12 +545,157 @@ async function openAsset(id, step) {
     }
     const name = state.menu.generators.find((x) => x.id === g.result.generator)?.name || g.result.generator;
     $("foot-info").textContent = `Made with ${name} in ${Math.round(g.result.total_s)} s`;
-    note($("note"), "Happy with it? Press Next. Not right? Press Redo for a new try.", "ok");
+    showLimbCheck(g.result.anatomy);
   } else if (state.reference) {
     showRef("Happy with it? Press Make 3D model. Not right? Press Redo for another picture.");
   } else {
     showMsg("Your model will appear here.\nPress Draw a picture to start.");
     state.showing = null;
+  }
+  render();
+}
+
+// ---- Step 1: the limb check (legs and arms against the words) ----
+
+function showLimbCheck(anatomy) {
+  state.limbWarn = anatomy && anatomy.ok === false ? anatomy.message : "";
+  if (state.limbWarn) note($("note"), state.limbWarn, "warn");
+  else note($("note"), "Happy with it? Press Next. Not right? Press Redo for a new try.", "ok");
+}
+
+// A wrong count makes Re-roll the main button and Next a quieter "Use it anyway".
+function limbWarningButtons(onStep1) {
+  const warn = onStep1 && state.done && !state.busy && !!state.limbWarn;
+  const next = $("next"), redo = $("redo");
+  next.className = warn ? "secondary" : "primary";
+  redo.className = warn ? "primary" : "secondary";
+  redo.textContent = warn ? "Re-roll" : "Redo";
+  if (warn) next.textContent = "Use it anyway";
+}
+
+// ---- Step 3, monsters: check the limb chains the app found, then Build skeleton ----
+
+const KIND_NAMES = { leg: "Leg", arm: "Arm", head: "Head", tail: "Tail" };
+
+async function loadLimbs() {
+  try {
+    state.chain = await api(`/api/assets/${state.asset.id}/skeleton/limbs`);
+  } catch (e) {
+    note($("note"), e.message, "error");
+    return;
+  }
+  state.limbSel = -1;
+  showLimbs();
+  const c = state.chain.counts || {};
+  const said = ["legs", "arms", "heads", "tails"].filter((k) => c[k]).map((k) => `${c[k]} ${
+    c[k] === 1 ? k.slice(0, -1) : k}`);
+  $("limb-hint").textContent = state.chain.confirmed ? "These are the limbs you confirmed last time."
+    : said.length ? `I found ${said.join(", ")}.` : "I could not find any limbs. Add them yourself.";
+  note($("note"), "Check the limbs, then press Build skeleton.", "ok");
+}
+
+function limbSide(lb) { // the character's left is +X, as in the skeleton's bone names
+  const mid = state.chain.spine.reduce((t, p) => t + p[0], 0) / state.chain.spine.length;
+  const dx = lb.joints[0][0] - mid;
+  return Math.abs(dx) < 0.03 * (state.chain.height || 1) ? "middle" : dx > 0 ? "left" : "right";
+}
+
+function showLimbs() {
+  viewer.editChains(state.chain, { selected: state.limbSel });
+  const list = $("limb-list");
+  list.textContent = "";
+  const n = {};
+  state.chain.limbs.forEach((lb, i) => {
+    n[lb.kind] = (n[lb.kind] || 0) + 1;
+    const li = document.createElement("li");
+    li.classList.toggle("sel", i === state.limbSel);
+    const pick = document.createElement("button");
+    pick.type = "button";
+    pick.className = "pick";
+    pick.textContent = `${KIND_NAMES[lb.kind]} ${n[lb.kind]}, ${limbSide(lb)}`;
+    pick.title = "Show this limb in orange";
+    pick.onclick = () => { state.limbSel = i === state.limbSel ? -1 : i; showLimbs(); };
+    const rm = document.createElement("button");
+    rm.type = "button";
+    rm.className = "small secondary";
+    rm.textContent = "Remove";
+    rm.setAttribute("aria-label", `Remove ${pick.textContent}`);
+    rm.onclick = () => removeLimb(i);
+    li.append(pick, rm);
+    list.append(li);
+  });
+  render();
+}
+
+function removeLimb(i) {
+  state.chain.limbs.splice(i, 1);
+  state.limbSel = -1;
+  $("limb-hint").textContent = "Removed. The body part stays in the model; it just will not move by itself.";
+  showLimbs();
+}
+
+function addLimb() {
+  if (state.adding) { // a second press cancels
+    state.adding = false;
+    viewer.pickOnBody(null);
+    $("limb-hint").textContent = "";
+    render();
+    return;
+  }
+  state.adding = true;
+  $("limb-hint").textContent = "Click on the model where the new limb's tip is.";
+  viewer.pickOnBody((tip) => {
+    state.adding = false;
+    const base = nearestOnSpine(tip);
+    const joints = [0, 1 / 3, 2 / 3, 1].map((t) => base.map((b, k) => Math.round((b + (tip[k] - b) * t) * 1e4) / 1e4));
+    state.chain.limbs.push({ kind: $("limb-kind").value, joints });
+    state.limbSel = state.chain.limbs.length - 1;
+    $("limb-hint").textContent = "Added, in orange. Drag its dots to where its joints are.";
+    showLimbs();
+  });
+  render();
+}
+
+function nearestOnSpine(p) { // the new limb joins the body at the closest point of the body line
+  let best = null, bestD = Infinity;
+  const sp = state.chain.spine;
+  for (let k = 0; k + 1 < sp.length; k++) {
+    const a = sp[k], ab = sp[k + 1].map((x, j) => x - a[j]);
+    const len = ab.reduce((t, x) => t + x * x, 0) || 1e-9;
+    const t = Math.max(0, Math.min(1, ab.reduce((t2, x, j) => t2 + x * (p[j] - a[j]), 0) / len));
+    const q = a.map((x, j) => x + ab[j] * t);
+    const d = q.reduce((t2, x, j) => t2 + (x - p[j]) ** 2, 0);
+    if (d < bestD) { bestD = d; best = q; }
+  }
+  return best;
+}
+
+function confirmedLimbs() {
+  return { spine: state.chain.spine, limbs: state.chain.limbs.map((lb) => ({ kind: lb.kind, joints: lb.joints })) };
+}
+
+function limbEditorShown() {
+  const monster = !!(state.asset && state.asset.type === "monster");
+  const editing = state.step === 3 && monster && !state.rig && !!state.chain;
+  $("limb-edit").classList.toggle("hidden", !editing);
+  $("limb-add").textContent = state.adding ? "Cancel" : "Add a limb";
+  $("limb-add").disabled = state.busy;
+  $("limb-again").classList.toggle("hidden", !(monster && state.rig));
+  $("limb-again").disabled = state.busy;
+  $("skel-wait").innerHTML = editing
+    ? "When the limbs look right, press <b>Build skeleton</b>, bottom right."
+    : "Press <b>Build skeleton</b>, bottom right. It takes under a minute.";
+}
+
+async function changeLimbs() { // back to the markers, starting from the limbs confirmed last time
+  if (state.busy) return;
+  state.rig = null;
+  state.bones = state.pose = false;
+  try {
+    await viewer.load(fileUrl("clean", "clean.glb"));
+    await loadLimbs();
+  } catch {
+    note($("note"), "I could not show the model. Go back and try again.", "error");
   }
   render();
 }

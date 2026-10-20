@@ -85,6 +85,20 @@
       later, when you pick an animation.</p>
     <p class="muted" id="skel-type"></p>
 
+    <div class="block hidden" id="limb-edit">
+      <h3>Check the limbs</h3>
+      <p class="limb-how">Each limb is a row of yellow dots, from where it joins the body to its tip.
+        Drag a dot that is in the wrong place. The blue dots are the body.</p>
+      <ul id="limb-list" class="limb-list"></ul>
+      <div class="row">
+        <select id="limb-kind" aria-label="Kind of limb to add">
+          <option value="leg">Leg</option><option value="arm">Arm</option>
+          <option value="head">Head</option><option value="tail">Tail</option></select>
+        <button type="button" class="small secondary" id="limb-add">Add a limb</button>
+      </div>
+      <p class="muted" id="limb-hint"></p>
+    </div>
+
     <div class="block hidden" id="skel-look">
       <h3>Check how it fits</h3>
       <button type="button" class="toggle" id="tog-bones" aria-pressed="false">
@@ -94,6 +108,7 @@
         <b>Try a quick pose</b><span>Bends the arms, legs and head once. If the skin stretches or tears,
         the skeleton does not fit yet. Press again to stand it straight.</span></button>
       <p class="muted" id="skel-facts"></p>
+      <button type="button" class="small secondary hidden" id="limb-again">Change the limbs</button>
     </div>
     <p class="muted" id="skel-wait">Press <b>Build skeleton</b>, bottom right. It takes under a minute.</p>
     <!-- TODO(PR #9): the Clean step will hand its model over here; until it merges, the page opens
