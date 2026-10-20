@@ -44,7 +44,7 @@ from .draw import DrawError, ReferenceDrawer, default_drawer
 from .generators import Registry
 from .jobqueue import GpuQueue, Job
 from .library import register_library
-from .matte import prepare_reference
+from .matte import one_subject, prepare_reference
 from .skeleton import rig
 from .skeleton.monster import ChainError, monster_bones
 from .store import ASSET_TYPES, NotFound, Store
@@ -54,6 +54,7 @@ mimetypes.add_type("model/gltf-binary", ".glb")
 
 TYPE_LABELS = {"humanoid": "Humanoid", "monster": "Monster", "animal": "Animal"}
 MAX_UPLOAD = 25 * 1024 * 1024
+DRAW_TRIES = 3  # draws per press before the picture is given up on
 MAX_WORDS = 600
 
 
@@ -180,12 +181,22 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         """Draw input.png from the words (inside a queue job; the batch uses it too)."""
         release_writer()  # the idea writer must not hold VRAM while the picture is drawn
         t0 = time.time()
-        png = drawer.draw(prompt, asset_type, seed, progress)
         buf = io.BytesIO()
-        try:
-            prepare_reference(png).save(buf, "PNG")
-        except ValueError as e:
-            raise DrawError("The drawing came out empty. Press Draw another.") from e
+        for attempt in range(DRAW_TRIES):  # a picture of several creatures is drawn again
+            seed_used = seed + attempt
+            png = drawer.draw(prompt, asset_type, seed_used, progress)
+            try:
+                cut = prepare_reference(png)
+            except ValueError as e:
+                raise DrawError("The drawing came out empty. Press Draw another.") from e
+            if one_subject(cut):
+                break
+            progress("The picture had more than one creature, drawing it again...")
+        else:
+            raise DrawError("The picture keeps coming out with several creatures or cut off. "
+                            "Press Draw another, or add 'one animal alone' to your words.")
+        cut.save(buf, "PNG")
+        seed = seed_used
         (store.step_dir(asset_id, "generate") / "input.png").write_bytes(buf.getvalue())
         return {"seed": seed, "draw_s": round(time.time() - t0, 1)}
 

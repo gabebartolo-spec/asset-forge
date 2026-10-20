@@ -73,3 +73,44 @@ def prepare_reference(data: bytes) -> Image.Image:
             "on a plain background."
         )
     return img
+
+
+ONE_SUBJECT_SHARE = 0.85  # the biggest piece must hold this much of the picture's subject pixels
+CHECK_SIDE = 128
+GAP_CLOSE = 3  # cells (of 128) a gap inside one creature may be
+
+
+def one_subject(img: Image.Image) -> bool:
+    """True when the cut-out is a single whole subject: one big piece (a few specks are fine, and
+    thin gaps such as between a head and a body are closed first) that does not touch the
+    picture's edge. A tiled pattern of several animals, or an animal cut off by the frame, would
+    send the 3D maker a picture it cannot read."""
+    a = np.asarray(img.getchannel("A").resize((CHECK_SIDE, CHECK_SIDE), Image.NEAREST)) > 0
+    total = int(a.sum())
+    if total == 0:
+        return False
+    d = a.copy()
+    for _ in range(GAP_CLOSE):
+        d[1:] |= d[:-1].copy()
+        d[:-1] |= d[1:].copy()
+        d[:, 1:] |= d[:, :-1].copy()
+        d[:, :-1] |= d[:, 1:].copy()
+    seen = np.zeros_like(d)
+    biggest = 0
+    for sy, sx in zip(*np.nonzero(d), strict=True):
+        if seen[sy, sx]:
+            continue
+        q, cells = deque([(sy, sx)]), []
+        seen[sy, sx] = True
+        while q:
+            y, x = q.popleft()
+            cells.append((y, x))
+            for ny, nx in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)):
+                if 0 <= ny < CHECK_SIDE and 0 <= nx < CHECK_SIDE and d[ny, nx] and not seen[ny, nx]:
+                    seen[ny, nx] = True
+                    q.append((ny, nx))
+        ys, xs = zip(*cells, strict=True)
+        biggest = max(biggest, int(a[list(ys), list(xs)].sum()))
+    touches = a[0].any() or a[-1].any() or a[:, 0].any() or a[:, -1].any()
+    return biggest / total >= ONE_SUBJECT_SHARE and not touches
+
