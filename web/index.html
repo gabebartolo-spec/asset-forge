@@ -25,7 +25,7 @@
 
 <ol class="steps" id="steps" aria-label="Steps">
   <li data-step="1" class="current" id="pill1">1 Make</li>
-  <li data-step="2">2 Clean up</li>
+  <li data-step="2" id="pill2">2 Clean up</li>
   <li data-step="3" class="soonpill" id="pill3">3 Skeleton <span class="soon" id="pill3-soon">soon</span></li>
   <li data-step="4" class="soonpill">4 Animate <span class="soon">soon</span></li>
 </ol>
@@ -73,10 +73,20 @@
   </aside>
 
   <aside class="panel hidden" id="panel-2">
-    <h2>Cleaning up is coming next</h2>
-    <p>This step will turn the rough model into a light, tidy one that is ready for a game.
-      It is not built yet, so there is nothing to press here.</p>
-    <p class="muted">Click <b>1 Make</b> above to go back to your model.</p>
+    <h2>Clean up your model</h2>
+    <p id="clean-intro">This turns the rough model into a light, tidy one that is ready for a game:
+      fewer triangles, one surface, one picture of colour. Press <b>Clean up</b>, bottom right.
+      It takes a minute or two.</p>
+    <div class="block hidden" id="clean-result">
+      <h3>Compare</h3>
+      <div class="seg" id="clean-view" role="radiogroup" aria-label="Which model to look at">
+        <button type="button" role="radio" data-value="before" aria-checked="false">Before (rough)</button>
+        <button type="button" role="radio" data-value="after" aria-checked="true">After (cleaned)</button>
+      </div>
+      <p class="verdict" id="clean-verdict" role="status"></p>
+      <ul class="problems hidden" id="clean-problems"></ul>
+      <dl class="facts" id="clean-facts"></dl>
+    </div>
   </aside>
 
   <aside class="panel hidden" id="panel-3">
@@ -96,8 +106,6 @@
       <p class="muted" id="skel-facts"></p>
     </div>
     <p class="muted" id="skel-wait">Press <b>Build skeleton</b>, bottom right. It takes under a minute.</p>
-    <!-- TODO(PR #9): the Clean step will hand its model over here; until it merges, the page opens
-         an existing model with clean.glb at /?asset=ID. -->
   </aside>
 </main>
 

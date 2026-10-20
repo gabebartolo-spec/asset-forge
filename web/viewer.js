@@ -2,7 +2,8 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
-// A big spinnable viewer. Shows the raw mesh as grey clay (the generators make shape only).
+// A big spinnable viewer. Shows the raw mesh as grey clay (the generators make shape only); the
+// cleaned model is shown with its own colour (`textured`).
 export class Viewer {
   constructor(el) {
     this.el = el;
@@ -54,7 +55,7 @@ export class Viewer {
   }
 
   // keepView: swap the model but leave the camera where the user put it.
-  async load(url, { keepView = false, pose = false, showBones = false } = {}) {
+  async load(url, { keepView = false, pose = false, showBones = false, textured = false } = {}) {
     const gltf = await new GLTFLoader().loadAsync(url);
     this.clear();
     const clay = new THREE.MeshStandardMaterial({ color: 0xc9ccd4, roughness: 0.7, metalness: 0.0 });
@@ -62,7 +63,7 @@ export class Viewer {
     root.traverse((o) => {
       if (o.isMesh) {
         if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
-        o.material = clay;
+        if (!textured) o.material = clay; // textured: the cleaned model's own colour
       }
     });
     // stand it on the grid, centred, about 1.6 units tall

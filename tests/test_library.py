@@ -6,7 +6,7 @@ from __future__ import annotations
 import time
 
 import pytest
-from conftest import FakeGenerator, make_png
+from conftest import FakeGenerator, fake_cleaner, make_png
 from fastapi.testclient import TestClient
 
 from asset_forge.api import create_app
@@ -16,7 +16,7 @@ from asset_forge.generators import Registry
 
 @pytest.fixture
 def client(settings, fake_registry):
-    app = create_app(settings, fake_registry, drawer=MockDrawer())
+    app = create_app(settings, fake_registry, drawer=MockDrawer(), cleaner=fake_cleaner())
     with TestClient(app) as c:
         yield c
     app.state.queue.shutdown()
@@ -103,7 +103,7 @@ def test_there_is_no_way_to_hard_delete(client):
 
 def test_cannot_trash_or_copy_while_it_is_being_made(settings):
     slow = Registry([FakeGenerator("hi3dgen", "Hi3DGen", sleep=0.6)])
-    app = create_app(settings, slow, drawer=MockDrawer())
+    app = create_app(settings, slow, drawer=MockDrawer(), cleaner=fake_cleaner())
     with TestClient(app) as c:
         aid = new_picture_asset(c)
         job = c.post(f"/api/assets/{aid}/generate", json={"generator": "hi3dgen"}).json()
@@ -138,14 +138,15 @@ def test_batch_of_three_runs_in_order_and_fills_the_library(client):
     assert len(cards) == 3
     for it in b["items"]:
         c = cards[it["asset_id"]]
-        assert c["reached"] == "generate" and c["thumb"] and c["prompt"] == it["prompt"]
-        assert set(c["timings"]) == {"draw", "generate"}
+        # a batch runs Make and Clean up, then stops: no skeleton is ever queued (design 5.5)
+        assert c["reached"] == "clean" and c["thumb"] and c["prompt"] == it["prompt"]
+        assert set(c["timings"]) == {"draw", "generate", "clean"}
     assert [cards[i["asset_id"]]["type"] for i in b["items"]] == ["humanoid", "animal", "monster"]
 
 
 def test_batch_progress_says_which_model_and_who_is_ahead(settings):
     slow = Registry([FakeGenerator("hi3dgen", "Hi3DGen", sleep=0.4)])
-    app = create_app(settings, slow, drawer=MockDrawer())
+    app = create_app(settings, slow, drawer=MockDrawer(), cleaner=fake_cleaner())
     with TestClient(app) as c:
         b = c.post("/api/batch", json={"items": [
             {"prompt": "one", "type": "humanoid"}, {"prompt": "two", "type": "animal"}]}).json()
@@ -160,7 +161,7 @@ def test_batch_progress_says_which_model_and_who_is_ahead(settings):
 
 def test_a_failed_item_does_not_stop_the_rest(settings):
     gen = FakeGenerator("hi3dgen", "Hi3DGen", fail=True)
-    app = create_app(settings, Registry([gen]), drawer=MockDrawer())
+    app = create_app(settings, Registry([gen]), drawer=MockDrawer(), cleaner=fake_cleaner())
     with TestClient(app) as c:
         b = wait_batch(c, c.post("/api/batch", json={"items": [
             {"prompt": "a", "type": "humanoid"}, {"prompt": "b", "type": "humanoid"}]}).json())

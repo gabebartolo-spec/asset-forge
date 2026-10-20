@@ -56,7 +56,7 @@ function card(a, trashed) {
   if (trashed) add("Put back", () => act(`/api/assets/${a.id}/restore`));
   else {
     add("Open", () => ctx.open(a.id), "primary").disabled = !a.thumb && !!a.busy;
-    if (a.reached === "skeleton") add("Open at Make", () => ctx.open(a.id, "generate"));
+    if (a.reached === "skeleton" || a.reached === "clean") add("Open at Make", () => ctx.open(a.id, "generate"));
     const idle = !a.busy;
     add("Copy", () => act(`/api/assets/${a.id}/duplicate`)).disabled = !idle;
     add("Remove", () => act(`/api/assets/${a.id}/trash`)).disabled = !idle;

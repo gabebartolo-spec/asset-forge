@@ -88,3 +88,23 @@ def test_status_is_persisted_at_each_change(tmp_path):
     q.wait(job.id, 10)
     q.shutdown()
     assert seen[0] == "queued" and seen[-1] == "done" and "running" in seen
+
+
+def test_done_shows_only_after_the_end_state_is_on_disk(tmp_path):
+    # A poller that sees "done" or "failed" reads the asset's files next (timings, the Library's
+    # busy check); the end state must be written before it is shown.
+    shown_while_saving = []
+
+    def persist(job):
+        if job.state in (DONE, FAILED):
+            live = q.jobs[job.id]
+            shown_while_saving.append((live.state, live.settled))
+
+    q = GpuQueue(tmp_path / "gpu.lock", persist=persist, lock_poll_s=0.01)
+    ok = q.submit("a", "generate", lambda job: {"x": 1})
+    bad = q.submit("a", "generate", lambda job: (_ for _ in ()).throw(GeneratorError("no")))
+    for j in (ok, bad):
+        q.wait(j.id, 10)
+    q.shutdown()
+    assert ok.state == DONE and bad.state == FAILED and ok.settled and bad.settled
+    assert shown_while_saving == [(RUNNING, False), (RUNNING, False)]

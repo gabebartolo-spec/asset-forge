@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import json
 import time
 from pathlib import Path
 
@@ -59,3 +60,27 @@ def settings(tmp_path) -> Settings:
 @pytest.fixture
 def fake_registry() -> Registry:
     return Registry([FakeGenerator("hi3dgen", "Hi3DGen"), FakeGenerator("triposg", "TripoSG")])
+
+
+GOOD_REPORT = {
+    "triangles": 7600, "triangle_budget": 8000, "raw_triangles": 310000, "materials": 1,
+    "texture": {"width": 1024, "height": 1024, "max_px": 1024}, "height_m": 1.8,
+    "silhouette": {"threshold": 0.08, "front": 0.02, "side": 0.03, "top": 0.04},
+}
+
+
+def fake_cleaner(report: dict | None = None, code: int = 0, log: list | None = None):
+    """A stand-in for the Blender run: writes clean.glb and report.json where clean.py would."""
+    def run(cmd: list[str]) -> tuple[int, str]:
+        if log is not None:
+            log.append(cmd)
+        out = Path(cmd[cmd.index("--") + 2])
+        out.mkdir(parents=True, exist_ok=True)
+        if code == 0:
+            (out / "clean.glb").write_bytes(b"glTF-clean")
+            animal = cmd[cmd.index("--type") + 1] == "animal"  # the animal budget is tighter
+            good = {**GOOD_REPORT, "triangles": 1800, "texture": {"width": 512, "height": 512}
+                    } if animal else GOOD_REPORT
+            (out / "report.json").write_text(json.dumps(report or good))
+        return code, "log"
+    return run

@@ -125,9 +125,6 @@ def test_bad_requests_get_plain_errors(client):
 
 
 def test_hooks_for_later_steps_say_coming_next(client):
-    a = upload(client).json()
-    r = client.post(f"/api/assets/{a['id']}/clean")
-    assert r.status_code == 501 and "coming next" in r.json()["detail"]
     r = client.post("/api/assets/from-text", json={"prompt": "a fox", "type": "animal"})
     assert r.status_code == 501 and "isn't ready yet" in r.json()["detail"]
 

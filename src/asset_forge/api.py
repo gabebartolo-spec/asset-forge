@@ -7,7 +7,9 @@
     GET  /api/jobs/{job_id}               state, plain-words message, elapsed time
     GET  /api/assets, /api/assets/{id}    the library
     GET  /api/assets/{id}/files/{step}/{name}   an output (raw.glb, input.png, ...)
-    POST /api/assets/{id}/clean           Step 2 hook (not wired yet: 501)
+    POST /api/assets/{id}/clean           Step 2: rebuild the model (queued; runs blender/clean.py)
+                                          result: passed, problems (broken limits), triangles,
+                                          texture; files clean/clean.glb, report.json
     POST /api/assets/{id}/skeleton        Step 3: fit, bind, test pose (queued; needs clean.glb)
     GET  /api/library[?trash=1]           cards: thumbnail flag, type, date, last step, timings
     POST /api/assets/{id}/duplicate, /trash, /restore   copy, move to library/_trash, put back
@@ -28,10 +30,11 @@ import time
 from collections.abc import Callable
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from .clean_step import Runner, blender_runner, clean_model
 from .config import Settings, load_settings
 from .draw import DrawError, ReferenceDrawer, default_drawer
 from .generators import Registry
@@ -95,7 +98,8 @@ def release_idea_writer() -> None:
 def create_app(settings: Settings | None = None, registry: Registry | None = None,
                queue: GpuQueue | None = None, expander: Expander | None = None,
                drawer: ReferenceDrawer | None = None,
-               release_writer: Callable[[], None] | None = None) -> FastAPI:
+               release_writer: Callable[[], None] | None = None,
+               cleaner: Runner | None = None) -> FastAPI:
     settings = settings or load_settings()
     store = Store(settings.library_dir)
     store.fail_unfinished()
@@ -118,6 +122,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
     expander = expander or real_expander
     drawer = drawer or default_drawer(settings)
     release_writer = release_writer or release_idea_writer
+    cleaner = cleaner or blender_runner(settings.blender_exe)
 
     gpu_queue = queue or GpuQueue(settings.lock_dir, persist=persist)
     if queue is not None:
@@ -285,24 +290,41 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
             raise missing("file") from None
         return FileResponse(p, headers={"Cache-Control": "no-cache"})
 
+    def clean_now(asset_id: str, progress: Callable[[str], None]) -> dict:
+        """Step 2 on a finished 3D model (inside a queue job; the batch uses it too). A model that
+        breaks a limit comes back with passed False and does not count as reaching Step 2."""
+        asset = store.get_asset(asset_id)
+        res = clean_model(settings, asset, store.step_dir(asset_id, "generate"),
+                          store.step_dir(asset_id, "clean"), cleaner, progress)
+        store.write_result(asset_id, "clean", res)
+        if res["passed"]:
+            store.mark_reached(asset_id, "clean")
+        return res
+
     @app.post("/api/assets/{asset_id}/clean")
-    def clean(asset_id: str) -> JSONResponse:
-        # Step 2 hook: will run steps.clean_command(...) on the queue, then show clean.glb.
-        return JSONResponse(
-            {"detail": "Cleaning up the model is coming next."}, status_code=501)
+    def clean(asset_id: str) -> dict:
+        try:
+            asset = store.get_asset(asset_id)
+        except NotFound:
+            raise missing("model") from None
+        if not (asset["steps"].get("generate", {}).get("result")):
+            raise HTTPException(409, "Make the 3D model first (step 1), then clean it up.")
+
+        def run(job: Job) -> dict:
+            return clean_now(asset_id, job.set_message)
+
+        return gpu_queue.submit(asset_id, "clean", run).public()
 
     @app.post("/api/assets/{asset_id}/skeleton")
     def skeleton(asset_id: str) -> dict:
-        # TODO(PR #9): the Clean step will write library/<id>/clean/clean.glb through this
-        # app; until it is merged the file is placed there by hand and the Step 2 -> Step 3
-        # hand-over button does not exist yet.
         try:
             asset = store.get_asset(asset_id)
             clean_glb = store.step_dir(asset_id, "clean") / "clean.glb"
             out = store.step_dir(asset_id, "skeleton")
         except NotFound:
             raise missing("model") from None
-        if not clean_glb.is_file():
+        if not clean_glb.is_file() or store.get_asset(asset_id)["steps"].get(
+                "clean", {}).get("result", {}).get("passed") is False:
             raise HTTPException(409, "Clean up the model first, then build its skeleton.")
         if asset["type"] == "monster":
             raise HTTPException(
@@ -320,7 +342,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
 
         return gpu_queue.submit(asset_id, "skeleton", run).public()
 
-    register_library(app, store, gpu_queue, registry, drawer, draw_now, generate_now)
+    register_library(app, store, gpu_queue, registry, drawer, draw_now, generate_now, clean_now)
 
     if settings.web_dir.is_dir():
         app.mount("/", StaticFiles(directory=settings.web_dir, html=True), name="web")
