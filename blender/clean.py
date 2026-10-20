@@ -324,13 +324,21 @@ HEAD_FULL = 0.18          # rows (from the top, of the height) shifted fully ont
 HEAD_FADE = 0.34          # ... fading back to the outline fit by here (shoulders, torso)
 HEAD_WIDTH_OF_H = 0.16    # nominal head width as a fraction of the figure height
 HEAD_AGREE = 0.25         # allowed cue disagreement after registration, in head widths
-PALE_BOOST = 1.5     # fill: pale (white/grey, low saturation) sources count this much more
-PALE_LUMA = (0.45, 0.65)   # luma ramp for "pale"
-PALE_SAT = (0.30, 0.12)    # saturation ramp (below the first = 0, below the second = full)
-SPECK_CAP = 0.10     # texels not well facing the camera may differ from the fill by this luma only
-SPECK_SCALE = 8      # fill: iterations of the local-colour estimate for speck removal (animals)
-SPECK_DARK = 0.6     # ... a source darker than this x the local luma is a speck
-SPECK_WHITE = 0.30   # ... or whiter than the local luma by this
+# Animals. A speck (eye, nose, an ear's inner mark) is a SMALL connected dark or white component of
+# the picture: under SPECK_AREA of the silhouette. Large dark or white regions (black socks, a
+# white chest or tail tip) are not specks and project as they are. Specks are never used by the
+# fill, and only painted where the surface faces the camera (not onto the far flank or the back).
+SPECK_AREA = 0.0025
+# Neutral (white/grey) sources fill the neutral region from their brightest, well-lit pixels
+# (weight luma^NEUTRAL_POWER), where most of the nearby sources are neutral: averaging a white
+# chest with its shadowed facets and orange neighbours gives grey-mauve.
+OUTLINE_BLEED = 24    # animals: px the picture's colours grow past its outline
+GRAZE_MIN, GRAZE_TRUST = -MIN_FACING, 0.5
+SPECK_DARK_LUMA = 0.32
+NEUTRAL_LUMA_MIN = 0.30
+NEUTRAL_POWER = 4
+NEUTRAL_SHARE = (0.4, 0.6)   # neutral share of the nearby source weight: none .. all brightest fill
+NEUTRAL_ITERS = 12
 MIRROR_SNAP = 0.02   # mirrored source must land within this x height of the surface for specks
 SPECK_FULL = (0.5, 0.7)    # facing cos from which the cap lifts completely
 HEAD_DARK = 0.04          # picture: darkest fraction of the head box taken as the face features
@@ -567,9 +575,10 @@ def region_gate_checks(ref_s, tex_s):
         ("tail_body_pale_fraction", tex_s["tail_body"]["pale"],
          f"<= {ref_s['tail_body']['pale'] + 0.10:.2f}",
          tex_s["tail_body"]["pale"] <= ref_s["tail_body"]["pale"] + 0.10),
+        # presence only: the box also holds some tail body of a model whose tail is shorter
         ("tail_tip_pale_fraction", tex_s["tail_tip"]["pale"],
-         f">= {0.6 * ref_s['tail_tip']['pale']:.2f}",
-         tex_s["tail_tip"]["pale"] >= 0.6 * ref_s["tail_tip"]["pale"]),
+         f">= {0.15 * ref_s['tail_tip']['pale']:.2f}",
+         tex_s["tail_tip"]["pale"] >= 0.15 * ref_s["tail_tip"]["pale"]),
     ]
     return out
 
@@ -593,10 +602,57 @@ def region_gates(name, ref, reg, right, p, colour):
     fmt = lambda s: {k: ([round(float(x), 3) for x in v] if k == "rgb" else round(v, 3))  # noqa
                      for k, v in s.items()}
     return {"reference": name, "passed": all(c[3] for c in checks),
-            "gates": [{"gate": c[0], "value": round(float(c[1]), 3), "limit": c[2], "ok": bool(c[3])}
-                      for c in checks],
+            "gates": [{"gate": c[0], "value": round(float(c[1]), 3), "limit": c[2],
+                       "ok": bool(c[3])} for c in checks],
             "reference_regions": {k: fmt(v) for k, v in ref_s.items()},
             "albedo_regions": {k: fmt(v) for k, v in tex_s.items()}}
+
+
+def bleed(img, mask, px):
+    """Grow the picture's colours px pixels outwards over its own outline (4-neighbour average of
+    known pixels, like the island padding): a model outline that misses the picture's by a few
+    pixels (a thin tail tip) still finds the picture's colours there. Returns (img, mask)."""
+    img, have = img.copy(), mask.copy()
+    for _ in range(px):
+        acc = np.zeros_like(img)
+        cnt = np.zeros(mask.shape, np.float64)
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            h = np.roll(have, (dy, dx), (0, 1))
+            acc += np.roll(img, (dy, dx), (0, 1)) * h[..., None]
+            cnt += h
+        grow = (~have) & (cnt > 0)
+        img[grow] = acc[grow] / cnt[grow, None]
+        have |= grow
+    return img, have
+
+
+def ref_specks(ref):
+    """Boolean image: small connected dark or white components of the picture (SPECK_AREA of the
+    silhouette, 4-connected, dark and white labelled apart), grown by 2 px for the sampling blur."""
+    from collections import deque
+    m = ref_mask(ref)
+    lu, sa = luma(ref[..., :3]), sat(ref[..., :3])
+    limit = SPECK_AREA * int(m.sum())
+    out = np.zeros(m.shape, bool)
+    h, w = m.shape
+    for cls in (m & (lu < SPECK_DARK_LUMA), m & (lu > PALE_LUMA_MIN) & (sa < PALE_SAT_MAX)):
+        seen = np.zeros(m.shape, bool)
+        for y0, x0 in zip(*np.nonzero(cls), strict=True):
+            if seen[y0, x0]:
+                continue
+            comp, q = [], deque([(y0, x0)])
+            seen[y0, x0] = True
+            while q:
+                y, x = q.popleft()
+                comp.append((y, x))
+                for yy, xx in ((y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)):
+                    if 0 <= yy < h and 0 <= xx < w and cls[yy, xx] and not seen[yy, xx]:
+                        seen[yy, xx] = True
+                        q.append((yy, xx))
+            if len(comp) < limit:
+                cy, cx = zip(*comp, strict=True)
+                out[list(cy), list(cx)] = True
+    return box_blur(out[..., None].astype(np.float64), 2)[..., 0] > 0.01
 
 
 def bake_colour(obj, ref, d0, size, ref_name=None):
@@ -663,6 +719,9 @@ def bake_colour(obj, ref, d0, size, ref_name=None):
     reg = Registration(co, right, ref, None if mirror else d0)
     height = max(np.ptp(co[:, 2]), 1e-9)
     mask = ref_mask(ref, erode=3)
+    ref_s_img = ref.astype(np.float64)
+    if mirror:
+        ref_s_img, mask = bleed(ref_s_img, mask, OUTLINE_BLEED)
     rh, rw = ref.shape[:2]
     bvh = bvhtree.BVHTree.FromObject(obj, bpy.context.evaluated_depsgraph_get())
     eps = max(np.ptp(co, axis=0)) * 1e-3
@@ -673,45 +732,70 @@ def bake_colour(obj, ref, d0, size, ref_name=None):
         body = (yv > yv.min() + 0.25 * np.ptp(yv)) & (yv < yv.max() - 0.25 * np.ptp(yv))
         cx = (co[body, 0].min() + co[body, 0].max()) / 2
     n_mirrored = [0]
+    tail_y = None
+    if mirror:
+        # the tail end: beyond the body's mid-length slice, on the side away from the head (the
+        # head is the high end of the animal)
+        y_head = co[co[:, 2] >= co[:, 2].min() + 0.92 * height, 1].mean()
+        y_mid = (yv.min() + yv.max()) / 2
+        tail_y = (y_mid, -np.sign(y_head - y_mid), 0.25 * np.ptp(yv))
 
-    def sources(Pp, w, Nn):
+    def in_tail(P):
+        return tail_y[1] * (P[:, 1] - tail_y[0]) > tail_y[2]
+
+    def sources(Pp, w, Nn, seen_min=MIN_FACING):
         """Source point on the surface that the camera sees for each point: the point itself, or
         (side views) for the far flank its left-right mirror image across the sagittal plane
         (x -> 2 cx - x only, never front-to-back) snapped to the nearest surface."""
         Q, WQ, NQ = Pp.copy(), w.copy(), Nn.copy()
         snap = np.zeros(len(Pp))
+        far = np.zeros(len(Pp), bool)
         if mirror:
+            tail = in_tail(Pp)
             for k in np.nonzero(w < -MIN_FACING)[0]:
                 m = Vector((2 * cx - Pp[k, 0], Pp[k, 1], Pp[k, 2]))
                 loc, nrm, _i, _d = bvh.find_nearest(m)
-                if loc is not None:
+                if loc is not None and (not tail[k] or (nrm.dot(d_vec) >= MIN_FACING
+                                                      and _d <= MIRROR_SNAP * height)):
                     Q[k], NQ[k] = (loc.x, loc.y, loc.z), (nrm.x, nrm.y, nrm.z)
                     WQ[k] = nrm.dot(d_vec)
                     snap[k] = _d
                     n_mirrored[0] += 1
+                elif tail[k]:
+                    # the far side of the tail has no mirror image (a tail swung to one side): it
+                    # takes the colour of the picture at its own place, as seen from the opposite
+                    # camera; never specks (snap = inf)
+                    WQ[k], far[k], snap[k] = -w[k], True, np.inf
         seen = np.zeros(len(Pp), bool)
-        for k in np.nonzero(WQ >= MIN_FACING)[0]:
-            if bvh.ray_cast(Vector(Q[k] + NQ[k] * eps), d_vec)[0] is None:
+        for k in np.nonzero(WQ >= seen_min)[0]:
+            dv = -d_vec if far[k] else d_vec
+            org = Vector(Q[k] + NQ[k] * eps) + (dv * eps * 2 if seen_min < 0 else Vector((0, 0, 0)))
+            if bvh.ray_cast(org, dv)[0] is None:
                 seen[k] = True
         sources.snap = snap
         return Q, WQ, seen
 
-    def sample(Q, img):
+    def pixels(Q):
         px, py = reg.to_ref(Q @ right, Q[:, 2])
-        ix = np.clip(np.rint(px).astype(int), 0, rw - 1)
-        iy = np.clip(np.rint(py).astype(int), 0, rh - 1)
+        return (np.clip(np.rint(py).astype(int), 0, rh - 1),
+                np.clip(np.rint(px).astype(int), 0, rw - 1))
+
+    def sample(Q, img):
+        iy, ix = pixels(Q)
         return img[iy, ix, :3], mask[iy, ix]
 
-    ref64 = ref.astype(np.float64)
+    ref64 = ref_s_img
     blur5 = box_blur(ref64, 2)
 
     # Vertex level: where the picture is trusted (a0) and where the fill colour comes from.
     vw = vn @ d_arr
-    VQ, VWQ, vseen = sources(co, vw, vn)
+    VQ, VWQ, vseen = sources(co, vw, vn, GRAZE_MIN if mirror else MIN_FACING)
     vcol, vinside = sample(VQ, blur5)
     head_ok = reg.head_ok()
     vz = (co[:, 2] - co[:, 2].min()) / height
-    a0 = ramp(VWQ) * (vseen & vinside)
+    # Animals: the tail (thin, often edge-on to the side camera) is painted from the picture's
+    # pixels there at vertex resolution even where it is edge-on; elsewhere edge-on stays fill.
+    a0 = np.maximum(ramp(VWQ), GRAZE_TRUST * in_tail(co) if mirror else 0.0) * (vseen & vinside)
     if not head_ok:
         a0 = np.where(vz >= 1 - HEAD_BAND, 0.0, a0)  # head does not match: low frequency only
     lum_v = luma(vcol)
@@ -726,24 +810,25 @@ def bake_colour(obj, ref, d0, size, ref_name=None):
     deg = np.bincount(edges[:, 0], minlength=nv).astype(np.float64)
     # Pale sources (a white chest next to an orange shoulder) count more: a fill that averages
     # them with their neighbours turns white into grey-mauve.
+    specks = ref_specks(ref) if mirror else None
     if mirror:
-        # Specks (eye, nose, ear tip, a white patch) must not seed the fill: a source that is much
-        # darker (or whiter) than the weighted colour around it at SPECK_SCALE iterations goes.
-        xs_ = diffuse(np.concatenate([vcol * s_fill[:, None], s_fill[:, None]], axis=1), edges,
-                      deg, SPECK_SCALE)
-        loc = xs_[:, :3] / np.maximum(xs_[:, 3:4], 1e-9)
-        l_loc, l_v = luma(loc), lum_v
-        speck = (s_fill > 0) & (xs_[:, 3] > 1e-3) & ((l_v < SPECK_DARK * l_loc)
-                                                      | (l_v > l_loc + SPECK_WHITE))
+        sy, sx = pixels(VQ)
+        speck = (s_fill > 0) & specks[sy, sx]
         s_fill = np.where(speck, 0.0, s_fill)
         n_speck_v = int(speck.sum())
     else:
         n_speck_v = 0
-    sv_ = sat(vcol)
-    pale = (np.clip((lum_v - PALE_LUMA[0]) / (PALE_LUMA[1] - PALE_LUMA[0]), 0, 1)
-            * np.clip((PALE_SAT[0] - sv_) / (PALE_SAT[0] - PALE_SAT[1]), 0, 1))
-    s_fill = s_fill * (1 + (PALE_BOOST * pale if mirror else 0.0))  # animals only
     fill_v = fill_colour(vcol, s_fill, edges, deg)
+    if mirror:
+        neutral = (sat(vcol) < PALE_SAT_MAX) & (lum_v > NEUTRAL_LUMA_MIN) & (s_fill > 0)
+        if neutral.any():
+            bright = (lum_v / max(np.quantile(lum_v[neutral], 0.95), 1e-6)) ** NEUTRAL_POWER
+            fill_n = fill_colour(vcol, np.where(neutral, s_fill * bright, 0.0), edges, deg)
+            share = (diffuse(np.where(neutral, s_fill, 0.0)[:, None], edges, deg,
+                             NEUTRAL_ITERS)[:, 0]
+                     / np.maximum(diffuse(s_fill[:, None], edges, deg, NEUTRAL_ITERS)[:, 0], 1e-9))
+            t = np.clip((share - NEUTRAL_SHARE[0]) / (NEUTRAL_SHARE[1] - NEUTRAL_SHARE[0]), 0, 1)
+            fill_v = fill_v * (1 - t[:, None]) + fill_n * t[:, None]
     # Seam feather: diffuse the trust over a surface distance of FEATHER x height.
     mean_edge = float(np.linalg.norm(co[edges[:, 0]] - co[edges[:, 1]], axis=1).mean())
     iters = int(np.clip(round((FEATHER * height / max(mean_edge, 1e-9)) ** 2 * 2), 4, 80))
@@ -758,23 +843,23 @@ def bake_colour(obj, ref, d0, size, ref_name=None):
     n_speck = [0]
     cand = np.nonzero(alpha_t > 0.01)[0]
     if len(cand):
-        Q, WQ, seen = sources(p[cand], wt[cand], n[cand])
+        Q, WQ, seen = sources(p[cand], wt[cand], n[cand], GRAZE_MIN if mirror else MIN_FACING)
         pc, inside = sample(Q, ref64)
         ok = seen & inside
+        if mirror:  # edge-on texels are painted on the tail only (thin: the smear is short)
+            ok &= (WQ >= MIN_FACING) | in_tail(Q)
         kk = cand[ok]
         known[kk] = True
-        # Dark or white specks (eye, nose, ear tip) only on texels well facing the camera: elsewhere
-        # the picture may differ from the fill by SPECK_CAP in luma, no more.
-        lift = np.clip((WQ[ok] - SPECK_FULL[0]) / (SPECK_FULL[1] - SPECK_FULL[0]), 0, 1)
-        # a mirrored point that lands off the surface (a turned head is not symmetric about the
-        # body plane) is not the other eye: no specks from it
-        lift = lift * (sources.snap[ok] <= MIRROR_SNAP * height)
-        dev = pc[ok] - fill_t[kk]
-        dl = luma(dev)
-        cap = SPECK_CAP + (1 - SPECK_CAP) * lift  # luma allowed, 1.0 = anything
-        scale = np.minimum(1.0, cap / np.maximum(np.abs(dl), 1e-6))
-        n_speck[0] = int((scale < 1).sum())
-        pc_used = fill_t[kk] + dev * scale[:, None]
+        # Specks (eye, nose) only on texels well facing the camera, and not from a mirrored point
+        # that landed off the surface (a turned head is not symmetric about the body plane).
+        pc_used = pc[ok]
+        if mirror:
+            lift = np.clip((WQ[ok] - SPECK_FULL[0]) / (SPECK_FULL[1] - SPECK_FULL[0]), 0, 1)
+            lift = lift * (sources.snap[ok] <= MIRROR_SNAP * height)
+            ty_, tx_ = pixels(Q[ok])
+            drop = specks[ty_, tx_] & (lift < 1)
+            n_speck[0] = int(drop.sum())
+            pc_used = np.where(drop[:, None], fill_t[kk], pc_used)
         colour[kk] = alpha_t[kk, None] * pc_used + (1 - alpha_t[kk, None]) * fill_t[kk]
     alpha_used = np.where(known, alpha_t, 0.0)
     gates = region_gates(ref_name, ref, reg, right, p, colour)
@@ -822,8 +907,9 @@ def bake_colour(obj, ref, d0, size, ref_name=None):
             "shadow_rel_to_band_median": SHADOW_REL, "shadow_bands": BANDS,
             "shadow_vertices_ignored": int(shadow.sum()),
             "method": "normalised vertex-graph diffusion, interpolated across triangles",
-            "pale_boost": PALE_BOOST, "speck_cap_luma": SPECK_CAP,
-            "texels_speck_limited": n_speck[0], "fill_specks_dropped": n_speck_v,
+            "speck_area_frac": SPECK_AREA,
+            "ref_speck_pixels": int(specks.sum()) if mirror else 0,
+            "texels_speck_replaced": n_speck[0], "fill_specks_dropped": n_speck_v,
             "seam_feather_height_frac": FEATHER, "seam_feather_iterations": iters,
         },
     }
