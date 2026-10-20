@@ -69,3 +69,70 @@ def read_skin(path: Path) -> SkinInfo:
             max_inf = max(max_inf, int(counts.max()) if len(counts) else 0)
             unweighted += int((w.sum(axis=1) <= 1e-6).sum())
     return SkinInfo(bones, verts, max_inf, unweighted)
+
+
+def _array(gltf: dict, blob: bytes, idx: int) -> np.ndarray:
+    """Vectorised accessor read (any stride), for big meshes."""
+    acc = gltf["accessors"][idx]
+    view = gltf["bufferViews"][acc["bufferView"]]
+    fmt, size = _COMP[acc["componentType"]]
+    n = _TYPES[acc["type"]]
+    stride = view.get("byteStride") or size * n
+    base = view.get("byteOffset", 0) + acc.get("byteOffset", 0)
+    dt = np.dtype("<" + fmt)
+    count = acc["count"]
+    if count == 0:
+        return np.zeros((0, n))
+    raw = np.frombuffer(blob, dtype=np.uint8, count=(count - 1) * stride + size * n,
+                        offset=base)
+    rows = np.lib.stride_tricks.as_strided(raw, shape=(count, size * n), strides=(stride, 1))
+    out = np.ascontiguousarray(rows).view(dt).reshape(count, n).astype(np.float64)
+    if acc.get("normalized") and acc["componentType"] in _NORM:
+        out /= _NORM[acc["componentType"]]
+    return out
+
+
+def _node_matrix(node: dict) -> np.ndarray:
+    if "matrix" in node:
+        return np.array(node["matrix"], float).reshape(4, 4).T
+    m = np.eye(4)
+    x, y, z, w = node.get("rotation", [0, 0, 0, 1])
+    r = np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+                  [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+                  [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
+    m[:3, :3] = r * np.array(node.get("scale", [1, 1, 1]), float)
+    m[:3, 3] = node.get("translation", [0, 0, 0])
+    return m
+
+
+def read_mesh(path: Path) -> tuple[np.ndarray, np.ndarray]:
+    """Every triangle of the default scene, as (vertices, triangles) in Blender's frame
+    (metres, Z up; glTF +Z front becomes -Y), node transforms applied."""
+    gltf, blob = _load(path)
+    verts, tris, base = [], [], 0
+    scene = gltf.get("scenes", [{}])[gltf.get("scene", 0)]
+    roots = scene.get("nodes", list(range(len(gltf.get("nodes", [])))))
+    stack = [(i, np.eye(4)) for i in roots]
+    while stack:
+        i, parent = stack.pop()
+        node = gltf["nodes"][i]
+        m = parent @ _node_matrix(node)
+        stack += [(c, m) for c in node.get("children", [])]
+        if "mesh" not in node:
+            continue
+        for prim in gltf["meshes"][node["mesh"]]["primitives"]:
+            if prim.get("mode", 4) != 4:
+                continue
+            p = _array(gltf, blob, prim["attributes"]["POSITION"])
+            p = p @ m[:3, :3].T + m[:3, 3]
+            if "indices" in prim:
+                t = _array(gltf, blob, prim["indices"]).astype(np.int64).reshape(-1, 3)
+            else:
+                t = np.arange(len(p) - len(p) % 3).reshape(-1, 3)
+            verts.append(p)
+            tris.append(t + base)
+            base += len(p)
+    if not verts:
+        raise ValueError("the file has no mesh")
+    v = np.vstack(verts)
+    return np.stack([v[:, 0], -v[:, 2], v[:, 1]], axis=1), np.vstack(tris)
