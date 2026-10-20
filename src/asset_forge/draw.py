@@ -71,7 +71,8 @@ STYLE = ("single full-body subject, centered, plain flat white background, soft 
          "lighting, clean 3D game asset concept render, whole body visible head to feet, no "
          "shadow on the ground, no text")
 NEGATIVE = ("cropped, cut off, multiple characters, scenery, background objects, text, watermark, "
-            "frame, blurry, photo of a toy, pedestal, ground shadow")
+            "frame, blurry, photo of a toy, pedestal, ground shadow, multiple views, turnaround, "
+            "character sheet, collage, tiled, repeated pattern, two figures")
 VIEWS = {
     "humanoid": "standing straight in an A-pose with arms angled down away from the body, "
                 "front view, facing the camera",
