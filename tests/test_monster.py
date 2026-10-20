@@ -191,7 +191,7 @@ def test_the_monster_test_pose_moves_every_arm_and_every_other_leg(proposals):
 
 
 def test_a_monster_without_confirmed_limbs_is_not_rigged(tmp_path):
-    with pytest.raises(skeleton.RigFailed, match="Confirm limbs"):
+    with pytest.raises(skeleton.RigFailed, match="limb markers"):
         skeleton.rig(tmp_path / "clean.glb", tmp_path / "out", "monster", "blender.exe")
 
 
