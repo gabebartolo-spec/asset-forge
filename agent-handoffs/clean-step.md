@@ -1,60 +1,47 @@
-# Handoff: clean-step (PR #9, builder clean-b10, cause fixes after D-027), 2026-10-20
-Brief (lead s8, local_95e771b1): D-027 "Keep improving first". Fix CAUSES, never loosen a gate.
-Bar >= 8/10 five-view sheets (5 prompts x Hi3DGen, TripoSG) -> push into claude/clean-step (PR #9),
-update PR #9 body (Evidence, Not exercised, Board and log), mark ready. Method B is the app default
-(steps.clean_command). Do NOT run critics; the lead starts a fresh realism critic.
-Report to the lead in <= 6 lines: sha, score, sheet folder path.
+# Handoff: clean-step (PR #9, builder clean-b10), 2026-10-20
+Brief (lead s8, local_1a944552): D-027 "Keep improving first". Fix CAUSES, never loosen a gate.
+Bar >= 8/10 five-view sheets -> push into claude/clean-step (PR #9), body, mark ready; method B
+the app default (steps.clean_command). Critics are the lead's (fresh realism critic next).
 
-## State: running a check (pytest -m blender), then merge main, push, PR #9 body
-Worktree .claude/worktrees/reverent-liskov-c185ff, branch claude/intelligent-vaughan-d9a6e6
-(contains origin/claude/clean-step effb435). Head 7da7ce8 (+ this handoff). Not pushed.
-origin/main merges clean (checked with merge-tree); merge after the suite, rerun unit + ruff.
-Director 2026-10-20 (via lead): gpu.lock only for VRAM-heavy work. clean.py `--gpu-lock DIR`
-holds it only around the multiview generator; clean_command does not pass it yet (jobqueue
-wraps the whole job; the lead's VRAM-budget lock PR changes that).
+## State: done (bar met, PR #9 ready); waiting on CI and the lead's critic
+PR #9 https://github.com/gabebartolo-spec/asset-forge/pull/9, branch claude/clean-step, head
+b09e91a + this handoff commit (pushed after marking ready so CI runs). Body has Evidence, Not
+exercised, Board and log. Local branch claude/intelligent-vaughan-d9a6e6 in worktree
+.claude/worktrees/reverent-liskov-c185ff tracks the same commits.
 
-## Done this session (17e7800)
-- blender/clean.py solid rebuild: `escape_count` (26 directions, one 2D-slice sweep each, 0.1-0.9 s,
-  identical to b9's slow an1.py); hollow = free voxels with < 3 escapes; fill if share >= 0.10;
-  SOLID_FILL_PASSES = 4 re-counts after each fill so an open mouth closes (old ~dil(outside)
-  guard dropped 2/3 of the open fox cavity). Bridge = cylinder r 2.5 voxels, +2 into each end.
-  `_label_big` is now a vectorised union-find (was 40 s on the hollow fox, now < 1 s). SOLID_SEAL,
-  _flood, _ero gone. Offline on b9 dumps: hi3dgen fox hollow 0.605 -> resid 0.0004, humanoid 0.313
-  -> 0.0005, triposg fox parts 2 -> 1 (gap 5.8), triposg humanoid 3 -> 1 (gaps 1.4, 2.0); others
-  untouched. Slice check: fill stays inside the outline (scratch slices_fill.png).
-- steps.clean_command(..., generator, models_dir) adds --generator and the method B flags
-  (models/envs/sdxl python, models/src/mv_adapter, models/hf); unit test added.
-- Plain-words SystemExit for unclear head direction and failed side painting.
-- tests/test_clean_solid.py (blender): open shell, leg 6 voxels off, dented block. Old filler
-  (e34508d) fails it: shell filled 0.0, leg still 3 parts. New: passes.
-- tests/test_clean_fox_gates.py now runs the app command (method B) under the GPU lock, markers
-  blender+gpu, also asserts single_part.
-- Unit: 113 passed; ruff clean.
-
-## Results (R1 = pushed code, fresh MV views; scratch runs/R1, sheets in docs/audits/clean)
-Scratch: C:/Users/DANTE/AppData/Local/Temp/claude/C--Users-DANTE-Documents-GitHub-asset-forge--claude-worktrees-reverent-liskov-c185ff/a11a6bd7-8e35-448a-8b13-6cc12dc53b2b/scratchpad
-8/10 region gates PASS; budget gates 10/10. Fails:
+## Result (R1: this code, fresh MV views)
+8/10 region gates; budget gates 10/10; all 10 one part. Sheets: docs/audits/clean/*.jpg.
+Run folder (clean.glb, report.json, multiview views):
+C:/Users/DANTE/AppData/Local/Temp/claude/C--Users-DANTE-Documents-GitHub-asset-forge--claude-worktrees-reverent-liskov-c185ff/a11a6bd7-8e35-448a-8b13-6cc12dc53b2b/scratchpad/runs/R1
+Fails:
 - hi3dgen humanoid greaves_back_colour_distance 0.127 (<= 0.12): back greaves 0.28 vs picture 0.20.
-- triposg fox chest_p90_luma_ratio 0.838 (0.85..1.25): chest views p90 0.56 vs picture 0.70.
-Cause (dump an_src.py on clean_dbg.py, GATE_DUMP): per-cell mv_match compares a picture cell
-(side-on: mostly orange flank / bright knee cops) with the same cell's 3D texels (whole white chest
-front / back greaves): population mismatch. 86% of fox chest texels come from the views.
-Failed fixes (2, so change method): MV_REMATCH (match the blend again): fox 0.841, humanoid 0.14;
-grid 12x24: fox 0.850 at the limit, humanoid greaves pass but boots_back 0.121; 9x18 worse.
-Proposed method: calibrate each view on PAIRED texels the picture also sees (view colour vs
-picture colour at the same 3D point); back view chained through the calibrated side views.
-test_clean_fox_gates[triposg] is xfail(strict) with that reason; hi3dgen passes.
-Transient: torch DLL access violation when 5 generator envs start at once (bird); rerun passed.
+- triposg fox chest_p90_luma_ratio 0.838 (0.85..1.25): chest view p90 0.56 vs picture 0.70.
+Cause (texel source dump, scratch an_src.py + clean_dbg.py with GATE_DUMP): per-cell mv_match
+compares a side-on picture cell (orange flank / bright knee cops) with the same cell's 3D texels
+(whole white chest front / back greaves). Failed fixes (2 -> method change): re-match the blend
+(fox 0.841, hum 0.14); grid 12x24 (fox 0.850 at limit, hum boots_back 0.121), 9x18 worse.
+Proposed next (not built): calibrate each view on PAIRED texels the picture also sees (view vs
+picture colour at the same 3D point), back view chained through calibrated side views.
+test_clean_fox_gates[triposg] is xfail(strict) with that reason.
+
+## What this session built
+- clean.py: escape_count hollow fill (SOLID_ESCAPE 3, SOLID_MIN_CAVITY 0.10, SOLID_FILL_PASSES 4),
+  cylinder bridge (r 2.5, +2), union-find _label_big; --gpu-lock DIR around the generator only
+  (vram_need("clean:multiview")); plain-words errors.
+- steps.clean_command(..., gpu_lock_dir, generator, models_dir): method B flags + lock default
+  models_dir/gpu.lock. Main's gpu_lock_dir kept (test_gpu_budget).
+- tests: test_clean_solid.py (new, fails on e34508d), clean_fox_gates on clean_command,
+  app_matte_steps method B test. tools/clean/run_all.py on clean_command, --from DIR.
+- Suites: unit 224 passed (post-merge); -m blender 17 passed, 9 skipped, 1 xfailed (pre-merge);
+  post-merge clean_solid/step/forward 10 passed; ruff clean.
 
 ## Environment gotchas
-- Set FORGE_MODELS_DIR=C:/Users/DANTE/Documents/GitHub/asset-forge/models (gpu_lock path guess
-  fails in .claude/worktrees).
 - Main .venv lacks fastapi; use session-context-optimization-b3f75f/.venv python with
-  PYTHONPATH=<this worktree>/src for pytest.
+  PYTHONPATH=<worktree>/src. Set FORGE_MODELS_DIR to the main models/ when in doubt.
+- 5 parallel generator starts once crashed torch DLL loading (access violation); rerun passed.
+- Times inflated by parallel runs and lock waits; one model alone 3.5-7 min.
 
-## Next (exact)
-1. Blender suite result (scratch blender_suite.log): expect all pass, 1 xfailed.
-2. git merge origin/main; unit + ruff; push HEAD:claude/clean-step; PR #9 body (Evidence, Not
-   exercised, Board and log: STATUS item 5 -> 8/10 met, follow-up "paired view calibration");
-   gh pr ready 9.
-3. Report to the lead (<= 6 lines: sha, 8/10, docs/audits/clean + scratch runs/R1); rewrite this.
+## Next
+1. Lead: CI on PR #9, fresh realism critic on docs/audits/clean, merge.
+2. If assigned: paired view calibration (above); then rerun the 10 with R1 views (--mv-views,
+   CPU only, parallel) and remove the xfail.
