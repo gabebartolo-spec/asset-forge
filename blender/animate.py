@@ -238,9 +238,10 @@ def render_previews(clips, actions, arm, model, body, out: Path, size: int):
     scene.camera = cam
     az, el = math.radians(55), math.radians(12)
     d = Vector((math.sin(az) * math.cos(el), -math.cos(az) * math.cos(el), math.sin(el)))
-    # One frame for the whole rig: every clip's box is measured first, then all clips share
-    # idle's centre and one ortho scale (the one that holds the widest clip), so the figure is
-    # the same size and in the same place in every preview, first frame to last.
+    # One frame for the whole rig: every clip's box is measured first, then all clips share one
+    # centre and one ortho scale (the smallest that holds every clip, centred on all of them
+    # rather than on the standing figure, so a faint that lies out in front does not shrink the
+    # standing figure), so the figure is the same size and in the same place in every preview.
     look = -np.array(d)
     right = np.cross(look, [0.0, 0.0, 1.0])
     right /= np.linalg.norm(right)
@@ -254,14 +255,14 @@ def render_previews(clips, actions, arm, model, body, out: Path, size: int):
             a, b = mesh_box(model)
             lo, hi = np.minimum(lo, a), np.maximum(hi, b)
         boxes.append((lo, hi))
-    anchor = (boxes[0][0] + boxes[0][1]) / 2  # idle's box centre
-    half = 0.0
-    for lo, hi in boxes:
-        corners = np.array([[x, y, z] for x in (lo[0], hi[0]) for y in (lo[1], hi[1])
-                            for z in (lo[2], hi[2])]) - anchor
-        half = max(half, np.abs(corners @ right).max(), np.abs(corners @ up_v).max())
+    corners = np.array([[x, y, z] for lo, hi in boxes for x in (lo[0], hi[0])
+                        for y in (lo[1], hi[1]) for z in (lo[2], hi[2])])
+    r_, u_ = corners @ right, corners @ up_v
+    anchor = (boxes[0][0] + boxes[0][1]) / 2
+    anchor = (anchor + right * (0.5 * (r_.min() + r_.max()) - anchor @ right)
+              + up_v * (0.5 * (u_.min() + u_.max()) - anchor @ up_v))
     centre = Vector(anchor.tolist())
-    cam_data.ortho_scale = float(2 * half) * 1.15
+    cam_data.ortho_scale = float(max(np.ptp(r_), np.ptp(u_))) * 1.08
     cam.location = centre + d * 30 * body.height
     cam.rotation_euler = (-d).to_track_quat("-Z", "Y").to_euler()
     cam_data.clip_end = 100 * body.height
