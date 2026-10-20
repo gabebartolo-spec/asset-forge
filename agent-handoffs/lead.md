@@ -1,5 +1,13 @@
 # Asset Forge lead handoff (2026-10-20, session 7)
-## State: working (clean-b8, anim-b4, skel-fit, mocap-cmp running)
+## State: working (clean-b8, anim-b4, skel-fit, mocap-cmp, proto running)
+
+## Session goal (director /goal 2026-10-20): "functional build prototype with at least 80% critic pass rate"
+Measure (lead's call): run tools/e2e/run_e2e.py on claude/prototype (main + #9 + step2-page + #20
++ skeleton-fit), 5 prompts x 2 generators. Fresh critics, one verdict per item: realism-critic per
+clean five-view sheet (10), motion-critic per animated rig's clip set (6), screen-critic per step
+page (4). Pass rate = SHIP / items judged >= 80%, and every non-monster model exports with the Godot
+check green. Output: notes folder e2e/run<N>/. This worktree is on claude/prototype (proto builder
+shares it; lead edits only lead.md; board-4 handoff commits are its base).
 
 ## Director said (2026-10-20)
 - "eta til usable build?" -> ~1.5-2 working days.
