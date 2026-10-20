@@ -1,42 +1,45 @@
-# Handoff: animation (anim-b3, Phase 4 first slice), updated 2026-10-20
-State: draft PR #20 open, CI green; awaiting lead motion review.
-Branch claude/animation (worktree ../asset-forge-wt/animation, own .venv), origin/main merged (f208bd0).
-Brief (lead): DONE = draft PR (do not merge), CI green, PR body per forge-pr with Evidence, Not
-exercised, Board and log. Clips go to the lead (motion critic), never the director.
+# Handoff: animation (anim-b4, motion fix round on draft PR #20), updated 2026-10-20
+State: fixes 1-5 committed locally (3e223da, NOT pushed); -m blender run was in progress at handoff.
+Branch claude/animation (worktree ../asset-forge-wt/animation, own .venv).
 Evidence folder: C:/Users/DANTE/AppData/Roaming/Claude/side-session-notes/32c9f533-fe4e-47ae-b55b-70ec62248734/animation/
-Scratch: %TEMP%/claude/C--Users-DANTE-Documents-GitHub-asset-forge--claude-worktrees-asset-forge-status-0d338f/32c9f533-.../scratchpad
-  (probe.py = gait table on the six rigs, locked_pytest.py = pytest under gpu.lock, reach*.py stroke probes)
+Scratch (S): %TEMP%/claude/C--Users-DANTE-Documents-GitHub-asset-forge--claude-worktrees-asset-forge-status-0d338f/32c9f533-.../scratchpad
+  probe.py (gait table, six rigs), lean.py (fox hind lean), faint_probe.py, locked_pytest.py (gpu.lock),
+  headsrc/ (HEAD src for failing-first runs: PYTHONPATH=$(cygpath -w S/headsrc/src)), bl_tests.log.
 
-## Lead decisions applied
-1. In place, speed in clips.json. 2. Loop sidecar <name>.glb.import. 3. Froude speeds, no floors (D-026).
-4. (anim-b3 brief) Human walk at real cadence 100-120 steps/min, natural stride, no deep crouch.
+## Brief (lead, anim-b4)
+Fix list: 1 animal cadence cap, 2 triposg fox hind leg drag, 3 human attack swipe, 4 human hit
+torso/head recoil, 5 human faint ends lying flat, 6 check loop wrap in the real clip and note it.
+DONE = pushed, unit + -m blender + ruff green, Godot OK on all six rigs, 36 previews re-rendered to
+previews_v3/ in the evidence folder, PR #20 body updated. Do not mark ready, do not merge.
+gpu.lock for every Blender run (shared with clean-b6, monster-b2). Do not touch jobqueue.py.
 
-## Cadence fix (c761292)
-- People: walk Fr 0.20 (L hip-ankle; Perry 1.37 m/s at L~0.83), stride HUMAN_STRIDE walk 1.65 L,
-  run 3.0 L; animals/birds keep Alexander 1976 (2.3 Fr^0.3 L).
-- Reach: heel strike (toes up 15 deg, rocks about a heel point 0.035 H behind the ankle) and
-  push-off about the toe TIP (heel up 45 deg walk, 35 run); toes no longer counter-rotated.
-  Reason: Step 3 fit puts the Toes (ball) joint straight under the ankle (fit.py line 107-108:
-  Foot at y_heel-0.7 flen, Toes at y_toe+0.3 flen = same y), so a ball pivot adds no stride.
-  Report to lead as a Step 3 finding (ankle should be ~0.25 flen from the heel).
-- Walk bob_max 0.055 L (hip dip <= 7.5% L); quad walk duty 0.62 (was 0.70), trot 0.38 (was 0.42).
-- Six rigs now: humanoid walk 32f 1.29 m/s 0.94 strides/s = 113 steps/min, stride 0.76 H;
-  run 3.52 m/s 1.36/s = 163 steps/min. fox walk 2.5/s (rule 2.3-2.5), trot 4.29/s (rule 3.6-3.9,
-  reach-capped). bird walk 4.29/s, run 6.0/s (rule 4.2 / 6.0).
-- Failing first: old code gave walk 163.6 and run 200 steps/min (tests fail), new passes.
+## What 3e223da does
+1. clips.MAX_STRIDES_PER_S = {walk 2.0, run 3.0} (lead decision); plan() returns (n, stroke, capped):
+   capped gait keeps the reach-limited stroke and lengthens the cycle; Clip.capped,
+   clips.json "cadence_capped". Six rigs now: bird walk 2.0/s 0.18 m/s, run 3.0/s ~0.46 m/s;
+   fox walk 1.88/s ~0.33-0.44 m/s, run 3.0/s ~0.7-0.87 m/s; humans unchanged (113 / 163 steps/min).
+2. Hind drag cause: hind leg = 2 bones (stifle to paw in one), knee forward; foot far behind the hip
+   plus hip drop leaned the lower bone 52 (walk) / 61 (run) deg near the ground (HEAD code, triposg
+   fixture). Fix: HIND_SHIN_MAX_DEG 45 on frames where the paw is below half the swing lift;
+   gait_clip loops shortening the hind back reach (0.88^k); Gait.early = hind paws lift early
+   (peak 30% of swing); four-legged crouch 0 and no mid-stance compress. Fixture
+   tests/fixtures/triposg_fox_skeleton.json. Also seen: triposg fox body is yawed ~18 deg off -Y
+   (Step 3 forward fit) - report to lead as a finding, not fixed here.
+3. Attack: upper-arm direction keyed as el/az angles (wind-up up-back, strike level forward-right,
+   follow-through across left-low, recoil), keys 0/.26/.33/.40/.52/.90, lunge step kept.
+4. Hit: Hips/Spine/Chest/UpperChest pitch back 24 deg total, neck+head lag then whip, settle.
+5. Faint: ends prone: legs straight (ankles move to hip - UP*0.995 L), feet pointed (toes 80 deg
+   below forward), arms by the sides, head on cheek; land frame 0.85 s. Blender ground_faint now
+   reports end_lowest_mm and end_torso_gap_mm (trunk-weighted vertices vs floor).
+Tests: test_animate.py 56 pass (new: cap pinned, small animals capped, hind lean on stick + triposg
+fixture, swipe arc, hit recoil, faint flat); new tests shown failing on HEAD code (scratch ff/).
+New blender test: faint lowest ~0 mm and torso gap <= 5% H. Unit suite 255 passed, ruff clean.
 
-## API (commit 2)
-POST /api/assets/{id}/animate (409 no rigged.blend, 400 monster NOT_YET, job step "animate"),
-POST /api/assets/{id}/export (409 no animated.glb; job step "export"; exports to
-library_dir.parent/exports; writes animate/export.json). jobqueue._plain passes AnimFailed and
-ExportRefused words. tests/test_animate_api.py 8 tests.
-
-## Web (commit 3)
-index.html panel-4 + pill4; viewer.js playClip(name, speed) + tickClip (grid scrolls at clip speed);
-app.js Step 4 functions in one block (renderPill4, renderStep4, buildClipPicker, showClip, goStep4,
-runStep4Job, makeAnimations, exportModel). Step 3 "Next: Animate" now enabled.
-
-## Done (anim-b3)
-Draft PR #20 open, CI green (39362246572 tests, 39362246599 lint). Blender tests 6/6, six rigs OK with
-36 GIFs in evidence previews_v2/, real clicks at 1366 (humanoid) and 1920 (fox) in shots_step4/.
-Left: lead motion review of the GIFs; Step 3 foot-fit finding; do not merge (lead merges).
+## Left
+- Read S/bl_tests.log (blender tests); fix if red.
+- Push; re-render 36 previews: python tools/animate/previews.py <models/skeleton_out> <evidence>/previews_v3 --export
+  (uses gpu.lock; gives Godot checks on six rigs + gait lines). Look at fox walk/run hind legs,
+  human attack/hit/faint frames (crops) before reporting.
+- Item 6: loop wrap: read seams in each rig's check report (rotation, position_mm, stalls) from the
+  real .glb (check_animated_glb), not the preview floor; note it in the PR body.
+- Update PR #20 body (Evidence, Not exercised, Board and log), report to lead (<=8 lines).
