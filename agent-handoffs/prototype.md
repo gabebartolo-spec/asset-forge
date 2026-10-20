@@ -14,25 +14,23 @@ monster-rig; re-merge each as it moves. Run `tools/e2e/run_e2e.py` (5 bake-off p
 `C:/Users/DANTE/AppData/Roaming/Claude/side-session-notes/local_7fdc3e78-46c6-48b7-9439-a48ba40b7296/e2e/run<N>/`.
 The lead runs the critics (realism 10 sheets, motion 6 clip sets, screen 4 pages; bar 16/20).
 
-## Merged into prototype (s2, 2026-10-20)
+## Merged into prototype (s2, 2026-10-20) - tip 7eb6387
 | Branch | sha merged |
 |---|---|
-| main | 77558d2 (#22 skeleton-fit, #23) |
+| main | aefe9be (#28 VRAM-budget lock, #26 drawer, #29) |
 | claude/clean-step-methodB-local | e34508d (includes WIP 2b14d4d make_solid) |
 | claude/step2-page | b655f4b (my file-route fix) |
-| claude/animation | e3bae65 |
+| claude/animation | b80830c (main merged, gait reds fixed) |
 | claude/ref-drawer | 7a3e8bc |
 | claude/monster-rig | 23678e8 |
-Prototype tip: ca6fc28 (merge a952cf3 + runner commit).
 
 Monster-rig conflicts (a952cf3): api.py docstring/imports (union), skeleton signature
-(monster-rig's `body` param, TODO dropped); app.js state + viewer.js ctor (kept both);
-blender/rig.py report: kept foot_pivots and limbs, and foot_pivots is `{}` for monsters
-(fit.foot_pivots KeyErrors on template "monster").
-
-Known red on prototype: 3 tests in tests/test_animate.py (four_legged foot slide, faint lying
-flat, person bob) come from claude/animation x main #22 (proved: animation alone 79/79,
-animation+main 3 red). Logic conflict, the animation lane's (told local_5de871d0).
+(monster-rig's `body` param); app.js state + viewer.js ctor (both); blender/rig.py
+foot_pivots is `{}` for monsters (fit.foot_pivots KeyErrors on "monster").
+Main #28 conflicts (277e32b): jobqueue end state keeps step2-page's `_settle` (save a copy,
+then flip) with #28's admit order; steps.clean_command takes generator + gpu_lock_dir;
+test_app_queue keeps both tests. Clean submits need="clean:multiview" (whole card) in the
+page and batch, because method B's clean.py does not take --gpu-lock yet. 375 unit passed.
 
 ## step2-page fix (b655f4b, pushed)
 File route `/api/assets/{id}/files/{step}/{name:path}` serves one sub-folder
@@ -45,21 +43,19 @@ anatomy (limb check) recorded under steps.generate.anatomy. Sheets fetched via t
 disk fallback; `views_via` records which. test_e2e_runner 7 passed.
 
 ## Environment
-- Own `.venv` here (uv-managed cpython 3.12; NOT the Stability Matrix python uv found first:
-  use `--python-preference only-managed`). `config.local.toml` copied from the lead's worktree,
-  port 7872. `FORGE_MODELS_DIR=C:/Users/DANTE/Documents/GitHub/asset-forge/models`.
-- Text drawer is available now (ref-drawer), so references are drawn from the words.
-- GPU lock `models/gpu.lock` is shared with other lanes (clean-b10 held it at run2 start).
+- Own `.venv` here (uv-managed cpython 3.12, `--python-preference only-managed`; uv first found
+  the Stability Matrix python). `config.local.toml` port 7872.
+  `FORGE_MODELS_DIR=C:/Users/DANTE/Documents/GitHub/asset-forge/models`. The lead's old app may
+  hold 7871: never kill it.
+- Scratchpad helpers: rerun_animate.py (animate + export only), manifest.py, run_vramgate.py,
+  app_ownlock.py (private lock; dropped after #28).
+
+## Run2 result (e2e/run2/manifest.md, index.md)
+2 of 10 prompts exported (hi3dgen_bird; plus pageshots_hi3dgen_humanoid, the page-shots model).
+Clean FAIL: both humanoids (top outline 0.084 / 0.129 > 0.08); both foxes (clean.py: "animal
+head direction is ambiguous ... pass --turn DEG"; the app passes no --turn and shows a generic
+error). Monsters: skeleton pass, animate refused (later version). triposg_bird: walk foot slide
+0.7 > 0.5 cm. Step 1 limb check fails on every monster and fox.
 
 ## State
-Run 2 restarted 17:2x with the lead's lock bypass (director: "open as many as you can"): the
-app runs via scratchpad `app_ownlock.py` (private lock dir; app jobs still serial) and the
-runner via `run_vramgate.py` (waits for < 1 GB used before draw/generate/clean). Runner then
-shots chained in background; logs run2/run.log, shots.log, app.log; app msys pid in app.pid.
-Animation b80830c merged into prototype in a scratch worktree (e53591a, pushed; 147 targeted
-tests green) WITHOUT touching this checkout, because the running app reads blender/ from here.
-After run2: stop the app, `git merge --ff-only origin/claude/prototype` here, restart the app,
-run scratchpad `rerun_animate.py tools/e2e <run2> <url> <lock> e3bae65` (animate + export only;
-old clips -> clips_e3bae65/), then manifest.py, then report. Re-merge af-gpu-pool's branch when
-it reports (lead, local_64f40a5a). Run2 so far: hi3dgen humanoid clean FAIL (top outline
-0.084 > 0.08), a real gate result; no auto re-seed.
+Done: run2 delivered, app stopped, report sent to the lead. Next only on the lead's word.
