@@ -4,6 +4,7 @@ const $ = (id) => document.getElementById(id);
 const state = {
   file: null, type: null, generator: null, asset: null,
   busy: false, done: false, step: 1, menu: null,
+  cleanReady: false, rig: null, bones: false, pose: false, meshUrl: null,
   expanding: false, source: "", variation: 0, // "Expand my idea": the words it started from
   reference: false, refUrl: "",               // text-only: the drawn picture is ready to check
   showing: null,                              // what the viewer shows: "model", "ref" or null
@@ -69,7 +70,12 @@ function note(el, text, kind = "") {
 function render() {
   const onStep1 = state.step === 1;
   $("panel-1").classList.toggle("hidden", !onStep1);
-  $("panel-2").classList.toggle("hidden", onStep1);
+  $("panel-2").classList.toggle("hidden", state.step !== 2);
+  $("panel-3").classList.toggle("hidden", state.step !== 3);
+  const pill3 = $("pill3");
+  pill3.classList.toggle("clickable", state.cleanReady && state.step !== 3);
+  pill3.onclick = state.cleanReady && state.step !== 3 ? () => goStep3() : null;
+  $("pill3-soon").classList.toggle("hidden", state.cleanReady);
   document.querySelectorAll("#steps li").forEach((li) => {
     const n = Number(li.dataset.step);
     li.classList.toggle("current", n === state.step);
@@ -78,7 +84,7 @@ function render() {
   const next = $("next"), redo = $("redo");
   const pill1 = $("pill1");
   pill1.classList.toggle("clickable", !onStep1);
-  pill1.onclick = onStep1 ? null : () => { state.step = 1; render(); };
+  pill1.onclick = onStep1 ? null : () => backToStep1();
   redo.classList.toggle("hidden", !onStep1 || !state.asset);
   const hint = $("foot-hint");
   hint.textContent = "";
@@ -102,6 +108,13 @@ function render() {
       }
     }
     redo.disabled = state.busy || state.expanding || !state.asset;
+  } else if (state.step === 3) {
+    next.textContent = state.busy ? "Working..." : state.rig ? "Next: Animate (coming next)" : "Build skeleton";
+    next.disabled = state.busy || !!state.rig;
+    $("skel-look").classList.toggle("hidden", !state.rig);
+    $("skel-wait").classList.toggle("hidden", !!state.rig);
+    $("tog-bones").setAttribute("aria-pressed", String(state.bones));
+    $("tog-pose").setAttribute("aria-pressed", String(state.pose));
   } else {
     next.textContent = "Coming next";
     next.disabled = true;
@@ -278,7 +291,8 @@ async function finish(job) {
   showMsg("Loading the model...", "busy");
   try {
     viewer = viewer || new Viewer($("viewer"));
-    await viewer.load(`/api/assets/${job.asset_id}/files/generate/${r.mesh}?v=${job.id}`);
+    state.meshUrl = `/api/assets/${job.asset_id}/files/generate/${r.mesh}?v=${job.id}`;
+    await viewer.load(state.meshUrl);
   } catch {
     return fail("The model was made but I could not show it. Press Redo to try again.");
   }
@@ -290,6 +304,91 @@ async function finish(job) {
   $("foot-info").textContent = `Made with ${name} in ${Math.round(r.total_s)} s`
     + (makerVram(r.generator) ? `, using ${makerVram(r.generator)}` : "");
   note($("note"), "Happy with it? Press Next. Not right? Press Redo for a new try.", "ok");
+  render();
+}
+
+const TYPE_WORDS = { humanoid: "a person", animal: "an animal", monster: "a monster" };
+
+function fileUrl(step, name, v = "") {
+  return `/api/assets/${state.asset.id}/files/${step}/${name}${v ? "?v=" + v : ""}`;
+}
+
+async function backToStep1() {
+  state.step = 1;
+  render();
+  if (state.meshUrl && viewer) {
+    try { await viewer.load(state.meshUrl); } catch { /* keep whatever is shown */ }
+  }
+}
+
+// Step 3. TODO(PR #9): Step 2 will call this itself once its clean.glb is written.
+async function goStep3() {
+  state.step = 3;
+  state.showing = "model";
+  $("skel-type").textContent = `This is ${TYPE_WORDS[state.asset.type] || "a model"}, so it gets a ${
+    state.asset.type === "humanoid" ? "human" : "animal"} skeleton.`;
+  render();
+  viewer = viewer || new Viewer($("viewer"));
+  note($("note"), "");
+  try {
+    if (state.rig) await showRig(false);
+    else {
+      await viewer.load(fileUrl("clean", "clean.glb"));
+      showMsg("");
+    }
+  } catch {
+    note($("note"), "I could not show the model. Go back and try again.", "error");
+  }
+  $("viewer-hint").classList.remove("hidden");
+  render();
+}
+
+async function showRig(keepView) {
+  const name = state.pose ? "test_pose.glb" : "rigged.glb";
+  await viewer.load(fileUrl("skeleton", name, state.rig.total_s), {
+    keepView, pose: state.pose, showBones: state.bones });
+  showMsg("");
+}
+
+async function buildSkeleton() {
+  if (state.busy) return;
+  state.busy = true;
+  note($("note"), "");
+  showMsg("Fitting the skeleton to your model...\nThis takes under a minute.", "busy");
+  render();
+  try {
+    const job = await api(`/api/assets/${state.asset.id}/skeleton`, { method: "POST" });
+    for (;;) {
+      const j = await api(`/api/jobs/${job.id}`);
+      if (j.state === "done") { state.rig = j.result; break; }
+      if (j.state === "failed") throw new Error(j.error || j.message);
+      showMsg(j.state === "running" ? `Fitting the skeleton... ${clock(j.elapsed_s)}`
+        : "Waiting for your turn...\nIt starts by itself when the graphics card is free.", "busy");
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    state.bones = true; // show the dots straight away: that is what to check first
+    state.pose = false;
+    await showRig(false);
+    const r = state.rig;
+    $("skel-facts").textContent = `Fitted ${r.bones} bones. Each part of the skin follows at most 4 of them, ${
+      "so it stays light in a game."}`;
+    $("foot-info").textContent = `Skeleton built in ${Math.round(r.total_s)} s`;
+    note($("note"), "Check the dots sit inside the body, then try the quick pose.", "ok");
+  } catch (e) {
+    showMsg("");
+    note($("note"), e.message, "error");
+  }
+  state.busy = false;
+  render();
+}
+
+async function toggle(which) {
+  if (!state.rig || state.busy) return;
+  state[which] = !state[which];
+  if (which === "bones") viewer.setBones(state.bones);
+  else {
+    try { await showRig(true); } catch { note($("note"), "I could not show the pose.", "error"); }
+  }
   render();
 }
 
@@ -354,15 +453,35 @@ async function init() {
   $("expand").onclick = () => expand(false);
   $("reroll").onclick = () => expand(true);
   $("next").onclick = async () => {
+    if (state.step === 3) return buildSkeleton();
     if (state.step === 2) return;
     if (state.done) { state.step = 2; render(); } else start();
   };
   $("redo").onclick = () => (state.file || state.done ? start() : drawPicture());
+  $("tog-bones").onclick = () => toggle("bones");
+  $("tog-pose").onclick = () => toggle("pose");
   try {
     buildMenu(await api("/api/menu"));
   } catch {
     showMsg("I could not reach Asset Forge. Close this page and open AssetForge again.", "error");
   }
   render();
+  // Dev hand-over until PR #9: /?asset=ID opens an existing library model that has a clean.glb.
+  const id = new URLSearchParams(location.search).get("asset");
+  if (id) {
+    try {
+      const a = await api(`/api/assets/${encodeURIComponent(id)}`);
+      state.asset = a;
+      state.cleanReady = !!(a.steps.clean && a.steps.clean.files.includes("clean.glb"));
+      const g = a.steps.generate && a.steps.generate.result;
+      if (g) state.meshUrl = `/api/assets/${a.id}/files/generate/${g.mesh}`;
+      if (a.steps.skeleton && a.steps.skeleton.result) {
+        state.rig = a.steps.skeleton.result;
+        $("skel-facts").textContent = `Fitted ${state.rig.bones} bones.`;
+        state.bones = true;
+      }
+      if (state.cleanReady) await goStep3();
+    } catch (e) { note($("note"), e.message, "error"); }
+  }
 }
 init();
