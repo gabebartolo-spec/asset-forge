@@ -65,7 +65,7 @@ def test_confirmed_limbs_are_kept_and_passed_to_the_rig(client, settings, monkey
     # that tip is now off the spider: the result names it so the page can mark it red
     assert client.get(f"/api/jobs/{job['id']}").json()["result"]["outside"] == [[0, 3]]
     again = client.get(f"/api/assets/{aid}/skeleton/limbs").json()
-    assert again["confirmed"] and len(again["limbs"]) == 7
+    assert again["confirmed"] and len(again["limbs"]) == 7 and again["height"] == p["height"]
     fresh = client.get(f"/api/assets/{aid}/skeleton/limbs?fresh=1").json()
     assert not fresh["confirmed"] and len(fresh["limbs"]) == 8  # Start the limbs again
 

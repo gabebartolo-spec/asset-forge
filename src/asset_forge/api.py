@@ -348,6 +348,8 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         path = out / "chain.json"
         keep = {"spine": body["spine"], "limbs": [
             {"kind": lb["kind"], "joints": lb["joints"]} for lb in body["limbs"]]}
+        if isinstance(body.get("height"), int | float):
+            keep["height"] = body["height"]  # sizes the markers when the limbs are changed later
         path.write_text(json.dumps(keep), encoding="utf-8")
         return path
 

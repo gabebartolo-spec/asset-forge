@@ -726,7 +726,7 @@ function addLimb() {
 }
 
 function confirmedLimbs() {
-  return { spine: state.chain.spine, limbs: state.chain.limbs.map((lb) => ({ kind: lb.kind, joints: lb.joints })) };
+  return { spine: state.chain.spine, height: state.chain.height, limbs: state.chain.limbs.map((lb) => ({ kind: lb.kind, joints: lb.joints })) };
 }
 
 // "Leg 8's foot is outside the body..." for the markers of the built skeleton outside the body
@@ -765,6 +765,7 @@ async function changeLimbs() { // back to the markers, starting from the limbs c
   if (state.busy) return;
   state.rig = null;
   state.bones = state.pose = false;
+  $("foot-info").textContent = "";
   try {
     await viewer.load(fileUrl("clean", "clean.glb"));
     await loadLimbs();
