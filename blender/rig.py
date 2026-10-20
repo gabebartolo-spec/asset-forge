@@ -284,6 +284,8 @@ def main():
         "joints": {b.name: [round(float(x), 5) for x in joints[b.name]] for b in bones},
         "bone_list": [{"name": b.name, "parent": b.parent,
                        "tail": [round(float(x), 5) for x in joints[b.tail]]} for b in bones],
+        "foot_pivots": {k: [round(float(x), 5) for x in p]
+                        for k, p in fitter.foot_pivots(v, template).items()},
         "forward": "-Y (glTF +Z)", "seconds": round(time.perf_counter() - t0, 1),
     }
     (out / "skeleton.json").write_text(json.dumps(rep, indent=1))
