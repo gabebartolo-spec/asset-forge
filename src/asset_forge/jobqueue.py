@@ -8,7 +8,7 @@ import threading
 import time
 import traceback
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from .gpu_lock import gpu_lock
@@ -107,6 +107,7 @@ class GpuQueue:
                 job.message = f"Waiting for the graphics card ({owner} is using it)"
                 job.save()
 
+        end, words = FAILED, "Stopped"
         try:
             with gpu_lock(self.lock_dir, f"asset-forge:{job.asset_id}", self.lock_poll_s,
                           on_wait, self._stop.is_set):
@@ -115,16 +116,25 @@ class GpuQueue:
                 job.message = "Starting"
                 job.save()
                 job.result = job.run(job)
-                job.state = DONE
-                job.message = "Done"
+                end, words = DONE, "Done"
         except Exception as e:  # noqa: BLE001
             traceback.print_exc()
             job.error = _plain(e)  # before the state flips: waiters read both
-            job.message = job.error
-            job.state = FAILED
+            end, words = FAILED, job.error
         finally:
             job.finished = time.time()
-            job.save()
+            self._settle(job, end, words)
+
+    @staticmethod
+    def _settle(job: Job, end: str, words: str) -> None:
+        """Write the end state to disk (status, timings) first, then show it: anyone who sees
+        "done" or "failed" can read the asset's files at once (the Library's busy check, the
+        page's next step)."""
+        try:
+            replace(job, state=end, message=words).save()
+        finally:
+            job.message = words
+            job.state = end
             job.settled = True
 
 
