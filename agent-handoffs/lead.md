@@ -1,38 +1,50 @@
-# Asset Forge lead handoff (2026-10-20, session 7)
-## State: working (clean-b8, step2-fix builders; PR #20 awaiting director look)
+# Asset Forge lead handoff (2026-10-20, session 8)
+## State: working. Five lane sessions + one rule sweep running; lead waits on their notes.
+Lead session registered for 500k (~/.claude/context-guard-leads/<CLI session id>); successor must
+register itself at boot.
+
+## Session goal (director /goal 2026-10-20): "functional build prototype with at least 80% critic pass rate"
+Measure: tools/e2e/run_e2e.py on claude/prototype (main + clean-step-methodB-local + step2-page +
+animation + ref-drawer + monster-rig), 5 bake-off prompts x 2 generators. Fresh critic SESSIONS,
+one verdict per item (briefs: notes local_7fdc3e78.../critic_briefs_e2e.md): realism per clean
+five-view sheet (10), motion per animated rig clip set (6), screen per step page (4). Pass = 16 of 20,
+every non-monster export Godot-green. Output: notes folder e2e/run<N>/.
 
 ## Director said (2026-10-20)
-- "eta til usable build?" -> ~1.5-2 working days.
-- "work on multiple phases at once" (D-025); "if theres anything you can work on in parrelal
-  then do it" (D-026); Clean colour "Keep improving first" (D-027, logged in board PR claude/board-3).
+- D-027 Clean "Keep improving first"; D-028 #20 clips "Fix first" (logged, #24 merged).
+- D-029 no subagents; helpers are fresh sessions filed in sidebar group "Asset Forge"
+  (cg-c0fac8a5-7dfb-46ec-a0fd-658fe73e9182). Start them yourself ("stop making me approve things").
+- "change lead context limit to 500k" and "increase to 300k (450k hard cutoff) for all helpers":
+  hook + RULEBOOK line 99 + ~/.claude/CLAUDE.md done; sweep of other files = rule-ctx-sweep.
+- "hurry the fk up": fill every lane at once, no idle slots.
 
-## Live (verify with gh pr list / ListAgents; in-process agents die with this session)
-- main: #15, #16, #11, #17, #19 merged. Board PR claude/board-3 (D-027 + this handoff) open.
-- PR #9 clean (draft, head effb435). Method B best: 6/10 on local claude/clean-step-methodB-local
-  a57382f. clean-b8 (opus subagent, this session) targets causes: bird beak registration, triposg
-  fox 2 parts, hi3dgen fox chest/front legs, humanoid greaves_back 0.122/0.12. Bar 8/10 -> pushes
-  into claude/clean-step, PR #9 body. Then lead: fresh realism-critic on the sheets, merge #9.
-- step2-fix (sonnet subagent): claude/step2-page, fixes "It broke 2 limits" count + cherry-picks
-  0fb46ea (GpuQueue._settle) from monster-rig. Pushes; NO PR until #9 merges (3-PR cap).
-- PR #20 animation READY (350dcf2), CI green, motion critic r2 13/14. Asked director for the clip
-  look this session; merge on his yes. Known: triposg fox ~18 deg yaw (Step 3), rigid forefoot.
-- monster-b2 lives in the OLD lead session (claude/monster-rig, head d66d38b); old lead forwards.
-- Proposed card: Step 3 foot joint fix (task_043885cd).
-- asset-forge-wt has 5 worktrees: context-trim (claude/context-trim, uncommitted CLAUDE.md +
-  settings.json) is not a lead lane; owner unknown. Do not touch; remove when its owner is done.
+## Merged this session
+#23 (CLAUDE.md no-subagents line), #24 (board s8: D-028, D-029, agents table).
+
+## Lanes (sessions; each reports via turn-end note)
+- af-clean local_9e53e68c: item 5, method B to 8/10, pushes into claude/clean-step, PR #9 ready.
+  Then: fresh realism-critic session on the 10 sheets -> merge #9 -> open step2-page PR.
+- af-anim local_5de871d0: item 10, re-rig on #22 joints, 9 unit fails, previews_v4, PR #20.
+  Then: fresh motion-critic session -> director clips (send GIFs from a session folder).
+- af-refdraw local_8ba42145: SDXL text-only reference drawer; PR only if < 3 open.
+- af-monster local_863debb1: item 13 monster skeleton + limb editor; no PR yet (cap).
+- af-proto local_bbbdbf10: re-merge lanes into claude/prototype, five-view file-route gap, e2e run2.
+- rule-ctx-sweep local_38465d31: context-limit wording sweep + forge-handoff skill PR.
+Old s7 builders (anim-b4, ref-drawer, proto) may still push to their branches; new lanes reset onto them.
 
 ## Next steps
-1. #20: director yes -> merge with --match-head-commit (re-check head).
-2. clean-b8 report -> check evidence, fresh realism-critic (own scratch subfolder), merge #9.
-3. #9 merged -> open step2-page PR (sync main first; gates/ add/add take #9's), merge on green.
-4. Board PR after each merge. Then monster-rig PR when a slot frees.
-5. First usable build = item 12 merged. Show director one end-to-end model (five views + Godot).
+1. On each note: verify files exist; start a fresh critic session; filter findings.
+2. Merge order: #9 -> step2-page PR -> #20 (after director yes on v4) -> ref-drawer -> monster-rig.
+   Max 3 open PRs. Board PR after merges.
+3. When run2 is in: start realism/motion/screen critic sessions (own scratch subfolders); score.
+4. Mocap side-by-side (notes mocap_cmp/) only after v4 passes; D-005 change is his call.
 
-## Restart kit
-Respawn from each lane's handoff with ~/.claude/skills/game-studio-lead/references/team-kit.md.
-GPU: models/gpu.lock. Lanes: asset-forge-wt/{clean-step, animation, step2-page, monster-rig}.
+## Worktrees
+asset-forge-wt: animation, clean-step, monster-rig, ref-drawer (old s7 lanes; remove as each
+lane merges), context-trim (not ours). skeleton-fit removed (merged #22).
 
 ## Gotchas
 - Generators disagree on which camera the reference faces; check facing per prompt.
-- Critics share the scratchpad: give each its own subfolder.
-- No HF token on this PC; gated weights are out. Playbook: nothing new.
+- Critics share the scratchpad: give each its own subfolder. No HF token; gated weights out.
+- Background `sleep` loops may exit early here; check PR state directly after a watcher ends.
+- Playbook: nothing new.
