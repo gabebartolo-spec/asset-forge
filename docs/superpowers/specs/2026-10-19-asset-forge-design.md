@@ -235,6 +235,15 @@ and animals with a confident template fit can optionally run straight through.
 | Texture | ≤ 1024×1024 | ≤ 512×512 |
 | Bone influences per vertex | ≤ 4 | ≤ 4 |
 
+**Hard-surface budgets (proposed 2026-10-20, D-032; the bake-off sets the final numbers):**
+
+| Limit | Gear / prop | Vehicle | Building (one piece) |
+|---|---|---|---|
+| Triangles | ≤ 2,000 | ≤ 8,000 | ≤ 12,000 |
+| Materials | 1 | ≤ 2 (glass) | ≤ 2 |
+| Texture | ≤ 512×512 | ≤ 1024×1024 | ≤ 1024×1024 (tileable parts preferred) |
+| Bones | 0 (parts as nodes) | 0 (parts as nodes) | 0 |
+
 Defaults are editable per asset, but the export always checks against the asset's own budget.
 Every export loads in headless Godot with no errors.
 
