@@ -1,6 +1,6 @@
 # ref-drawer handoff (branch claude/ref-drawer, no PR opened; the lead opens it)
 
-State: code, tests and real evidence done; pushed. Open question to the lead: background cut (below).
+State: done; PR opened (lead merges). Lead ruled 2026-10-20: keep the deterministic cut (matte.prepare_reference); flag grey-vignette blobs, never block.
 
 ## PR body draft
 
@@ -30,6 +30,9 @@ inside a queue job, which already holds models/gpu.lock (taking it again would d
 - Background: SDXL draws a grey vignette, not flat white. The app's matte.prepare_reference
   (flood from the border, tolerance 28) therefore leaves grey blobs around every subject
   (sheet_b.png). The 3D step would see grey patches.
+
+### Evidence (re-run on merged main)
+Three prompts (knight, 8-leg spider, low-poly fox), seed 7: 75.6/71.1/81.5 s each under GPU wait, peak 10736 MB. Pictures + cut-outs + sheet.png in side-session-notes/local_1a944552-.../ref_drawer_evidence/. All three: one subject, right view. Cut leaves grey vignette blobs (flagged, not blocked). Unit: 194 passed, 2 test_library tests flaky under full run (pass alone), ruff clean.
 
 ### Not exercised
 Through the app page (real click Draw); batch path; other seeds; BiRefNet matting in the drawer
