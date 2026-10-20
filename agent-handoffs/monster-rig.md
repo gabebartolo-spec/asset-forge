@@ -31,7 +31,8 @@ api import changes the job-done vs persist ordering (jobqueue flips DONE before 
 ## Left
 1. Fix the library-test failure; run test_monster_api.py; full unit suite; ruff.
 2. Show tests failing first: mutation (e.g. GROUND=0 / judge always ok) + log output to evidence.
-3. Blender: ../mr_out/rig_all.sh was running in background (gpu.lock) rigging the 4 monsters from
+3. Blender DONE once by hand: all 4 monsters RIG_OK (hi3dgen spider 34 bones, triposg spider 28, brutes 16;
+   blender_automatic weights, max 4 influences, 0 unweighted; sheets in ../mr_out/<gen>/<name>/pose_*.png). Was:
    ../mr_out/*_chain.json into ../mr_out/<gen>/<name>; check logs ../mr_out/*.log for RIG_OK.
    Add -m blender tests (monster chain rig on a fixture) + Godot check_rig on rigged/test_pose.glb.
 4. Page: web/viewer.js draggable markers (child of gltf root, glTF coords = (x, z, -y)), web/app.js Step 3
