@@ -31,6 +31,7 @@ class Job:
     finished: float | None = None
     result: dict | None = None
     persist: Callable[[Job], None] | None = None
+    settled: bool = False  # the end state is on disk too (the Library waits for this)
 
     def set_message(self, text: str) -> None:
         self.message = text
@@ -124,6 +125,7 @@ class GpuQueue:
         finally:
             job.finished = time.time()
             job.save()
+            job.settled = True
 
 
 def _plain(e: Exception) -> str:

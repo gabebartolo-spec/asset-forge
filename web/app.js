@@ -1,4 +1,5 @@
 import { Viewer } from "./viewer.js";
+import * as lib from "./library.js";
 
 const $ = (id) => document.getElementById(id);
 const state = {
@@ -466,22 +467,78 @@ async function init() {
     showMsg("I could not reach Asset Forge. Close this page and open AssetForge again.", "error");
   }
   render();
-  // Dev hand-over until PR #9: /?asset=ID opens an existing library model that has a clean.glb.
+  lib.initLibrary({
+    api, post, open: openAsset, generator: () => state.generator,
+    types: () => (state.menu ? state.menu.types : []),
+    drawNote: () => (state.menu && !state.menu.text_draw.available ? state.menu.text_draw.note : ""),
+  });
+  $("tab-3d").onclick = () => showTab("3d");
+  $("tab-lib").onclick = () => showTab("lib");
+  // /?asset=ID opens an existing library model (also what the Library's Open button does).
   const id = new URLSearchParams(location.search).get("asset");
-  if (id) {
-    try {
-      const a = await api(`/api/assets/${encodeURIComponent(id)}`);
-      state.asset = a;
-      state.cleanReady = !!(a.steps.clean && a.steps.clean.files.includes("clean.glb"));
-      const g = a.steps.generate && a.steps.generate.result;
-      if (g) state.meshUrl = `/api/assets/${a.id}/files/generate/${g.mesh}`;
-      if (a.steps.skeleton && a.steps.skeleton.result) {
-        state.rig = a.steps.skeleton.result;
-        $("skel-facts").textContent = `Fitted ${state.rig.bones} bones.`;
-        state.bones = true;
-      }
-      if (state.cleanReady) await goStep3();
-    } catch (e) { note($("note"), e.message, "error"); }
-  }
+  if (id) await openAsset(id);
 }
+
+function showTab(which) { // "3d" or "lib"
+  document.body.classList.toggle("lib", which === "lib");
+  $("tab-3d").classList.toggle("active", which === "3d");
+  $("tab-lib").classList.toggle("active", which === "lib");
+  if (which === "lib") lib.show(); else lib.hide();
+}
+
+// Open a Library model where it left off (or at `step`: "generate" shows the made model).
+async function openAsset(id, step) {
+  if (state.busy || state.expanding) { showTab("3d"); return; }
+  let a;
+  try { a = await api(`/api/assets/${encodeURIComponent(id)}`); } catch (e) {
+    showTab("3d"); note($("note"), e.message, "error"); return;
+  }
+  showTab("3d");
+  const g = a.steps.generate || {};
+  const hasPic = (g.files || []).includes("input.png");
+  state.file = null; state.rig = null; state.bones = state.pose = false;
+  state.done = state.reference = false; state.meshUrl = null; state.step = 1; state.source = "";
+  state.asset = null;
+  selectType(a.type);
+  state.asset = a;
+  if (g.settings && state.menu.generators.some((x) => x.id === g.settings.generator)) selectGenerator(g.settings.generator);
+  $("idea").value = a.prompt || "";
+  $("preview").classList.toggle("hidden", !hasPic);
+  if (hasPic) $("preview").src = fileUrl("generate", "input.png", Date.now());
+  $("drop").classList.toggle("has-image", hasPic);
+  $("drop-text").textContent = hasPic ? "Change picture" : "Click to choose a picture";
+  state.cleanReady = !!(a.steps.clean && a.steps.clean.files.includes("clean.glb"));
+  note($("note"), "");
+  $("foot-info").textContent = "";
+  viewer = viewer || new Viewer($("viewer"));
+  if (g.result) {
+    state.meshUrl = fileUrl("generate", g.result.mesh);
+    state.done = true;
+    if (a.steps.skeleton && a.steps.skeleton.result) {
+      state.rig = a.steps.skeleton.result;
+      $("skel-facts").textContent = `Fitted ${state.rig.bones} bones.`;
+      state.bones = true;
+    }
+  } else if (hasPic) {
+    state.refUrl = fileUrl("generate", "input.png", Date.now());
+    state.reference = true;
+  }
+  grow();
+  if (state.cleanReady && step !== "generate") { await goStep3(); return; }
+  if (state.done) {
+    try { await viewer.load(state.meshUrl); showMsg(""); state.showing = "model"; } catch {
+      note($("note"), "I could not show the model. Press Redo to make it again.", "error");
+    }
+    const name = state.menu.generators.find((x) => x.id === g.result.generator)?.name || g.result.generator;
+    $("foot-info").textContent = `Made with ${name} in ${Math.round(g.result.total_s)} s`;
+    note($("note"), "Happy with it? Press Next. Not right? Press Redo for a new try.", "ok");
+  } else if (state.reference) {
+    showRef("Happy with it? Press Make 3D model. Not right? Press Redo for another picture.");
+  } else {
+    showMsg("Your model will appear here.\nPress Draw a picture to start.");
+    state.showing = null;
+  }
+  render();
+}
+
 init();
