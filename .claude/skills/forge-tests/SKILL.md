@@ -8,7 +8,7 @@ description: How to run, add and debug Asset Forge's tests and CI - pytest marke
 - **Unit** (`python -m pytest`): pure Python. Default run; CI runs exactly this plus `ruff check .`.
 - **Blender** (`python -m pytest -m blender`): headless `blender -b --python ...` on tiny fixture
   meshes in `tests/fixtures/`. Local only. Blender path from `config.local.toml`.
-- **GPU** (`python -m pytest -m gpu`): real generation. Local only, one at a time, never while the
+- **GPU** (`python -m pytest -m gpu`): real generation. Local only, each run holding its VRAM share (`gpu_lock`, D-030), never while the
   director is in a fullscreen game; free ComfyUI VRAM first.
 
 Rules
