@@ -122,6 +122,8 @@ def test_bad_requests_get_plain_errors(client):
     assert client.get("/api/assets/a-20260101-000000-abcd").status_code == 404
     assert client.get("/api/jobs/zzz").status_code == 404
     assert client.get(f"/api/assets/{a['id']}/files/generate/..%2Fasset.json").status_code == 404
+    bad = f"/api/assets/{a['id']}/files/generate/x/..%2F..%2Fasset.json"
+    assert client.get(bad).status_code == 404
 
 
 def test_hooks_for_later_steps_say_coming_next(client):

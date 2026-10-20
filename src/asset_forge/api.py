@@ -6,7 +6,7 @@
     POST /api/assets/{id}/generate        {generator, seed?} -> job (queued on the one GPU queue)
     GET  /api/jobs/{job_id}               state, plain-words message, elapsed time
     GET  /api/assets, /api/assets/{id}    the library
-    GET  /api/assets/{id}/files/{step}/{name}   an output (raw.glb, input.png, ...)
+    GET  /api/assets/{id}/files/{step}/{name}   an output (raw.glb, input.png, after/front_clay.png)
     POST /api/assets/{id}/clean           Step 2: rebuild the model (queued; runs blender/clean.py)
                                           result: passed, problems (broken limits), triangles,
                                           texture; files clean/clean.glb, report.json
@@ -282,7 +282,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         out["ahead"] = gpu_queue.ahead_of(job)
         return out
 
-    @app.get("/api/assets/{asset_id}/files/{step}/{name}")
+    @app.get("/api/assets/{asset_id}/files/{step}/{name:path}")
     def get_file(asset_id: str, step: str, name: str) -> FileResponse:
         try:
             p = store.file_path(asset_id, step, name)

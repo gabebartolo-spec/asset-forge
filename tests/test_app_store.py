@@ -50,6 +50,19 @@ def test_file_path_blocks_traversal(tmp_path):
         s.file_path(a["id"], "bogus", "input.png")
 
 
+def test_file_path_serves_one_sub_folder(tmp_path):
+    s = Store(tmp_path)
+    a = s.create_asset("monster", make_png())
+    sub = s.step_dir(a["id"], "clean") / "after"
+    sub.mkdir(parents=True)
+    (sub / "front_clay.png").write_bytes(b"x")
+    assert s.file_path(a["id"], "clean", "after/front_clay.png").is_file()
+    for name in ("after/../../asset.json", "../clean/after/front_clay.png", "after/.x",
+                 "a/b/front_clay.png", "after/", "/after/front_clay.png", "after\front_clay.png"):
+        with pytest.raises(NotFound):
+            s.file_path(a["id"], "clean", name)
+
+
 def test_unfinished_jobs_fail_after_a_restart(tmp_path):
     s = Store(tmp_path)
     a = s.create_asset("monster", make_png())
