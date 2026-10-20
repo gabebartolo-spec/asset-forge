@@ -32,14 +32,21 @@ changes that).
   blender+gpu, also asserts single_part.
 - Unit: 113 passed; ruff clean.
 
-## Running jobs
-R1 results: scratch runs/R1/<cand>/<prompt>; hi3dgen in R1.log, TripoSG in R1_t_<prompt>.log
-(scratch measure2.py = measure.py without the outer lock; started 17:32, ~5-8 min each).
+## Running jobs and results
 Scratch: C:/Users/DANTE/AppData/Local/Temp/claude/C--Users-DANTE-Documents-GitHub-asset-forge--claude-worktrees-reverent-liskov-c185ff/a11a6bd7-8e35-448a-8b13-6cc12dc53b2b/scratchpad
-hi3dgen: spider, brute, fox, bird PASS; humanoid FAIL greaves_back_colour_distance 0.127 (<= 0.12):
-back greaves albedo mean 0.28 vs picture 0.20; crop greaves_crop.png: same steel, but polished
-and brighter than the picture's dark steel (the MV views light steel brighter; mv_match cells
-6x12 + prior 200 + bilinear leave it light). Front greaves 0.24.
+R1 (17e7800 code, fresh MV views, runs/R1/<cand>/<prompt>, logs R1.log + R1_t_<prompt>.log):
+  hi3dgen spider, brute, fox, bird PASS; humanoid FAIL greaves_back distance 0.127 (<= 0.12):
+  back greaves mean 0.28 vs picture 0.20 (same steel, brighter; greaves_crop.png).
+  triposg humanoid, spider, brute PASS (fox single part now); fox FAIL chest_p90_luma_ratio 0.838
+  (0.85..1.25): chest p90 0.589 vs 0.703, spread 0.118 vs 0.17, mean fine.
+  triposg bird: torch DLL access violation at generator start (transient); rerun running
+  (R1_t_bird.log).
+R2 (uncommitted MV_REMATCH in clean.py: after blending the views, match the blend to the picture
+  per cell again; blending overlapping views flattened contrast): triposg fox + hi3dgen humanoid
+  on R1 views (scratch measure3.py --views-from runs/R1), logs R2_<cand>_<prompt>.log.
+  If both pass and nothing regresses -> rerun all 10 with R1 views (CPU only, parallel), keep.
+  If not -> revert MV_REMATCH; 8/10 needs the bird to pass, and test_clean_fox_gates[triposg]
+  stays red on chest_p90 (must be fixed before "-m blender green").
 
 ## Environment gotchas
 - Set FORGE_MODELS_DIR=C:/Users/DANTE/Documents/GitHub/asset-forge/models (gpu_lock path guess
