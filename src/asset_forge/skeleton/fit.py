@@ -99,18 +99,96 @@ def fit_humanoid(v: np.ndarray) -> Joints:
         fx = float(foot[:, 0].mean()) if len(foot) else sgn * 0.08 * H
         kx = float(knee_s[:, 0].mean()) if len(knee_s) else fx
         ky = float(knee_s[:, 1].mean()) if len(knee_s) else yc
-        y_toe = float(foot[:, 1].min()) if len(foot) else yc - 0.05 * H
-        y_heel = float(foot[:, 1].max()) if len(foot) else yc + 0.03 * H
-        flen = y_heel - y_toe
         J[f"{side}UpperLeg"] = np.array([sgn * min(abs(kx) * 0.9, 0.1 * H), J["Hips"][1], z_hip])
         J[f"{side}LowerLeg"] = np.array([kx, ky, z_knee])
-        J[f"{side}Foot"] = np.array([fx, y_heel - 0.7 * flen, z_ank])
-        J[f"{side}Toes"] = np.array([fx, y_toe + 0.3 * flen, 0.025 * H])
-        J[f"{side}ToesTip"] = np.array([fx, y_toe, 0.012 * H])
+        J.update(_humanoid_foot(foot, side, fx, yc, z_ank, H))
     return J
 
 
+# Where the joints of a human foot sit, as a share of foot length from the heel: the ankle a
+# quarter of the way, the ball of the foot (the toe joint) about 72% of the way.
+ANKLE_AT, BALL_AT = 0.25, 0.72
+
+
+def _humanoid_foot(foot: np.ndarray, side: str, fx: float, yc: float, z_ank: float,
+                   H: float) -> Joints:
+    """Heel, ankle, ball and toe tip of one foot from its mesh. The sole (the lowest vertices)
+    gives the heel (back end, +Y) and toe tip (front end, -Y); each joint takes the sideways
+    position of the foot at its own length, so a turned-out foot keeps its line."""
+    sole = foot[foot[:, 2] < 0.035 * H] if len(foot) else foot
+    if len(sole) < 5:
+        sole = foot
+    if len(sole):
+        y_toe, y_heel = float(sole[:, 1].min()), float(sole[:, 1].max())
+    else:
+        y_toe, y_heel = yc - 0.11 * H, yc + 0.04 * H
+    flen = max(y_heel - y_toe, 0.05 * H)
+
+    def x_at(y):
+        s = foot[np.abs(foot[:, 1] - y) < 0.12 * flen] if len(foot) else foot
+        return float(s[:, 0].mean()) if len(s) else fx
+
+    def top_at(y):  # how high the foot's mesh reaches at this point of its length
+        s = foot[np.abs(foot[:, 1] - y) < 0.08 * flen] if len(foot) else foot
+        return float(s[:, 2].max()) if len(s) else 0.05 * H
+
+    y_ank, y_ball = y_heel - ANKLE_AT * flen, y_heel - BALL_AT * flen
+    z_ball = float(np.clip(0.45 * top_at(y_ball), 0.012 * H, 0.025 * H))
+    return {
+        f"{side}Heel": np.array([x_at(y_heel - 0.05 * flen), y_heel, 0.0]),
+        f"{side}Foot": np.array([x_at(y_ank), y_ank, z_ank]),
+        f"{side}Toes": np.array([x_at(y_ball), y_ball, z_ball]),
+        f"{side}ToesTip": np.array([x_at(y_toe + 0.05 * flen), y_toe, min(0.01 * H, z_ball)]),
+    }
+
+
 # ---------------------------------------------------------------- animals
+
+
+def _main_axis(xy: np.ndarray) -> np.ndarray:
+    """Unit direction of greatest spread of 2D points."""
+    w, vec = np.linalg.eigh(np.cov((xy - xy.mean(axis=0)).T))
+    return vec[:, int(np.argmax(w))]
+
+
+# The Clean step turns every model to face -Y, so a measured body axis within this many degrees
+# of the Y axis is shape noise (a turned head, a curled tail), and the fit uses -Y itself.
+SNAP_DEG = 15.0
+
+
+def _mirror_axis(xy: np.ndarray, around: np.ndarray, span: float = 45.0, cells: int = 48):
+    """The body axis as the line the torso's top view is most mirror-symmetric about (the left
+    and right halves of an animal match; its head and tail ends, which turn and curl, are left
+    out: only the middle 60% of the length counts). Searches +-span degrees around `around`,
+    with a small sideways shift of the mirror line for each yaw."""
+    p = xy - xy.mean(axis=0)
+    base = np.arctan2(around[1], around[0])
+
+    def score(t):
+        u = np.array([np.cos(t), np.sin(t)])
+        a, b = p @ u, p @ np.array([-u[1], u[0]])
+        lo, hi = a.min(), a.max()
+        keep = (a > lo + 0.2 * (hi - lo)) & (a < hi - 0.2 * (hi - lo))
+        if keep.sum() < 20:
+            return 0.0
+        a, b = a[keep], b[keep]
+        b = b - np.median(b)
+        ext = float(max(np.abs(a).max(), np.abs(b).max())) * 1.05 + 1e-9
+        cell = 2 * ext / cells
+        i = np.clip(((a + ext) / cell).astype(int), 0, cells - 1)
+        best = 0.0
+        for off in np.linspace(-2 * cell, 2 * cell, 9):
+            j = np.clip(((b - off + ext) / cell).astype(int), 0, cells - 1)
+            g = np.zeros((cells, cells), bool)
+            g[i, j] = True
+            f = g[:, ::-1]
+            best = max(best, (g & f).sum() / max((g | f).sum(), 1))
+        return best
+
+    coarse = base + np.radians(np.arange(-span, span + 1e-9, 1.0))
+    t0 = max(coarse, key=score)
+    t = max(t0 + np.radians(np.arange(-1.0, 1.01, 0.25)), key=score)
+    return np.array([np.cos(t), np.sin(t)])
 
 
 class _Frame:
@@ -119,10 +197,13 @@ class _Frame:
     def __init__(self, v: np.ndarray):
         xy = v[:, :2]
         c = xy.mean(axis=0)
-        w, vec = np.linalg.eigh(np.cov((xy - c).T))
-        u = vec[:, int(np.argmax(w))]
+        # The whole-mesh spread tilts when the head is turned or the tail curls (the generated
+        # fox sat 18 degrees off -Y and its walk folded the hind legs); the mirror line does not.
+        u = _mirror_axis(xy, _main_axis(xy))
         if u[1] > 0:  # the model faces -Y
             u = -u
+        if np.degrees(np.arccos(min(1.0, abs(float(u[1]))))) < SNAP_DEG:
+            u = np.array([0.0, -1.0])
         self.u = np.array([u[0], u[1], 0.0])
         self.w = np.cross(UP, self.u)  # left
         self.o = np.array([c[0], c[1], 0.0])
@@ -219,9 +300,14 @@ def fit_four_legged(v: np.ndarray) -> Joints:
             grp = s[lab == k]
             if len(grp) >= 3:
                 low = grp[grp[:, 2] < grp[:, 2].min() + 0.06 * H]
-                feet[(part, side)] = (low[:, 0].mean(), low[:, 1].mean(), grp[:, 2].min())
+                # the paw: the vertices touching the ground, back end to front end
+                pad = grp[grp[:, 2] < grp[:, 2].min() + 0.03 * H]
+                feet[(part, side)] = (low[:, 0].mean(), low[:, 1].mean(), grp[:, 2].min(),
+                                      float(pad[:, 0].min()), float(pad[:, 0].max()))
             else:
-                feet[(part, side)] = (default_a[part], b0 + sgn * 0.18 * H, 0.0)
+                a = default_a[part]
+                feet[(part, side)] = (a, b0 + sgn * 0.18 * H, 0.0, a - 0.02 * length,
+                                      a + 0.03 * length)
     hind_a = float(np.mean([feet[("Hind", s)][0] for s in ("Left", "Right")]))
     front_a = float(np.mean([feet[("Front", s)][0] for s in ("Left", "Right")]))
     if front_a <= hind_a + 0.05 * length:  # leg pairs overlapped: trust the proportions
@@ -247,15 +333,20 @@ def fit_four_legged(v: np.ndarray) -> Joints:
         Jl[f"Tail{k}"] = h
     Jl["TailTip"] = tip
 
-    for (part, side), (a, b, z) in feet.items():
+    for (part, side), (a, b, z, a_back, a_front) in feet.items():
         top_a = 0.5 * ((hind_a if part == "Hind" else front_a) + a)
         z_ank = max(0.07 * H, z + 0.04 * H)
         z_top = z_sp - 0.02 * H
         shift = 0.03 * length * (1 if part == "Hind" else -1)
+        # the paw bone runs from above the back of the pad (a quarter of the way along, like
+        # the human ankle) to the front of the toes, so a step rolls over the whole paw
+        plen = max(a_front - a_back, 0.02 * length)
+        a_ank = a_front - 0.75 * plen
         Jl[f"{part}{side}UpperLeg"] = np.array([top_a, b0 + 0.8 * (b - b0), z_top])
-        Jl[f"{part}{side}LowerLeg"] = np.array([a + shift, b, 0.5 * (z_top + z_ank)])
-        Jl[f"{part}{side}Foot"] = np.array([a - (0.01 * length if part == "Hind" else 0), b, z_ank])
-        Jl[f"{part}{side}FootTip"] = np.array([a + 0.03 * length, b, z + 0.01 * H])
+        Jl[f"{part}{side}LowerLeg"] = np.array([a_ank + shift, b, 0.5 * (z_top + z_ank)])
+        Jl[f"{part}{side}Foot"] = np.array([a_ank, b, z_ank])
+        Jl[f"{part}{side}FootTip"] = np.array([a_front, b, z + 0.01 * H])
+        Jl[f"{part}{side}Heel"] = np.array([a_front - plen, b, z])
     return {k: fr.to_world(p) for k, p in Jl.items()}
 
 
@@ -291,14 +382,34 @@ def fit_bird(v: np.ndarray) -> Joints:
     legs = L[L[:, 2] < 0.3 * H]
     for sgn, side in ((1, "Left"), (-1, "Right")):
         s = legs[sgn * (legs[:, 1] - b0) > 0]
+        # the ankle sits over the leg's own column (the shin, above the toes), not over the
+        # middle of leg-plus-toes, which pulled it forward onto the toes; the toes are the leg
+        # vertices reaching well away from that column, and the foot's joints sit at their
+        # height, so a raised foot keeps its joints inside it
+        shin = s[(s[:, 2] > 0.15 * H) & (s[:, 2] < 0.28 * H)] if len(s) else s
         if len(s) > 3:
-            lb, fa, toe_a = float(s[:, 1].mean()), float(s[:, 0].mean()), float(s[:, 0].max())
+            lb = float(s[:, 1].mean())
+            fa = float(np.median(shin[:, 0])) if len(shin) > 3 else float(s[:, 0].mean())
+            spread = (1.5 * float(np.median(np.abs(shin[:, 0] - fa))) if len(shin) > 3
+                      else 0.0)
+            reach = max(3 * spread, 0.03 * length)
+            toes = s[(s[:, 2] < 0.15 * H) & (np.abs(s[:, 0] - fa) > reach)]
+            if len(toes) < 5:
+                toes = s[s[:, 2] < s[:, 2].min() + 0.03 * H]
+            front = toes[toes[:, 0] >= fa] if (toes[:, 0] >= fa).any() else toes
+            toe_a = float(front[:, 0].max())
+            z_tip = float(front[front[:, 0] > toe_a - 0.02 * length][:, 2].mean())
+            z0 = float(np.median(toes[:, 2]))
+            heel_a = float(toes[:, 0].min())
         else:
             lb, fa, toe_a = b0 + sgn * 0.3 * half_w, a_c, a_c + 0.1 * length
+            heel_a = fa - 0.03 * length
+            z0, z_tip = 0.0, 0.01 * H
         Jl[f"{side}UpperLeg"] = np.array([a_c - 0.03 * length, b0 + 0.6 * (lb - b0), 0.42 * H])
         Jl[f"{side}LowerLeg"] = np.array([fa - 0.02 * length, lb, 0.22 * H])
-        Jl[f"{side}Foot"] = np.array([fa, lb, 0.04 * H])
-        Jl[f"{side}FootTip"] = np.array([toe_a, lb, 0.01 * H])
+        Jl[f"{side}Foot"] = np.array([fa, lb, z0 + 0.03 * H])
+        Jl[f"{side}FootTip"] = np.array([toe_a, lb, z_tip])
+        Jl[f"{side}Heel"] = np.array([min(heel_a, fa), lb, max(z0 - 0.01 * H, 0.0)])
         wb = b0 + sgn * 0.85 * half_w
         Jl[f"{side}Wing1"] = np.array([a_c + 0.04 * length, wb, z_c + 0.1 * H])
         Jl[f"{side}Wing2"] = np.array([a_c - 0.1 * length, wb, z_c + 0.04 * H])
@@ -313,6 +424,15 @@ def fit(v: np.ndarray, template: str) -> Joints:
     if missing:
         raise ValueError(f"the fit left out joints: {missing}")
     return {k: np.asarray(J[k], float) for k in joint_names(template)}
+
+
+def foot_pivots(v: np.ndarray, template: str) -> Joints:
+    """Ground points behind each foot (<foot>Heel, on the floor under the back of the heel or
+    pad), for an animation that rocks a step from heel to toe. Not bones: the toe tips are the
+    ToesTip / FootTip joints."""
+    fn = {"humanoid": fit_humanoid, "four_legged": fit_four_legged, "bird": fit_bird}[template]
+    return {k: np.asarray(p, float) for k, p in fn(np.asarray(v, float)).items()
+            if k.endswith("Heel")}
 
 
 def choose_animal_template(v: np.ndarray) -> str:
