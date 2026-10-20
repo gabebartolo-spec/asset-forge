@@ -187,6 +187,17 @@ def remove_strays(rgba: np.ndarray, max_px: int = 2) -> np.ndarray:
     return out
 
 
+def trim_spurs(rgba: np.ndarray) -> np.ndarray:
+    """Drop 1-px tips (an opaque pixel with at most one opaque 4-neighbour) at beaks and toes.
+    One pass, so a 2-px-thick point survives; stair steps and corners have two neighbours."""
+    solid = opaque(rgba)
+    pad = np.pad(solid, 1, constant_values=False)
+    count = pad[:-2, 1:-1].astype(int) + pad[2:, 1:-1] + pad[1:-1, :-2] + pad[1:-1, 2:]
+    out = rgba.copy()
+    out[solid & (count <= 1)] = 0
+    return out
+
+
 def keep_main_bodies(rgba: np.ndarray, frac: float = SECOND_BODY_FRAC) -> np.ndarray:
     """Drop separate pieces smaller than `frac` of the biggest (stray bits of a sheet or a tail)."""
     out = rgba.copy()
@@ -449,7 +460,7 @@ def finish(prepared: list[np.ndarray], preset: Preset) -> list[np.ndarray]:
     pal, accents = shared_palette(prepared, preset.max_colours - 1)
     out = []
     for sprite in prepared:
-        s = fill_holes(remove_strays(apply_palette(sprite, pal)))
+        s = fill_holes(trim_spurs(remove_strays(apply_palette(sprite, pal))))
         s = fill_holes(add_outline(s))  # the outline ring can close a notch into a hole
         out.append(clean_speckle(s, accents))
     return out

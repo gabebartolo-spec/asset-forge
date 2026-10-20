@@ -1,5 +1,5 @@
 # Sprites handoff, 2026-10-20 (round 3: back views by turnaround sheet)
-## State: committed+pushed WIP (gates, sheets, D-023); real runs, spur trim, PR body, CI still to do
+## State (b4): merged main, trim_spurs added in post.finish (66 tests pass); final 3x2 run DONE: 0 of 6 passed (report.json there; raw sheets in <subject>/raw); PR body + push + CI left -> evidence in AppData/Roaming/Claude/side-session-notes/local_d40f4221-.../sprites3 (local_f6b2f763 folder does not exist); then PR body, push, CI
 ## Task (lead brief)
 1 draw front+back together as one SDXL turnaround sheet, split, post-process with shared palette; measure on lizard/bird/fox
 2 gates that FAIL: (a) no face on the back, (b) pair anatomy match; pair failing both = tell user + re-roll, never export

@@ -161,3 +161,15 @@ def test_small_separate_pieces_are_dropped_but_an_equal_second_body_is_kept_for_
     assert keep_main_bodies(s)[52, 52, 3] == 0
     s[44:62, 4:30] = 255  # second body, half the size
     assert keep_main_bodies(s)[50, 10, 3] == 255
+
+
+def test_trim_spurs_removes_one_pixel_tip_and_keeps_body():
+    from asset_forge.sprites.post import trim_spurs
+
+    a = np.zeros((12, 12, 4), np.uint8)
+    a[3:9, 3:9] = (200, 80, 80, 255)
+    a[5, 9] = (200, 80, 80, 255)  # 1-px bump on the edge
+    a[5, 10] = (200, 80, 80, 255)  # stuck on its end: a 2-px spur
+    out = trim_spurs(a)
+    assert out[5, 10, 3] == 0
+    assert (out[3:9, 3:9, 3] == 255).all()
