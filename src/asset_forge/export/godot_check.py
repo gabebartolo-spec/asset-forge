@@ -12,7 +12,7 @@ from pathlib import Path
 
 PROJECT_DIR = Path(__file__).resolve().parents[3] / "godot" / "import_check"
 _BAD_LINE = re.compile(
-    r"(^|\s)(ERROR|WARNING|SCRIPT ERROR|USER ERROR|USER WARNING)|IMPORT_CHECK_FAIL"
+    r"(^|\s)(ERROR|WARNING|SCRIPT ERROR|USER ERROR|USER WARNING)|IMPORT_CHECK_FAIL|RIG_CHECK_FAIL"
 )
 
 
@@ -34,6 +34,19 @@ def godot_exe(config_path: Path | None = None) -> Path | None:
 
 def check_glb(glb: Path, exe: Path | None = None, timeout: float = 120) -> GodotResult:
     """Run the import check. Always headless, with an isolated APPDATA."""
+    return _run(glb, exe, timeout, "check.gd", [], "IMPORT_CHECK_OK")
+
+
+def check_rig(glb: Path, exe: Path | None = None, humanoid: bool = False,
+              timeout: float = 120) -> GodotResult:
+    """Import check for a rigged .glb: one skeleton, a skinned mesh, at most 4 bone weights per
+    vertex, at most 64 bones; for a humanoid also that SkeletonProfileHumanoid maps it."""
+    return _run(glb, exe, timeout, "check_skeleton.gd", ["humanoid"] if humanoid else [],
+                "RIG_CHECK_OK")
+
+
+def _run(glb: Path, exe: Path | None, timeout: float, script: str, extra: list[str],
+         ok_prefix: str) -> GodotResult:
     exe = exe or godot_exe()
     if exe is None or not Path(exe).is_file():
         return GodotResult(False, ["Godot is not set up: put its console exe in config.local.toml"])
@@ -42,8 +55,8 @@ def check_glb(glb: Path, exe: Path | None = None, timeout: float = 120) -> Godot
         return GodotResult(False, [f"the file {glb.name} does not exist"])
     with tempfile.TemporaryDirectory(prefix="forge_godot_") as scratch:
         env = {**os.environ, "APPDATA": scratch, "LOCALAPPDATA": scratch}
-        cmd = [str(exe), "--headless", "--path", str(PROJECT_DIR), "--script", "check.gd",
-               "--", str(glb)]
+        cmd = [str(exe), "--headless", "--path", str(PROJECT_DIR), "--script", script,
+               "--", str(glb), *extra]
         try:
             proc = subprocess.run(cmd, env=env, capture_output=True, text=True,
                                   timeout=timeout, cwd=scratch)
@@ -53,7 +66,7 @@ def check_glb(glb: Path, exe: Path | None = None, timeout: float = 120) -> Godot
     problems = [ln.strip() for ln in lines if _BAD_LINE.search(ln)]
     if proc.returncode != 0 and not problems:
         problems = [f"Godot exited with code {proc.returncode}"]
-    summary = next((ln for ln in lines if ln.startswith("IMPORT_CHECK_OK")), "")
+    summary = next((ln for ln in lines if ln.startswith(ok_prefix)), "")
     if not summary and not problems:
         problems = ["Godot did not confirm the import"]
     return GodotResult(not problems, problems, summary)

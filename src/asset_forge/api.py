@@ -8,6 +8,7 @@
     GET  /api/assets, /api/assets/{id}    the library
     GET  /api/assets/{id}/files/{step}/{name}   an output (raw.glb, input.png, ...)
     POST /api/assets/{id}/clean           Step 2 hook (not wired yet: 501)
+    POST /api/assets/{id}/skeleton        Step 3: fit, bind, test pose (queued; needs clean.glb)
     POST /api/expand                      {idea, type, variation?} -> job; result {prompt}
                                           ("Expand my idea", on the one GPU queue)
     POST /api/assets/from-text            {prompt, type} -> new asset with no picture yet
@@ -33,6 +34,7 @@ from .draw import DrawError, ReferenceDrawer, default_drawer
 from .generators import Registry
 from .jobqueue import GpuQueue, Job
 from .matte import prepare_reference
+from .skeleton import rig
 from .store import ASSET_TYPES, NotFound, Store
 
 mimetypes.add_type("text/javascript", ".js")
@@ -266,6 +268,35 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         # Step 2 hook: will run steps.clean_command(...) on the queue, then show clean.glb.
         return JSONResponse(
             {"detail": "Cleaning up the model is coming next."}, status_code=501)
+
+    @app.post("/api/assets/{asset_id}/skeleton")
+    def skeleton(asset_id: str) -> dict:
+        # TODO(PR #9): the Clean step will write library/<id>/clean/clean.glb through this
+        # app; until it is merged the file is placed there by hand and the Step 2 -> Step 3
+        # hand-over button does not exist yet.
+        try:
+            asset = store.get_asset(asset_id)
+            clean_glb = store.step_dir(asset_id, "clean") / "clean.glb"
+            out = store.step_dir(asset_id, "skeleton")
+        except NotFound:
+            raise missing("model") from None
+        if not clean_glb.is_file():
+            raise HTTPException(409, "Clean up the model first, then build its skeleton.")
+        if asset["type"] == "monster":
+            raise HTTPException(
+                400, "Monsters get their skeleton in a later version. Humanoid and Animal "
+                     "work today.")
+
+        def run(job: Job) -> dict:
+            job.set_message("Fitting the skeleton to your model...")
+            t0 = time.time()
+            res = rig(clean_glb, out, asset["type"], settings.blender_exe, repo=settings.repo)
+            result = {**res.public(), "total_s": round(time.time() - t0, 1)}
+            store.write_result(asset_id, "skeleton", result)
+            store.mark_reached(asset_id, "skeleton")
+            return result
+
+        return gpu_queue.submit(asset_id, "skeleton", run).public()
 
     if settings.web_dir.is_dir():
         app.mount("/", StaticFiles(directory=settings.web_dir, html=True), name="web")

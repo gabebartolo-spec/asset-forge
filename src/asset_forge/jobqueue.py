@@ -118,9 +118,9 @@ class GpuQueue:
                 job.message = "Done"
         except Exception as e:  # noqa: BLE001
             traceback.print_exc()
-            job.state = FAILED
-            job.error = _plain(e)
+            job.error = _plain(e)  # before the state flips: waiters read both
             job.message = job.error
+            job.state = FAILED
         finally:
             job.finished = time.time()
             job.save()
@@ -131,7 +131,8 @@ def _plain(e: Exception) -> str:
     is in the console and the generator log)."""
     from .draw import DrawError
     from .generators import GeneratorError
+    from .skeleton import RigFailed
 
-    if isinstance(e, GeneratorError | DrawError | InterruptedError):
+    if isinstance(e, GeneratorError | DrawError | InterruptedError | RigFailed):
         return str(e)
     return "Something went wrong. Press Redo to try again."
