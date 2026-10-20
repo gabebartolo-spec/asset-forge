@@ -105,7 +105,9 @@ export class Viewer {
   // Joint dots and the lines between them, drawn on top of the body so they can be seen.
   buildMarkers(root, height, tips = [], red = new Set()) {
     const bones = [];
-    root.traverse((o) => { if (o.isBone) bones.push(o); });
+    // Root sits on the floor under the body (where a game moves the model from); it is not a
+    // joint of the body, so it gets no dot: every dot shown should sit inside the body
+    root.traverse((o) => { if (o.isBone && o.name !== "Root") bones.push(o); });
     if (!bones.length) return;
     for (const t of tips) { // a point fixed to the limb's last bone, so it moves with the pose
       const b = bones.find((x) => x.name === t.bone);
