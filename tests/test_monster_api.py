@@ -67,10 +67,8 @@ def test_confirmed_limbs_are_kept_and_passed_to_the_rig(client, settings, monkey
 
 
 def test_step1_says_when_a_spider_has_the_wrong_number_of_legs(client, settings, monkeypatch):  # noqa: F811
-    aid = client.post("/api/assets/from-text", json={
-        "prompt": "a spider-like monster with eight legs", "type": "monster"}).json()["id"]
-    gen_dir = settings.library_dir / aid / "generate"
-    (gen_dir / "input.png").write_bytes(b"png")
+    aid = new_asset(client, "monster")  # a picture asset with the words added (no drawer here)
+    client.app.state.store.set_prompt(aid, "a spider-like monster with eight legs")
     d = np.load(FIX.format("hi3dgen_spider"))
 
     def run(image, out_dir, seed, progress):
