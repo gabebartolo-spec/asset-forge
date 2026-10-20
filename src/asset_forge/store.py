@@ -195,9 +195,11 @@ class Store:
         _write_json(self.step_dir(asset_id, step) / "result.json", result)
 
     def file_path(self, asset_id: str, step: str, name: str) -> Path:
-        if "/" in name or "\\" in name or name.startswith("."):
+        """A step's output by name; one sub-folder is allowed (clean/after/front_clay.png)."""
+        parts = name.split("/")
+        if len(parts) > 2 or "\\" in name or any(not s or s.startswith(".") for s in parts):
             raise NotFound(name)
-        p = self.step_dir(asset_id, step) / name
+        p = self.step_dir(asset_id, step).joinpath(*parts)
         if not p.is_file():
             raise NotFound(name)
         return p
