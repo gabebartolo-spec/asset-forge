@@ -8,7 +8,7 @@ clip's `speed` (metres per second, along -Y). A planted foot therefore moves bac
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -16,6 +16,7 @@ import numpy as np
 BIPED = {"Left": 0.0, "Right": 0.5}
 QUAD_WALK = {"HindLeft": 0.0, "FrontLeft": 0.25, "HindRight": 0.5, "FrontRight": 0.75}
 QUAD_TROT = {"FrontLeft": 0.0, "HindRight": 0.0, "FrontRight": 0.5, "HindLeft": 0.5}
+HOP = {"Left": 0.0, "Right": 0.0}  # both feet together: a small bird's hop
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,7 @@ class Gait:
     lift: float              # metres a swinging foot rises
     phases: dict[str, float]
     early: tuple[str, ...] = ()  # legs whose foot lifts early in the swing (a tuck, not a drag)
+    lifts: dict[str, float] = field(default_factory=dict)  # leg -> its own swing lift (metres)
 
     @property
     def seconds(self) -> float:
@@ -37,9 +39,18 @@ class Gait:
         """Ground speed in m/s that keeps a planted foot still."""
         return self.stroke / (self.duty * self.seconds)
 
+    def lift_of(self, leg: str) -> float:
+        return self.lifts.get(leg, self.lift)
+
+    def swinging(self, leg: str, frame: float) -> float:
+        """How far through its swing the foot is, as sin(pi s): 0 on the ground, 1 mid-swing."""
+        x, z, on, s = self.foot(leg, frame)
+        return 0.0 if on else float(np.sin(np.pi * s))
+
     def foot(self, leg: str, frame: float) -> tuple[float, float, bool, float]:
         """(forward offset from the foot's rest spot, lift, on the ground, swing progress 0-1)."""
         phi = (frame / self.frames + self.phases[leg]) % 1.0
+        lift = self.lift_of(leg)
         half = self.stroke / 2
         if phi < self.duty:
             return half - self.stroke * phi / self.duty, 0.0, True, 0.0
@@ -53,8 +64,8 @@ class Gait:
         if leg in self.early:  # highest 30% of the way through, then down to land
             p = 0.3
             w = s / p if s < p else 1.0 + (s - p) / (1.0 - p)
-            return x, self.lift * np.sin(0.5 * np.pi * w), False, s
-        return x, self.lift * np.sin(np.pi * s), False, s
+            return x, lift * np.sin(0.5 * np.pi * w), False, s
+        return x, lift * np.sin(np.pi * s), False, s
 
     def roll(self, leg: str, frame: float, start: float = 0.55, settle: float = 0.4) -> float:
         """How far (0-1) the heel is lifted: it rises over the last part of the stance (from

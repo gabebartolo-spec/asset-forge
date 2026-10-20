@@ -30,6 +30,7 @@ from asset_forge.animate.clips import (
     animator,
     froude_speed,
     make_clips,
+    max_strides_per_s,
     stride_length,
 )
 from asset_forge.animate.gait import foot_slide
@@ -186,7 +187,7 @@ def test_walk_and_run_move_at_their_froude_number_unless_capped(made):
         v = froude_speed(FROUDE[name][b.template], b.leg_len)
         assert c.speed == pytest.approx(g.stroke / (g.duty * g.seconds))  # planted feet hold
         assert c.froude == pytest.approx(c.speed**2 / (G * b.leg_len))
-        assert 1 / g.seconds <= MAX_STRIDES_PER_S[name] + 1e-9, name
+        assert 1 / g.seconds <= max_strides_per_s(name, b.template) + 1e-9, name
         if not c.capped:                                   # exactly the Froude speed
             assert c.speed == pytest.approx(v), name
         else:                                              # slower, never faster
@@ -223,8 +224,9 @@ def test_cadence_follows_the_stride_rule(made):
         fr = FROUDE[name][b.template]
         rule = froude_speed(fr, b.leg_len) / animator(b).stride(name)
         strides_per_s = 1 / clips[name].gait.seconds
-        if rule > MAX_STRIDES_PER_S[name]:   # a small animal: held at the readability cap
-            assert 0.9 * MAX_STRIDES_PER_S[name] <= strides_per_s <= MAX_STRIDES_PER_S[name]
+        cap = max_strides_per_s(name, b.template)   # a fox walk: 1.3 (motion critic s7)
+        if rule > cap:                       # a small animal: held at the readability cap
+            assert 0.9 * cap <= strides_per_s <= cap
             continue
         # Animals and birds by Alexander (1976), people by their gait data (HUMAN_STRIDE): a
         # clip may step up to a quarter faster (a short reach) and a little slower (whole frames)
@@ -245,7 +247,7 @@ def test_small_animals_step_no_faster_than_the_cap(template):
         c = getattr(a, name)()
         rule = froude_speed(FROUDE[name][template], b.leg_len) / a.stride(name)
         assert rule > MAX_STRIDES_PER_S[name], (name, rule)
-        assert c.capped and c.gait.seconds >= 1 / MAX_STRIDES_PER_S[name] - 1e-9, name
+        assert c.capped and c.gait.seconds >= 1 / max_strides_per_s(name, template) - 1e-9, name
         assert c.speed < froude_speed(FROUDE[name][template], b.leg_len)
         assert c.short == {}
 
@@ -396,3 +398,231 @@ def test_the_faint_ends_lying_flat_with_straight_legs():
         u, v = P[lg.lower] - P[lg.upper], P[lg.foot] - P[lg.lower]
         bend = np.degrees(np.arccos(u @ v / np.linalg.norm(u) / np.linalg.norm(v)))
         assert bend <= 15.0, (lg.name, bend)
+
+
+# ------------------------------------------------------------------ weight, follow-through, timing
+# Director 2026-10-20, "Fix first" on person walk, fox walk, bird walk, person attack and person
+# faint: the motion lacked weight, secondary motion and timing (lead's motion critic s7).
+
+def _P(b, clip) -> list[dict]:
+    return [b.joint_positions(D) for D in clip.deltas]
+
+
+def _arr(P, joint) -> np.ndarray:
+    return np.array([p[joint] for p in P])
+
+
+def _deg(u, v) -> np.ndarray:
+    """Angle in degrees between matching rows of u and v."""
+    c = np.sum(u * v, axis=1) / np.linalg.norm(u, axis=1) / np.linalg.norm(v, axis=1)
+    return np.degrees(np.arccos(np.clip(c, -1.0, 1.0)))
+
+
+def _line_yaw(P, left, right) -> np.ndarray:
+    d = _arr(P, left) - _arr(P, right)
+    return np.degrees(np.unwrap(np.arctan2(d[:, 1], d[:, 0])))
+
+
+def _lag(lead, follow, most) -> int:
+    """Frames by which `follow` trails `lead` in a loop (best circular match)."""
+    a, b = lead - lead.mean(), follow - follow.mean()
+    return max(range(most + 1), key=lambda k: float(a @ np.roll(b, -k)))
+
+
+@pytest.mark.parametrize("name", ["walk", "run"])
+def test_a_person_swings_each_arm_against_its_own_leg(name):
+    b = body("humanoid")
+    c = getattr(animator(b), name)()
+    P = _P(b, c)[:-1]                                      # one cycle
+    hips = _arr(P, "Hips")
+    for side in ("Left", "Right"):
+        sh, el, wr = (_arr(P, f"{side}{j}") for j in ("UpperArm", "LowerArm", "Hand"))
+        u, v = el - sh, wr - el
+        swing = np.degrees(np.arctan2(u @ FWD, -u[:, 2]))  # upper arm forward of hanging down
+        assert np.ptp(swing) / 2 >= (25 if name == "walk" else 32), (side, np.ptp(swing) / 2)
+        hand, foot = (wr - sh) @ FWD, (_arr(P, f"{side}Foot") - hips) @ FWD
+        assert np.corrcoef(hand, foot)[0, 1] <= -0.8           # the arm swings against its leg
+        flex = _deg(u, v)                                       # the elbow bends as it swings on
+        assert np.ptp(flex) >= 15, (side, np.ptp(flex))
+        assert np.corrcoef(flex, swing)[0, 1] >= 0.7
+
+
+@pytest.mark.parametrize("name", ["walk", "run"])
+def test_a_person_turns_the_shoulders_against_the_pelvis(name):
+    b = body("humanoid")
+    c = getattr(animator(b), name)()
+    P = _P(b, c)[:-1]
+    pelvis = _line_yaw(P, "LeftUpperLeg", "RightUpperLeg")
+    shoulders = _line_yaw(P, "LeftUpperArm", "RightUpperArm")
+    assert np.ptp(pelvis) / 2 >= 3.0, np.ptp(pelvis) / 2
+    assert np.ptp(shoulders) / 2 >= 6.0, np.ptp(shoulders) / 2
+    assert np.corrcoef(pelvis, shoulders)[0, 1] <= -0.8
+    # the shoulders follow the pelvis round a couple of frames late (not locked to it)
+    assert 1 <= _lag(-pelvis, shoulders, len(P) // 4) <= 4
+
+
+def test_a_person_walks_tall_and_bobs_lowest_at_heel_strike():
+    b = body("humanoid")
+    w = animator(b).walk()
+    n, duty = w.gait.frames, w.gait.duty
+    z = _arr(_P(b, w)[:-1], "Hips")[:, 2]
+
+    def near(f, targets):
+        return min(min(abs(f - t) % n, n - abs(f - t) % n) for t in targets) <= 0.1 * n
+
+    strikes, mids = (0, n // 2), (round(duty / 2 * n), round(duty / 2 * n + n / 2) % n)
+    assert near(int(np.argmin(z)), strikes), (int(np.argmin(z)), strikes)
+    assert near(int(np.argmax(z)), mids), (int(np.argmax(z)), mids)
+    assert np.ptp(z) >= 0.03 * b.leg_len, np.ptp(z) / b.leg_len
+    # the stance knee is nearly straight at mid-stance: a walk, not a crouched sneak
+    P = _P(b, w)[mids[0]]
+    lg = b.leg("Left")
+    knee = _deg((P[lg.lower] - P[lg.upper])[None], (P[lg.foot] - P[lg.lower])[None])[0]
+    assert knee <= 12.0, knee
+
+
+@pytest.mark.parametrize("name", ["walk", "run"])
+def test_a_small_bird_hops_with_both_feet_together(name):
+    b = body("bird")                                       # robin sized
+    c = getattr(animator(b), name)()
+    P = _P(b, c)
+    left, right = _arr(P, "LeftFoot"), _arr(P, "RightFoot")
+    zl, zr = left[:, 2] - left[:, 2].min(), right[:, 2] - right[:, 2].min()
+    np.testing.assert_allclose(zl, zr, atol=1e-3 * b.leg_len)          # up together
+    gap = (left - right) @ FWD
+    np.testing.assert_allclose(gap, gap[0], atol=1e-3 * b.leg_len)     # side by side
+    air = zl > 0.05 * b.leg_len
+    assert air.any() and (~air).any()
+    hips = _arr(P, "Hips")[:, 2]
+    assert np.ptp(hips) >= 0.2 * b.leg_len, np.ptp(hips) / b.leg_len   # the body arcs
+    assert hips[air].max() > hips[0] + 0.1 * b.leg_len
+    for j in ("LeftFoot", "RightFoot"):                                 # and lands planted
+        assert _ground_slide(b, c, j).worst_m <= 0.02 * b.leg_len
+
+
+def test_a_large_bird_walks_one_foot_after_the_other():
+    b = body("bird", 4.0)                                  # half a metre tall
+    c = animator(b).walk()
+    P = _P(b, c)
+    zl, zr = _arr(P, "LeftFoot")[:, 2], _arr(P, "RightFoot")[:, 2]
+    assert np.abs(zl - zr).max() >= 0.05 * b.leg_len
+    assert c.short == {}
+
+
+def test_a_bird_flicks_its_tail_up_as_it_lands():
+    b = body("bird")
+    c = animator(b).walk()
+    n = c.gait.frames
+    up = []
+    for D in c.deltas[:-1]:
+        P = b.joint_positions(D)
+        v = D["Hips"][:3, :3].T @ (P["Tail1.tail"] - P["Tail1"])
+        up.append(np.degrees(np.arctan2(v[2], abs(v[1]))))
+    up = np.array(up)
+    assert np.ptp(up) >= 12.0, np.ptp(up)
+    peak = int(np.argmax(up))                               # landing is frame 0
+    assert peak <= 0.15 * c.fps or peak >= n - 1, (peak, n)
+
+
+def test_a_fox_walks_with_a_bending_spine_and_lifted_forepaws():
+    b = body("four_legged")
+    w = animator(b).walk()
+    P = _P(b, w)[:-1]
+    pelvis = _line_yaw(P, "HindLeftUpperLeg", "HindRightUpperLeg")
+    shoulders = _line_yaw(P, "FrontLeftUpperLeg", "FrontRightUpperLeg")
+    assert np.ptp(shoulders - pelvis) / 2 >= 6.0, np.ptp(shoulders - pelvis) / 2  # not a plank
+    paw = _arr(P, "FrontLeftFoot")
+    assert np.ptp(paw[:, 2]) >= 0.16 * b.leg_len, np.ptp(paw[:, 2]) / b.leg_len
+    rest = b.tail["FrontLeftFoot"] - b.head["FrontLeftFoot"]
+    curl = _deg(_arr(P, "FrontLeftFoot.tail") - paw, np.tile(rest, (len(P), 1)))
+    assert curl.max() >= 60.0, curl.max()                   # the forepaw folds as it swings
+    assert 1 / w.gait.seconds <= 1.35, 1 / w.gait.seconds    # an unhurried walk
+    tail = _line_yaw(P, "Tail4.tail", "Tail4") - pelvis
+    assert np.ptp(tail) / 2 >= 10.0, np.ptp(tail) / 2       # the tail swings, not a stick
+
+
+def _ang_speed(clip, bone) -> np.ndarray:
+    R = [D[bone][:3, :3] for D in clip.deltas]
+    return np.array([np.degrees(np.arccos(np.clip((np.trace(R[i + 1] @ R[i].T) - 1) / 2, -1, 1)))
+                     for i in range(len(R) - 1)]) * clip.fps
+
+
+def test_the_attack_drives_from_the_hips_out_to_the_hand():
+    a = animator(body("humanoid")).attack()
+    pk = {n: int(np.argmax(_ang_speed(a, n))) for n in ("Hips", "Chest", "RightUpperArm")}
+    assert pk["Hips"] < pk["Chest"] < pk["RightUpperArm"], pk
+
+
+def test_the_attack_winds_up_holds_then_strikes_hard():
+    b = body("humanoid")
+    a = animator(b).attack()
+    P = _P(b, a)
+    hand = _arr(P, "RightHand.tail")
+    v = np.linalg.norm(np.diff(hand, axis=0), axis=1) * a.fps
+    pk = int(np.argmax(v))
+    lo = max(0, pk - int(0.3 * a.fps))
+    still = v[lo:pk] < 0.15 * v[pk]                                   # a held wind-up...
+    best, run = 0, 0
+    for s in still:
+        run = run + 1 if s else 0
+        best = max(best, run)
+    assert best >= 2, still
+    last_still = lo + int(np.flatnonzero(still).max())
+    assert (pk - last_still) / a.fps <= 0.1, (pk, last_still)        # ...then fast into it
+    lg = b.leg("Left")
+    knee = _deg(_arr(P, lg.lower) - _arr(P, lg.upper), _arr(P, lg.foot) - _arr(P, lg.lower))
+    assert knee[pk:].max() >= 15.0, knee[pk:].max()                   # the front knee gives
+    heel = _arr(P, "RightFoot")[:, 2] - _arr(P, "RightFoot")[0, 2]
+    assert heel.max() >= 0.012 * b.height, heel.max() / b.height       # the back heel lifts
+
+
+def test_a_hit_snaps_the_chest_first_then_the_head_and_arms():
+    h = animator(body("humanoid")).hit()
+    pk = {n: int(np.argmax(_ang_speed(h, n))) for n in ("Chest", "Head", "LeftUpperArm")}
+    assert pk["Chest"] < pk["Head"] and pk["Chest"] < pk["LeftUpperArm"], pk
+
+
+def test_a_person_faints_knees_first_then_the_torso_then_the_head():
+    b = body("humanoid")
+    f = animator(b).faint()
+    P = _P(b, f)
+    lg = b.leg("Left")
+    knee = _deg(_arr(P, lg.lower) - _arr(P, lg.upper), _arr(P, lg.foot) - _arr(P, lg.lower))
+    pelvis = _arr(P, "Spine") - _arr(P, "Hips")
+    chest = _arr(P, "Neck") - _arr(P, "Chest")
+    head = _arr(P, "Head.tail") - _arr(P, "Head")
+    fold, nod = _deg(pelvis, chest), _deg(chest, head)
+
+    def onset(x, thr):
+        return int(np.argmax(x - x[0] >= thr))
+
+    k = f.fps / 30
+    assert onset(knee, 20) + 3 * k <= onset(fold, 10), (onset(knee, 20), onset(fold, 10))
+    assert onset(fold, 10) < onset(nod, 10), (onset(fold, 10), onset(nod, 10))
+
+
+@pytest.mark.parametrize("template", list(STICKS))
+def test_a_faint_falls_faster_and_faster_then_stops_dead(template):
+    b = body(template)
+    f = animator(b).faint()
+    z = np.array([np.mean([p[2] for p in P.values()]) for P in _P(b, f)])
+    v = -np.diff(z) * f.fps                                  # falling speed of the body's centre
+    pk = int(np.argmax(v))
+    k = f.fps / 30
+    assert abs(pk + 1 - f.land_frame) <= k, (pk + 1, f.land_frame)  # fastest just as it lands
+    start = int(np.argmax(v > 0.1 * v[pk]))
+    early = v[start:start + max(1, (pk - start) // 3)].mean()
+    assert early <= 0.5 * v[pk], (early, v[pk])              # slow to start: gravity
+    assert abs(v[pk + 1]) <= 0.35 * v[pk], (v[pk + 1], v[pk])  # a hard stop on the floor
+
+
+@pytest.mark.parametrize("template", list(STICKS))
+def test_nothing_moves_once_the_faint_has_settled(template):
+    b = body(template)
+    f = animator(b).faint()
+    P = _P(b, f)
+    settle = f.land_frame + int(round(0.15 * f.fps))         # landing, bounce and arm splay
+    assert len(P) - settle >= 0.4 * f.fps                    # then it lies still a while
+    for p in P[settle:]:
+        worst = max(float(np.linalg.norm(p[j] - P[settle][j])) for j in p)
+        assert worst <= 0.002 * b.height, worst / b.height
