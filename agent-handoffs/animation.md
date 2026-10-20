@@ -1,50 +1,46 @@
-# Handoff: animation (anim-b1, Phase 4 first slice), updated 2026-10-20
-State: back end works on the real hi3dgen humanoid (pure clips -> Blender keys -> NLA -> animated.glb with 6 clips;
-glb checks pass: slide <=0.05 cm, seams exact). Committed WIP on claude/animation. Context handoff at ~200k.
-Worktree ../asset-forge-wt/animation, own .venv (uv, py3.14; `uv venv .venv && uv pip install -e ".[dev]"`).
-config.local.toml copied from ../clean-step (gitignored). Baseline unit suite 99 passed.
-Inputs: main checkout models/skeleton_in (clean.glb x6), models/skeleton_out/<gen>/<animal>/rigged.blend (from #15).
-Brief (lead): Step 4 for humanoid / four-legged / bird; clips idle, walk, run, attack, hit, faint in ONE .glb + .blend;
-export gate + headless Godot check; Step 4 panel with clip picker; monsters/6+ legs plain-words "later" (NOT_YET).
-DONE = draft PR: unit tests failing-first (foot-slide, clip names, loop seams), -m blender tests, Godot OK x6,
-GIF per clip per body type in evidence folder, PR body per forge-pr. Do not merge. Clips go to the lead only.
+# Handoff: animation (anim-b2, Phase 4 first slice), updated 2026-10-20
+State: back end + export done and proven on the six rigs; next API, page, blender tests, previews, PR.
+Branch claude/animation (worktree ../asset-forge-wt/animation, own .venv), origin/main merged (037f86a).
+Brief (lead): finish anim-b1's WIP; DONE = draft PR (do not merge): unit tests failing first, -m blender
+tests, export gate + Godot check incl. loop modes on six rigs, Step 4 page with clip picker (API on the GPU
+queue), game-speed GIF per clip per body type in the evidence folder, PR body per forge-pr.
+Evidence folder: C:/Users/DANTE/AppData/Roaming/Claude/side-session-notes/32c9f533-fe4e-47ae-b55b-70ec62248734/animation/
+Scratch: %TEMP%/claude/C--Users-DANTE-Documents-GitHub-asset-forge--claude-worktrees-asset-forge-status-0d338f/32c9f533-.../scratchpad
+  (run6.py animates the six rigs -> anim6/, mutate.py = failing-first mutation runs, probe.py = gait table)
 
-## Built (src/asset_forge/animate/)
-- kin.py: rot, rot_between, frame, about, two_bone_ik. Frame: Z up, faces -Y, +X left.
-- body.py: Body (from_joints / from_skeleton_report / bones), Leg (template pole: humanoid knee fwd, quad front back,
-  hind fwd, bird back), ground_z (raised paw -> ground; short_legs when bones cannot reach), Pose, solve()
-  -> delta 4x4 per bone. Hips move rides on Root (Hips is connected to Root's tail; connected bones cannot translate).
-- gait.py: Gait (duty, stroke, Hermite swing matching planted speed), BIPED/QUAD_WALK/QUAD_TROT, foot_slide metric.
-- curves.py: pchip + Keys (shared key times). clips.py: Animator + Humanoid/FourLegged/Bird, six clips each,
-  make_clips(body), ground_offsets() for the faint. Hip drop from the reach limit (REACH .97, _periodic_cover).
-  Cycle frames Froude-scaled with floors (walk >=24, run >=16): bird walk 0.04 m/s, fox 0.23 (flag to lead).
-- check.py: read_animations (glb), world_positions (node FK), seam_errors (pop + stall), check_animated_glb
-  (names exact, loop pop/stall, foot slide on the exported file; faint excluded).
-- __init__.py: animate(rigged_blend, out_dir, blender_exe, asset_type) -> AnimResult; AnimFailed; NOT_YET.
-- blender/animate.py: opens rigged.blend, keys every frame (basis = rest^-1 Dp^-1 D rest), faint grounding from the
-  skinned mesh (moves Root only), NLA track per clip, export NLA_TRACKS, clips.json; --previews DIR renders PNGs
-  (workbench, checker floor running at clip speed, az 55 el 12). Takes ~1 s without previews.
-- Probe: scratchpad/probe.py (pure) shows all six rigs: no IK shortfall, slide ~0 except faint (excluded).
+## Lead decisions applied
+1. In place, speed in clips.json (+ froude, strides_per_s). 2. Loop sidecar <name>.glb.import (idle/walk/run
+loop_mode 1); Godot honours it: proven by check_import (real `--import` in a scratch project): no sidecar ->
+loop mode 0 (fails), with sidecar -> LOOP_CHECK_OK. 3. Floors dropped: v = sqrt(Fr g L), Fr walk 0.25 all,
+run 1.5 humanoid / 2.0 four_legged trot / 1.5 bird; stride by Alexander (2.3 Fr^0.3 L), capped by reach;
+cadence follows. Heel lift at push-off (pivot ball for humanoid, toes counter-rotated; paw tip for
+animals) + per-leg reach window. Small bodies keyed at 60 fps (run stride < 12 keys at 30).
+
+## Commits since WIP
+cddf3b6 Froude gait, heel lift, tests/test_animate.py + tests/anim_factory.py
+(stall check: duplicate seam frame only if motion keeps direction; turning sway is not a hitch)
+29f14d2 export/animated.py export_animated (measure_glb gate: tris, materials, texture px, bones,
+influences; budgets section 6), godot_check.loop_sidecar/write_loop_sidecar/check_import,
+godot/import_check/check_import.gd, tests/test_export_animated.py
+
+## Numbers (six rigs, exported glb checks; evidence export_godot_six.txt)
+All six: Godot RIG_CHECK_OK + LOOP_CHECK_OK clips=6 looping=idle,walk,run; gate in budget.
+worst planted slide 0.21 cm (triposg fox run). Seams exact.
+bird L=0.06 m: walk 0.38 m/s 4.3 strides/s; run 0.94 m/s 6.0/s (60 fps)
+fox L=0.165-0.193: walk 0.64-0.69 m/s 3.0/s; trot 1.80-1.95 m/s 4.3/s (60 fps)
+humanoid L=0.84: walk 1.44 m/s 1.36/s (163 steps/min, brisk; real ~2 steps/s); run 3.52 m/s 1.67/s
+Open for lead (no change made): human walk cadence is brisk because hip drop budget is 0.07 L;
+0.10 L would give 1.16 strides/s but a deeper knee bend. Taste call.
 
 ## Left (in order)
-1. Unit tests tests/test_animate.py: foot_slide fails on a sliding track (show failing first: e.g. Gait with wrong
-   speed), clip-name check fails on a glb missing 'run', seam check fails on a pop and a stall (write a tiny glb
-   with tests/glb_factory or skin_factory + animations), IK reaches, loop frame N == frame 0, knee bends forward.
-   Use `from test_skeleton import stick_human, stick_fox, stick_bird` + fit.fit -> Body.from_joints.
-2. tools/animate/previews.py: per model: gpu_lock(models/gpu.lock) -> animate --previews -> GIFs (PIL, durations
-   [30,30,40] ms, label clip + speed) into evidence folder
-   C:/Users/DANTE/AppData/Roaming/Claude/side-session-notes/<session>/animation/ (pick one, say it in the report).
-   gpu.lock was held by clean-b5 at 13:15; wait in background, never poll.
-3. Export: export_animated(asset_dir...) in src/asset_forge/export/: gate on the MEASURED final glb (tris, materials,
-   texture px from PNG header, bones, influences via skeleton.glb.read_skin) using asset_forge.gates.check if present
-   (PR #9, not on main) else a local table mirroring design section 6; + godot_check.check_rig (maybe print clip names
-   in check_skeleton.gd). Refuse with the broken limit in plain words. Test with an over-budget glb (failing first).
-4. API: POST /api/assets/{id}/animate (queue job, needs skeleton/rigged.blend; monster -> 400 NOT_YET),
-   POST /api/assets/{id}/export. tests/test_animate_api.py with animate() mocked.
-5. Web: index.html panel-4 (clip picker: Idle Walk Run Attack Hit Faint), viewer.js playClip(name) with
-   AnimationMixer (+ mixer.update in loop), app.js step 4 wiring (Next on step 3 -> Animate). Real-click proof.
-6. tests/test_animate_blender.py (-m blender): animate on tests/fixtures blockman/blockfox rig -> 6 clips, checks pass,
-   Godot import OK. Then Godot check on all six skeleton_out rigs' animated.glb.
-7. PR body (forge-pr template): Evidence, Not exercised, Board and log (D-TBD: in-place clips + speed in clips.json;
-   loop flag must be ticked in Godot since names are fixed; cycle floors for tiny bodies).
-Open questions for the lead: in-place vs root motion (chose in-place + speed); Godot loop mode not set by names.
+4. API: POST /api/assets/{id}/animate (job on GPU queue, needs skeleton/rigged.blend; monster -> 400
+   NOT_YET), POST /api/assets/{id}/export (export_animated). tests/test_animate_api.py, animate() mocked.
+   Mirror the skeleton endpoint in src/asset_forge/api.py (line ~294).
+5. Web: index.html panel-4 (clip picker Idle Walk Run Attack Hit Faint), viewer.js playClip(name)
+   (AnimationMixer + mixer.update), app.js step 4 wiring in its own functions (keep diff small; #17
+   Library touched app.js). Real-click proof (browser automation).
+6. tests/test_animate_blender.py (-m blender): animate on fixture rig -> checks pass; Godot rig +
+   import loop check; control without sidecar fails.
+7. tools/animate/previews.py: gpu_lock(models/gpu.lock) -> animate --previews -> GIF per clip per body
+   (PIL, 30 fps, durations [30,30,40]) into the evidence folder. Lock was clean-b5's at 13:17.
+8. Full unit suite + ruff, PR body (forge-pr template), report to lead (<=8 lines). Delete scratch.
