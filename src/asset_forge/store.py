@@ -1,7 +1,8 @@
 """The library: `library/<asset-id>/<step>/` holds each step's outputs, `settings.json` (what was
 asked for) and the seed, so any step can be redone without redoing earlier ones.
 
-    library/<asset-id>/asset.json              id, type, created, last step reached
+    library/<asset-id>/asset.json              id, type, created, last step reached, prompt
+                                               (prompt only for text-only assets)
     library/<asset-id>/generate/input.png      the cut-out reference the generator saw
     library/<asset-id>/generate/settings.json  generator, seed, type
     library/<asset-id>/generate/status.json    the latest job: state, message, times, error
@@ -67,6 +68,24 @@ class Store:
         asset = {"id": asset_id, "type": asset_type, "created": time.time(), "reached": None}
         _write_json(d / "asset.json", asset)
         return asset
+
+    def create_text_asset(self, asset_type: str, prompt: str) -> dict:
+        """An asset that starts from words: the reference picture is drawn later (draw.py)."""
+        if asset_type not in ASSET_TYPES:
+            raise ValueError("Choose Humanoid, Monster or Animal.")
+        asset_id = f"a-{time.strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(2)}"
+        d = self.root / asset_id
+        (d / "generate").mkdir(parents=True)
+        asset = {"id": asset_id, "type": asset_type, "created": time.time(), "reached": None,
+                 "prompt": prompt}
+        _write_json(d / "asset.json", asset)
+        return asset
+
+    def set_prompt(self, asset_id: str, prompt: str) -> None:
+        d = self.asset_dir(asset_id)
+        asset = _read_json(d / "asset.json")
+        asset["prompt"] = prompt
+        _write_json(d / "asset.json", asset)
 
     def get_asset(self, asset_id: str) -> dict:
         d = self.asset_dir(asset_id)

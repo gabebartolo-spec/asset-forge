@@ -30,8 +30,13 @@ def main() -> None:
             job["messages"], tokenize=False, add_generation_prompt=True, enable_thinking=False
         )
         ids = tok(text, return_tensors="pt").to(model.device)
+        sample = {}
+        if job.get("seed") is not None:
+            torch.manual_seed(job["seed"])
+            sample = {"do_sample": True, "temperature": 0.8, "top_p": 0.9}
         with torch.no_grad():
-            out = model.generate(**ids, max_new_tokens=job["max_new_tokens"], do_sample=False)
+            out = model.generate(**ids, max_new_tokens=job["max_new_tokens"],
+                                 **(sample or {"do_sample": False}))
         answer = tok.decode(out[0][ids["input_ids"].shape[1] :], skip_special_tokens=True)
         vram = torch.cuda.max_memory_allocated() / 2**20 if use_gpu else 0
         reply = {
