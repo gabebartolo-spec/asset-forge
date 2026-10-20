@@ -13,10 +13,10 @@ D-025). Phase 1 done 2026-10-20 (D-019).
 | Agent | State | Item | Branch / PR | Since |
 |-------|-------|------|-------------|-------|
 | Lead | working | board; critics; merges | this PR | 2026-10-20 |
-| clean-critic-r4 | running a check | item 5 (round-4 realism/fidelity) | #9 | 2026-10-20 |
-| sprites-b4 | working | item 7 (finish: spurs, real runs, PR body) | #11 | 2026-10-20 |
-| anim-b1 | working | item 10 (Animation first slice) | claude/animation | 2026-10-20 |
-| library-b1 | working | item 11 (Library and batch) | claude/library (no PR yet) | 2026-10-20 |
+| clean-b5 | working | item 5 (colour method change: multi-view vs part-wise) | #9 | 2026-10-20 |
+| anim-b2 | working | item 10 (Animation first slice) | claude/animation | 2026-10-20 |
+| step2-page | working | item 12 (Step 2 page + hand-over) | claude/step2-page | 2026-10-20 |
+| monster-rig | working | item 13 (monster skeleton + limb count) | claude/monster-rig | 2026-10-20 |
 
 States: working · running a check · awaiting director · blocked · available.
 
@@ -32,27 +32,26 @@ States: working · running a check · awaiting director · blocked · available.
 ### Phase 2 — Generate and Clean (assigned 2026-10-20: "Yes, split it in two", "spawn 1 more")
 4. DONE 2026-10-20. App shell + Step 1 Generate + generator menu (PR #8); text-only input and
    "Expand my idea" in the page (PR #14).
-5. Step 2 Clean + gates (PR #9). Round 4: colour is a measured region gate (method change after
-   three tuning rounds). Fresh critic running. Then the Step 2 page and the Step 2 -> Step 3
-   hand-over (item 12).
+5. Step 2 Clean + gates (PR #9). Round 4 critic: 1 of 10 pass (sides and backs guessed from one
+   front picture). Method change: multi-view views vs part-wise wrap, measured on all 10.
 6. DONE 2026-10-20. Export gate + headless Godot import check (PR #7).
-12. Step 2 page + hand-over to Step 3, starts the moment PR #9 merges (D-025).
+12. Step 2 page + hand-over to Step 3, built now with Clean mocked; merges after #9 (D-026).
 
 ### Phase 3 — Skeleton
 9. DONE 2026-10-20 (D-024). Humanoid, four-legged and bird rigs, test pose, page (PR #15).
-   Monsters (limb-chain editor) not yet assigned.
+13. Monsters: skeleton proposed from the mesh, limb-chain editor; the same limb counter checks
+    Step 1 output (a 10-legged spider is re-rolled) (D-026).
 
 ### Phase 4 — Animation (assigned 2026-10-20, D-025)
 10. First slice: idle, walk, run, attack, hit, faint for 2 legs, 4 legs and bird; one .glb; gate
     and Godot check; Step 4 page. 6+ legs and monsters later.
 
 ### Phase 5 — Sprites (assigned 2026-10-20, D-022)
-7. Sprite mode A back end (PR #11): turnaround-sheet backs, face and anatomy pair gates, D-023
-   sizes. Left: spur trim, real runs, PR body. Pair yield is low (1 of 18 sheets): measured and
-   reported, not tuned further.
+7. DONE 2026-10-20 (back end, PR #11, D-023). Pair gates work; turnaround-sheet backs yield 0-1
+   of 18, so backs move to the multi-view method once item 5 proves it.
 
 ### Phase 6 — Library and batch (assigned 2026-10-20, D-025)
-11. Library tab (resume, duplicate, trash), batch queue, step timings. PR opens when a slot frees.
+11. DONE 2026-10-20 (PR #17). Clean joins the batch in item 12.
 
 ### Phase 9 — Prompt generator (assigned 2026-10-20, D-022)
 8. DONE 2026-10-20. Back end (PR #12) and page (PR #14).
