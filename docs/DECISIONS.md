@@ -4,6 +4,16 @@ Cap: 400 lines; oldest roll to `docs/archive/`. One decision per entry, newest f
 that is not here does not exist. Format: date · id · who decided · the decision · why · what it
 changes. Only the lead edits this file, from the "Board and log" section of merged PRs.
 
+## 2026-10-20 · D-029 · Director · No subagents; every helper is a fresh session
+His words: "no more subagents, if you need a helper you spawn a fresh session" and "seperate
+sessions grouped properly in the toolbar". Changes: every builder and critic is a start_session
+session in its own worktree, filed in the "Asset Forge" sidebar group (RULEBOOK; CLAUDE.md, PR #23).
+
+## 2026-10-20 · D-028 · Director · Animation clips: fix first
+Asked whether the PR #20 clips ship. His answer: "Fix first" on person walk, fox walk, bird walk,
+and attack/faint. Changes: #20 stays open; it re-rigs on the #22 joints, makes previews_v4 and
+passes a fresh motion critic before he sees the clips again.
+
 ## 2026-10-20 · D-027 · Director · Clean colour: keep improving first
 Asked: ship the 6/10 multi-view colour now, keep improving, or shape only. His answer: "Keep
 improving first". Changes: PR #9 stays open; a fresh Clean builder targets the causes behind the
