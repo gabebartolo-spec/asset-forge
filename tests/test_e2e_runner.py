@@ -34,6 +34,9 @@ class FakeApi(e2e.Api):
 
     def get(self, path):
         self.calls.append(("GET", path))
+        if path.endswith("/skeleton/limbs"):
+            return {"spine": [[0, 0, 0], [0, 0, 1]], "counts": {"legs": 8},
+                    "limbs": [{"kind": "leg", "joints": [[0, 0, 0], [1, 0, 0]], "side": "left"}]}
         return self.jobs[path.rsplit("/", 1)[1]]
 
     def upload(self, path, image, fields):
@@ -86,6 +89,23 @@ def test_monster_refused_at_skeleton_is_refused_not_fail(tmp_path):
     s = e2e.summarise([rec])
     assert s["end_to_end"] == 0 and s["failures"] == []
     assert s["refusals"][0]["step"] == "skeleton"
+
+
+def test_monster_builds_its_skeleton_from_the_proposed_limbs(tmp_path):
+    class BodyApi(FakeApi):
+        def post(self, path, body=None):
+            if path.endswith("/skeleton"):
+                self.sent = body
+            return super().post(path, body)
+
+    api = BodyApi(refuse={"animate": (400, "Monsters get their animations later.")})
+    rec = e2e.run_model(api, SPIDER, "hi3dgen", can_draw=False, refs_dir=tmp_path)
+    assert ("GET", "/api/assets/a1/skeleton/limbs") in api.calls
+    assert api.sent == {"spine": [[0, 0, 0], [0, 0, 1]],
+                        "limbs": [{"kind": "leg", "joints": [[0, 0, 0], [1, 0, 0]]}]}
+    assert rec["gates"]["limbs_proposed"] == {"legs": 8}
+    assert rec["steps"]["skeleton"]["state"] == "pass"
+    assert rec["steps"]["animate"]["state"] == "refused"
 
 
 def test_clean_that_breaks_a_limit_counts_as_fail_and_stops(tmp_path):

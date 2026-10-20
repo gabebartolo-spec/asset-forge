@@ -13,8 +13,9 @@ recorded as "refused", not "fail".
 Per model it records each step's state, the app's plain error text, machine seconds, the gate
 numbers (triangles, texture, bones, influences) and the Godot results, and copies the
 reference, the five-view sheets (raw clay; clean clay and colour), the test-pose sheet and one
-GIF per clip into OUT_DIR/<model>/. The sheets live in sub-folders the file route does not
-serve, so they are read from the library folder on disk. GIFs come from
+GIF per clip into OUT_DIR/<model>/. The sheets come through the file route (clean/after/...),
+falling back to the library folder on disk for an older app. A monster's skeleton uses the
+limb chains the app proposes, unedited (the director presses Build skeleton). GIFs come from
 tools/animate/previews.py (under the shared GPU lock) because the API does not make them.
 Writes OUT_DIR/index.json and OUT_DIR/index.md.
 """
@@ -185,6 +186,8 @@ def run_model(api: Api, prompt: dict, generator: str, can_draw: bool, refs_dir: 
     st, job = run_job(api, f"/api/assets/{aid}/generate", {"generator": generator, "seed": seed})
     if job and job.get("result"):
         st["gpu_peak_gb"] = job["result"].get("gpu_peak_gb")
+        if job["result"].get("anatomy"):
+            st["anatomy"] = job["result"]["anatomy"]  # the Step 1 limb check (warns only)
     steps["generate"] = st
     if st["state"] != PASS:
         return stop_rest("generate")
@@ -206,8 +209,18 @@ def run_model(api: Api, prompt: dict, generator: str, can_draw: bool, refs_dir: 
     if st["state"] != PASS:
         return stop_rest("clean")
 
-    # 4. Skeleton
-    st, job = run_job(api, f"/api/assets/{aid}/skeleton")
+    # 4. Skeleton (a monster sends the limb chains the app proposed, as a person would unedited)
+    body = None
+    if prompt["type"] == "monster":
+        try:
+            prop = api.get(f"/api/assets/{aid}/skeleton/limbs")
+            body = {"spine": prop["spine"], "limbs": [{"kind": lb["kind"], "joints": lb["joints"]}
+                                                      for lb in prop["limbs"]]}
+            rec["gates"]["limbs_proposed"] = prop.get("counts")
+        except (ApiError, KeyError, TypeError) as e:
+            steps["skeleton"] = step(FAIL, error=getattr(e, "detail", f"no limb proposal: {e}"))
+            return stop_rest("skeleton")
+    st, job = run_job(api, f"/api/assets/{aid}/skeleton", body)
     if job and job.get("result"):
         r = job["result"]
         rec["gates"].update({"bones": r.get("bones"), "max_influences": r.get("max_influences"),
@@ -339,16 +352,35 @@ def collect_files(api: Api, rec: dict, library: Path, out: Path) -> list[str]:
         made.append("reference.png")
     except ApiError:
         pass
-    clean = library / aid / "clean"
+    tmp = d / "_views"
+
+    def fetch(step_name: str, name: str) -> Path:
+        """One view through the file route; the library folder on disk if the app refuses."""
+        dest = tmp / step_name / name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            dest.write_bytes(api.get_bytes(f"/api/assets/{aid}/files/{step_name}/{name}"))
+            rec.setdefault("views_via", set()).add("api")
+        except ApiError:
+            src = library / aid / step_name / name
+            if not src.is_file():
+                return src
+            shutil.copy2(src, dest)
+            rec.setdefault("views_via", set()).add("disk")
+        return dest
+
     for name, folder, shade in (("sheet_raw_clay", "before", "clay"),
                                 ("sheet_clean_clay", "after", "clay"),
                                 ("sheet_clean_colour", "after", "colour")):
-        if grid([clean / folder / f"{v}_{shade}.png" for v in SHEET_VIEWS], d / f"{name}.png"):
+        if grid([fetch("clean", f"{folder}/{v}_{shade}.png") for v in SHEET_VIEWS],
+                d / f"{name}.png"):
             made.append(f"{name}.png")
-    skel = library / aid / "skeleton"
     for shade in ("clay", "colour"):
-        if grid([skel / f"pose_{v}_{shade}.png" for v in SHEET_VIEWS], d / f"pose_{shade}.png"):
+        if grid([fetch("skeleton", f"pose_{v}_{shade}.png") for v in SHEET_VIEWS],
+                d / f"pose_{shade}.png"):
             made.append(f"pose_{shade}.png")
+    rec["views_via"] = sorted(rec.get("views_via", ()))
+    shutil.rmtree(tmp, ignore_errors=True)
     return made
 
 
