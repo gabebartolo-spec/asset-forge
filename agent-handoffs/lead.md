@@ -3,7 +3,8 @@
 DIRECTOR RULE 2026-10-20: "no more subagents, if you need a helper you spawn a fresh session".
 s8 runs every lane as a fresh session (start_session, own worktree) from the lane handoffs below.
 Rule being recorded by session rule-sessions (local_ec88eef6-2906-402f-88b7-9e8c7d98510d), plus his
-"seperate sessions grouped properly in the toolbar": file every helper in an "Asset Forge" sidebar group.
+"seperate sessions grouped properly in the toolbar": RULEBOOK line 24 updated by s7; sidebar groups
+"Asset Forge" and "Kaiju" created; file every new helper session there. Kaiju LEAD 6 and 7 acked.
 PR #22 (skeleton-fit) MERGED. Kaiju lead (local_30225153...) told the new rule (ack asked).
 #20 must re-rig its inputs on the #22 joints (MERGE NOTE in #22).
 s7's builders live only inside s7 (they die if s7 is archived). s8: check list_sessions / ListAgents;
@@ -50,7 +51,8 @@ non-monster model exports with the Godot check green. Output: notes folder e2e/r
   CMU mocap retargeted onto triposg human; licence.txt quotes CMU terms; Quaternius needs an itch
   button, skipped). B walk/fall read more human; CMU punch weaker than our swipe; slide 1.1-2.9 cm.
   Before asking the director: redo A with previews_v4 and a fresh motion-critic on both.
-- monster-b2 lives in the OLD lead session (claude/monster-rig); old lead forwards.
+- Old lead session (local_7fdc3e78) is ARCHIVED, so monster-b2 is gone: claude/monster-rig (head
+  23678e8+) needs a fresh session from asset-forge-wt/monster-rig/agent-handoffs/monster-rig.md.
 - claude/step2-page a131c49 pushed (count fix + _settle); its worktree was removed. PR after #9.
 - context-trim worktree (claude/context-trim, uncommitted CLAUDE.md + settings) is not ours.
 
