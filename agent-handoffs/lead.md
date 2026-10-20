@@ -1,28 +1,32 @@
 # Asset Forge lead handoff (2026-10-20, session 7)
-## State: working (clean-b8, step2-fix builders; PR #20 awaiting director look)
+## State: working (clean-b8 running; strict motion critic + mocap licence research running)
 
 ## Director said (2026-10-20)
 - "eta til usable build?" -> ~1.5-2 working days.
 - "work on multiple phases at once" (D-025); "if theres anything you can work on in parrelal
-  then do it" (D-026); Clean colour "Keep improving first" (D-027, logged in board PR claude/board-3).
+  then do it" (D-026); Clean colour "Keep improving first" (D-027, merged #21).
+- PR #20 clips A-E (review_pr20/ in the s7 worktree, untracked): "Fix first"; marked ALL of person
+  walk, fox walk, bird walk, attack/faint wrong, no notes. TO LOG as D-028 in the next board PR.
 
 ## Live (verify with gh pr list / ListAgents; in-process agents die with this session)
-- main: #15, #16, #11, #17, #19 merged. Board PR claude/board-3 (D-027 + this handoff) open.
+- main: #15, #16, #11, #17, #19, #21 merged. Next board PR: claude/board-4 (local).
 - PR #9 clean (draft, head effb435). Method B best: 6/10 on local claude/clean-step-methodB-local
   a57382f. clean-b8 (opus subagent, this session) targets causes: bird beak registration, triposg
   fox 2 parts, hi3dgen fox chest/front legs, humanoid greaves_back 0.122/0.12. Bar 8/10 -> pushes
   into claude/clean-step, PR #9 body. Then lead: fresh realism-critic on the sheets, merge #9.
-- step2-fix (sonnet subagent): claude/step2-page, fixes "It broke 2 limits" count + cherry-picks
-  0fb46ea (GpuQueue._settle) from monster-rig. Pushes; NO PR until #9 merges (3-PR cap).
-- PR #20 animation READY (350dcf2), CI green, motion critic r2 13/14. Asked director for the clip
-  look this session; merge on his yes. Known: triposg fox ~18 deg yaw (Step 3), rigid forefoot.
+- claude/step2-page a131c49 pushed (count fix + 0fb46ea _settle cherry-pick; 192 unit pass). NO PR
+  until #9 merges. Not re-checked vs #20's jobqueue `_plain`.
+- PR #20 animation (350dcf2): DO NOT MERGE, director "Fix first" on every clip. Fresh strict
+  motion-critic (scratch critic_motion_s7/) + a mocap-licence research agent are running. Then:
+  brief a fresh anim builder with exact fixes; if the critic says people need retargeted mocap,
+  ask the director (D-005 says procedural) with a side-by-side clip.
 - monster-b2 lives in the OLD lead session (claude/monster-rig, head d66d38b); old lead forwards.
 - Proposed card: Step 3 foot joint fix (task_043885cd).
 - asset-forge-wt has 5 worktrees: context-trim (claude/context-trim, uncommitted CLAUDE.md +
   settings.json) is not a lead lane; owner unknown. Do not touch; remove when its owner is done.
 
 ## Next steps
-1. #20: director yes -> merge with --match-head-commit (re-check head).
+1. #20: critic report -> fix brief (or method question) -> new clips -> director.
 2. clean-b8 report -> check evidence, fresh realism-critic (own scratch subfolder), merge #9.
 3. #9 merged -> open step2-page PR (sync main first; gates/ add/add take #9's), merge on green.
 4. Board PR after each merge. Then monster-rig PR when a slot frees.
