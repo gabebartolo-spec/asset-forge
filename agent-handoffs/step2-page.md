@@ -1,5 +1,5 @@
 # step2-page handoff, 2026-10-20
-## State: available (done, waiting for the lead to open the PR)
+## State: available (fixes done and pushed, waiting for the lead to open the PR)
 ## Task
 STATUS item 12: Step 2 Clean page, Step 2 -> Step 3 hand-over, Clean in the Library batch.
 ## Branch and commit
@@ -43,8 +43,10 @@ view); --dim lifted to #b0b8c6. Contrast measured on the 1366 fail shot (pillow)
 Compare label 8.2, Drag hint 8.7, footer text 8.2, all above 4.5 (Next and soon pill were already 8.2
 and 8.8 before; the critic's numbers did not reproduce). API result gains `broken` (count) and
 `all_problems` (full gate text, used by the batch message); `problems` is the screen list.
-Unit 190 passed in a fresh venv, ruff clean; test_clean_api / test_library timings assert flaked once
-(KeyError 'timings', passed on rerun; likely pre-existing race).
+Fix round 3: the fail headline count (`broken`) now equals what the screen lists (bullets plus the red
+triangle row); new test failed on the old code first. Cherry-picked 0fb46ea (GpuQueue._settle: a job shows done
+only after its end state is on disk), which cures the KeyError 'timings' race: test_clean_api + test_library
+passed 5 of 5 runs. Unit 192 passed (9 deselected), ruff clean.
 ### Not exercised
 Real Blender/clean.py through the app (no GPU; mocked); screen-critic and first-use walk-through; a real
 textured clean.glb (the mock is a flat orange colour); batch in the browser; real gate wording is #9's
