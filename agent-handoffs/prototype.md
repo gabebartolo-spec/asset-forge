@@ -52,6 +52,14 @@ disk fallback; `views_via` records which. test_e2e_runner 7 passed.
 - GPU lock `models/gpu.lock` is shared with other lanes (clean-b10 held it at run2 start).
 
 ## State
-Run 2 in progress: app PID in e2e/run2/app.pid (msys pid), runner then shots chained in the
-background; logs run2/run.log, shots.log, app.log. After: write run2/manifest.md (artefacts +
-branch shas), kill only the app PID, report to the lead (6 lines).
+Run 2 restarted 17:2x with the lead's lock bypass (director: "open as many as you can"): the
+app runs via scratchpad `app_ownlock.py` (private lock dir; app jobs still serial) and the
+runner via `run_vramgate.py` (waits for < 1 GB used before draw/generate/clean). Runner then
+shots chained in background; logs run2/run.log, shots.log, app.log; app msys pid in app.pid.
+Animation b80830c merged into prototype in a scratch worktree (e53591a, pushed; 147 targeted
+tests green) WITHOUT touching this checkout, because the running app reads blender/ from here.
+After run2: stop the app, `git merge --ff-only origin/claude/prototype` here, restart the app,
+run scratchpad `rerun_animate.py tools/e2e <run2> <url> <lock> e3bae65` (animate + export only;
+old clips -> clips_e3bae65/), then manifest.py, then report. Re-merge af-gpu-pool's branch when
+it reports (lead, local_64f40a5a). Run2 so far: hi3dgen humanoid clean FAIL (top outline
+0.084 > 0.08), a real gate result; no auto re-seed.
