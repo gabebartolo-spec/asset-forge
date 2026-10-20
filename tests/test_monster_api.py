@@ -62,8 +62,12 @@ def test_confirmed_limbs_are_kept_and_passed_to_the_rig(client, settings, monkey
     chain = json.loads(seen["chain"].read_text())
     assert seen["type"] == "monster" and len(chain["limbs"]) == 7
     assert chain["limbs"][0]["joints"][3] == [0.5, -0.5, 0.0]
+    # that tip is now off the spider: the result names it so the page can mark it red
+    assert client.get(f"/api/jobs/{job['id']}").json()["result"]["outside"] == [[0, 3]]
     again = client.get(f"/api/assets/{aid}/skeleton/limbs").json()
     assert again["confirmed"] and len(again["limbs"]) == 7
+    fresh = client.get(f"/api/assets/{aid}/skeleton/limbs?fresh=1").json()
+    assert not fresh["confirmed"] and len(fresh["limbs"]) == 8  # Start the limbs again
 
 
 def test_step1_says_when_a_spider_has_the_wrong_number_of_legs(client, settings, monkeypatch):  # noqa: F811
@@ -81,7 +85,7 @@ def test_step1_says_when_a_spider_has_the_wrong_number_of_legs(client, settings,
     res = finish(client, job["id"], timeout=60)["result"]
     a = res["anatomy"]
     assert a["ok"] is False and a["counts"]["legs"] == 10 and a["expected"] == {"legs": 8}
-    assert "stay in the model" in a["message"]
+    assert "10 legs, not 8" in a["message"] and "only move bones" in a["message"]
 
 
 def test_step1_has_nothing_to_say_without_numbers_in_the_words(client, settings):  # noqa: F811

@@ -328,9 +328,36 @@ def _spine(cpts: np.ndarray, z0: float) -> list[list[float]]:
     pts = []
     for s in np.linspace(lo, hi, 4):
         near = cpts[np.abs(t - s) < 0.1 * (hi - lo) + 1e-9]
-        pts.append(near.mean(axis=0) if len(near) else c + s * axis)
+        p = near.mean(axis=0) if len(near) else c + s * axis
+        # the middle of a bent slice can fall outside the body (a hunched back): use the
+        # body point closest to it, so every body-line marker starts inside
+        pts.append(cpts[np.argmin(((cpts - p) ** 2).sum(axis=1))])
     return [p.tolist() for p in pts]
 
 
 def count_limbs(v: np.ndarray, f: np.ndarray) -> dict[str, int]:
     return propose(v, f).counts()
+
+
+OUTSIDE_TOL = 0.02  # a marker may sit this share of the model's longest side outside its skin
+
+
+def outside_joints(v: np.ndarray, f: np.ndarray, chain: dict,
+                   res: int = RES) -> list[tuple[int, int]]:
+    """(limb, joint) for every marker that sits outside the body (limb -1 is the body line).
+    A bone outside the body moves nothing, so the page names these and marks them red."""
+    v, f = np.asarray(v, float), np.asarray(f, np.int64)
+    grid, origin, vox = voxelize(v, f, res)
+    gap = ndimage.distance_transform_edt(~grid) * vox  # how far each empty voxel is from the solid
+    tol = max(2 * vox, OUTSIDE_TOL * float(np.ptp(v, axis=0).max()))
+
+    def out(p) -> bool:
+        ijk = np.floor((np.asarray(p, float) - origin) / vox).astype(int)
+        if (ijk < 0).any() or (ijk >= grid.shape).any():
+            return True
+        return bool(gap[tuple(ijk)] > tol)
+
+    found = [(-1, j) for j, p in enumerate(chain.get("spine") or []) if out(p)]
+    for i, lb in enumerate(chain.get("limbs") or []):
+        found += [(i, j) for j, p in enumerate(lb["joints"]) if out(p)]
+    return found

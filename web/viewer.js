@@ -50,7 +50,6 @@ export class Viewer {
     if (this.model) this.scene.remove(this.model);
     if (this.markers) this.scene.remove(this.markers.group);
     this.chains = null; // its markers live inside the model and go with it
-    this.addPick = null;
     this.model = null;
     this.markers = null;
     this.mixer = null;
@@ -58,7 +57,9 @@ export class Viewer {
   }
 
   // keepView: swap the model but leave the camera where the user put it.
-  async load(url, { keepView = false, pose = false, showBones = false } = {}) {
+  // tips: [{name, bone, at: [x, y, z]}] the end of each limb (a bone has no dot at its tail);
+  // red: names of joints to mark red (they sit outside the body).
+  async load(url, { keepView = false, pose = false, showBones = false, tips = [], red = [] } = {}) {
     const gltf = await new GLTFLoader().loadAsync(url);
     this.clear();
     const clay = new THREE.MeshStandardMaterial({ color: 0xc9ccd4, roughness: 0.7, metalness: 0.0 });
@@ -88,7 +89,8 @@ export class Viewer {
       this.camera.position.set(1.6, h * 0.75, 3.0);
       this.controls.update();
     }
-    this.buildMarkers(root, h);
+    holder.updateMatrixWorld(true);
+    this.buildMarkers(root, h, tips, new Set(red));
     this.setBones(showBones);
     if (pose && gltf.animations.length) { // freeze the quick test pose (the clip's last frame)
       this.mixer = new THREE.AnimationMixer(root);
@@ -101,18 +103,30 @@ export class Viewer {
   }
 
   // Joint dots and the lines between them, drawn on top of the body so they can be seen.
-  buildMarkers(root, height) {
+  buildMarkers(root, height, tips = [], red = new Set()) {
     const bones = [];
     root.traverse((o) => { if (o.isBone) bones.push(o); });
     if (!bones.length) return;
+    for (const t of tips) { // a point fixed to the limb's last bone, so it moves with the pose
+      const b = bones.find((x) => x.name === t.bone);
+      if (!b) continue;
+      const anchor = new THREE.Object3D();
+      anchor.name = t.name;
+      anchor.position.copy(b.worldToLocal(root.localToWorld(new THREE.Vector3(t.at[0], t.at[2], -t.at[1]))));
+      b.add(anchor);
+      bones.push(anchor);
+    }
     const group = new THREE.Group();
     group.visible = false;
     group.renderOrder = 10;
     const dotGeo = new THREE.SphereGeometry(height * 0.012, 12, 8);
     const dotMat = new THREE.MeshBasicMaterial({ color: 0xffd23f, depthTest: false, transparent: true });
-    const lineMat = new THREE.LineBasicMaterial({ color: 0x4fd0ff, depthTest: false, transparent: true });
+    const redMat = new THREE.MeshBasicMaterial({ color: 0xff4040, depthTest: false, transparent: true });
+    const redGeo = new THREE.SphereGeometry(height * 0.018, 12, 8);
+    // white lines, as in the limb editor: one colour, one meaning
+    const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, depthTest: false, transparent: true });
     const dots = bones.map((b) => {
-      const d = new THREE.Mesh(dotGeo, dotMat);
+      const d = red.has(b.name) ? new THREE.Mesh(redGeo, redMat) : new THREE.Mesh(dotGeo, dotMat);
       d.renderOrder = 11;
       group.add(d);
       return d;
@@ -149,26 +163,29 @@ export class Viewer {
     if (this.markers) this.markers.group.visible = on;
   }
 
-  // ---- a monster's limb markers: drag a dot, click the body to add a limb (Step 3) ----
+  // ---- a monster's limb markers: drag a dot to where its joint is (Step 3) ----
   // Points come and go in the Clean step's frame (metres, Z up, faces -Y); glTF is Y up, so a
   // point (x, y, z) sits at (x, z, -y) inside the loaded model, which carries its scale.
 
-  editChains(chain, { onMove, selected = -1 } = {}) {
+  // red: [[limb, joint]] markers outside the body (limb -1: the body line); onGrab(limb) when a
+  // dot is picked up, onMove(limb, joint, point) when it is put down.
+  editChains(chain, { onMove, onGrab, selected = -1, red = [] } = {}) {
     if (!this.root) return;
     if (this.chains) this.root.remove(this.chains.group);
     const group = new THREE.Group();
     const r = (chain.height || 1) * 0.022;
     const geo = new THREE.SphereGeometry(r, 14, 10);
     const mat = (c) => new THREE.MeshBasicMaterial({ color: c, depthTest: false, transparent: true });
-    const spineMat = mat(0x4fd0ff), limbMat = mat(0xffd23f), selMat = mat(0xff7a3d);
+    const spineMat = mat(0x4fd0ff), limbMat = mat(0xffd23f), selMat = mat(0xff7a3d), redMat = mat(0xff4040);
+    const isRed = (owner, j) => red.some(([a, b]) => a === owner && b === j);
     const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, depthTest: false, transparent: true, opacity: 0.8 });
     const dots = [], lines = [];
     const add = (pts, m, owner) => {
       const ds = pts.map((p, j) => {
-        const d = new THREE.Mesh(geo, m);
+        const d = new THREE.Mesh(geo, isRed(owner, j) ? redMat : m);
         d.position.set(p[0], p[2], -p[1]);
         d.renderOrder = 12;
-        d.userData = { owner, joint: j };
+        d.userData = { owner, joint: j, red: isRed(owner, j) };
         group.add(d);
         dots.push(d);
         return d;
@@ -183,11 +200,18 @@ export class Viewer {
     add(chain.spine, spineMat, -1);
     chain.limbs.forEach((lb, i) => add(lb.joints, i === selected ? selMat : limbMat, i));
     this.root.add(group);
-    this.chains = { group, dots, lines, chain, onMove };
+    this.chains = { group, dots, lines, chain, onMove, onGrab, mats: { spineMat, limbMat, selMat, redMat } };
   }
 
-  // the next click on the body gives a point there (Add a limb: where its tip is)
-  pickOnBody(cb) { this.addPick = cb; this.renderer.domElement.style.cursor = cb ? "crosshair" : ""; }
+  // show limb i in orange (or none: -1) without rebuilding the markers (hover, drag)
+  highlightChain(i) {
+    if (!this.chains) return;
+    const { spineMat, limbMat, selMat, redMat } = this.chains.mats;
+    this.chains.dots.forEach((d) => {
+      const { owner, red } = d.userData;
+      d.material = red ? redMat : owner < 0 ? spineMat : owner === i ? selMat : limbMat;
+    });
+  }
 
   initChainPointer() {
     const el = this.renderer.domElement, ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -198,21 +222,9 @@ export class Viewer {
       ndc.set(((e.clientX - b.left) / b.width) * 2 - 1, -((e.clientY - b.top) / b.height) * 2 + 1);
       ray.setFromCamera(ndc, this.camera);
     };
-    const toFrame = (v) => { const p = this.root.worldToLocal(v.clone()); return [p.x, -p.z, p.y]; };
     el.addEventListener("pointerdown", (e) => {
       if (!this.root || e.button !== 0) return;
       aim(e);
-      if (this.addPick) {
-        const meshes = [];
-        this.root.traverse((o) => { if (o.isMesh && !(this.chains && o.parent === this.chains.group)) meshes.push(o); });
-        const h = ray.intersectObjects(meshes, false)[0];
-        if (!h) return;
-        const cb = this.addPick;
-        this.pickOnBody(null);
-        e.stopImmediatePropagation();
-        cb(toFrame(h.point));
-        return;
-      }
       if (!this.chains) return;
       const h = ray.intersectObjects(this.chains.dots, false)[0];
       if (!h) return;
@@ -222,13 +234,13 @@ export class Viewer {
       plane.setFromNormalAndCoplanarPoint(this.camera.getWorldDirection(new THREE.Vector3()), w);
       drag = d;
       el.setPointerCapture(e.pointerId);
+      if (this.chains.onGrab) this.chains.onGrab(d.userData.owner);
     }, { capture: true });
     el.addEventListener("pointermove", (e) => {
       if (!this.chains) return;
       aim(e);
       if (!drag) {
-        el.style.cursor = this.addPick ? "crosshair"
-          : ray.intersectObjects(this.chains.dots, false).length ? "grab" : "";
+        el.style.cursor = ray.intersectObjects(this.chains.dots, false).length ? "grab" : "";
         return;
       }
       if (!ray.ray.intersectPlane(plane, hit)) return;

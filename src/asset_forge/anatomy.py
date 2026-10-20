@@ -65,13 +65,11 @@ def judge(counts: dict[str, int], expected: dict[str, tuple[int, str]]) -> dict:
     for part, (want, why) in expected.items():
         got = counts.get(part, 0)
         if got != want:
-            problems.append(f'You asked for "{why}", so it should have {_n(part, want)}, '
-                            f"but this model has {_n(part, got)}.")
+            problems.append(f'This model has {_n(part, got)}, not {want} ("{why}").')
     message = ""
     if problems:
-        message = (" ".join(problems) + " The skeleton step cannot add or remove body parts: "
-                   "extra ones stay in the model and missing ones stay missing. "
-                   "Press Re-roll for a new try.")
+        message = (" ".join(problems) + " The skeleton step can only move bones, not change "
+                   "the model's shape. Press Re-roll for a new try.")
     return {"ok": not problems, "counts": counts,
             "expected": {k: v[0] for k, v in expected.items()}, "problems": problems,
             "message": message}

@@ -76,16 +76,16 @@ def monster_bones(chain: dict) -> tuple[list[BoneDef], dict[str, np.ndarray], li
         for k, n in enumerate(chain_names):
             J[n] = p[k]
         info.append({"name": base, "kind": kind, "side": side or "middle",
-                     "bones": chain_names[:-1]})
+                     "bones": chain_names[:-1], "tip": [round(float(x), 5) for x in p[-1]]})
     return bones, J, info
 
 
 def monster_pose(limbs: list[dict], joints: dict[str, np.ndarray]):
-    """The quick test pose for a monster: every other leg lifted, arms raised and bent, heads
-    and tails turned, the body twisted a little. (bone, world axis, degrees)."""
+    """The quick test pose for a monster: every limb bends once, about 30 degrees at each joint,
+    so a bad fit shows at a glance (legs lift and fold, arms raise and bend, heads and tails
+    turn); the body twists a little. (bone, world axis, degrees)."""
     up = np.array([0.0, 0.0, 1.0])
     pose: list[tuple[str, list[float], float]] = [("Spine2", [0.0, 0.0, 1.0], 8.0)]
-    legs = 0
     for lb in limbs:
         b1, b2 = lb["bones"][0], lb["bones"][1]
         d = joints[lb["bones"][-1].rsplit("_", 1)[0] + "_Tip"] - joints[b1]
@@ -93,12 +93,12 @@ def monster_pose(limbs: list[dict], joints: dict[str, np.ndarray]):
         if np.linalg.norm(h) < 1e-6:
             h = np.array([1.0, 0.0, 0.0])
         lift = np.cross(h / np.linalg.norm(h), up).tolist()  # +deg raises the tip
+        b3 = lb["bones"][2]
         if lb["kind"] == "leg":
-            if legs % 2 == 0:
-                pose += [(b1, lift, 25.0), (b2, lift, -20.0)]
-            legs += 1
+            pose += [(b1, lift, 30.0), (b2, lift, -30.0), (b3, lift, -30.0)]
         elif lb["kind"] == "arm":
-            pose += [(b1, lift, 35.0), (b2, lift, 35.0)]
+            pose += [(b1, lift, 35.0), (b2, lift, 35.0), (b3, lift, 30.0)]
         else:
-            pose.append((b1, [0.0, 0.0, 1.0], 25.0 if lb["kind"] == "head" else -30.0))
+            turn = 30.0 if lb["kind"] == "head" else -30.0
+            pose += [(b1, [0.0, 0.0, 1.0], turn), (b2, [0.0, 0.0, 1.0], turn)]
     return pose

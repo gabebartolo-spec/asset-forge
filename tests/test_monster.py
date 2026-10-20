@@ -90,6 +90,22 @@ def test_a_limb_chain_runs_from_the_body_out_to_its_tip(proposals):
     assert len(p.spine) == 4 and p.height > 0
 
 
+@pytest.mark.parametrize("name", ["hi3dgen_spider", "triposg_spider", "hi3dgen_brute",
+                                  "triposg_brute"])
+def test_every_proposed_marker_sits_inside_the_body(proposals, name):
+    # the triposg brute's hunched body line once started 7 cm outside its back
+    assert limbs.outside_joints(*load(name), proposals[name].public()) == []
+
+
+def test_a_marker_dragged_off_the_body_is_found(proposals):
+    v, f = load("triposg_spider")
+    chain = proposals["triposg_spider"].public()
+    lo, hi = v.min(axis=0), v.max(axis=0)
+    chain["limbs"][2]["joints"][3] = [float((lo[0] + hi[0]) / 2), float(lo[1]) - 0.3, float(lo[2])]
+    chain["spine"][1] = [float(hi[0]) + 0.5, 0.0, float(hi[2])]
+    assert limbs.outside_joints(v, f, chain) == [(-1, 1), (2, 3)]
+
+
 # ---------------------------------------------------------------- the words
 
 
@@ -112,8 +128,9 @@ def test_only_the_words_set_an_expected_count(words, want):
 def test_a_spider_with_ten_legs_is_flagged_in_plain_words():
     r = anatomy.judge({"legs": 10, "arms": 0}, anatomy.expected_counts("a giant spider"))
     assert not r["ok"]
-    assert "8 legs" in r["message"] and "10 legs" in r["message"]
-    assert "stay in the model" in r["message"] and "Re-roll" in r["message"]
+    assert "10 legs, not 8" in r["message"]
+    assert "only move bones" in r["message"] and "Re-roll" in r["message"]
+    assert "cannot add or remove" not in r["message"]  # Step 3 does add and remove bones
 
 
 def test_check_mesh_on_the_real_models(tmp_path, proposals, monkeypatch):
@@ -124,7 +141,7 @@ def test_check_mesh_on_the_real_models(tmp_path, proposals, monkeypatch):
     assert anatomy.judge(counts["triposg_spider"], anatomy.expected_counts(spider_words))["ok"]
     for brute in ("hi3dgen_brute", "triposg_brute"):
         r = anatomy.judge(counts[brute], anatomy.expected_counts("a six-armed brute"))
-        assert not r["ok"] and "6 arms" in r["message"] and "2 arms" in r["message"]
+        assert not r["ok"] and "2 arms, not 6" in r["message"]
 
 
 def test_check_mesh_reads_a_glb_and_skips_when_nothing_is_expected(tmp_path):
@@ -178,12 +195,14 @@ def test_an_edited_chain_is_checked_in_plain_words(proposals):
         monster_bones({**good, "limbs": too_many})
 
 
-def test_the_monster_test_pose_moves_every_arm_and_every_other_leg(proposals):
+def test_the_monster_test_pose_bends_every_joint_of_every_limb_about_30_degrees(proposals):
     bones, joints, info = monster_bones(chain_of(proposals["hi3dgen_spider"]))
     pose = monster_pose(info, joints)
-    moved = {b for b, _, _ in pose}
-    legs = [i for i in info if i["kind"] == "leg"]
-    assert sum(lb["bones"][0] in moved for lb in legs) == (len(legs) + 1) // 2
+    turn = {b: abs(deg) for b, _, deg in pose}
+    for lb in info:
+        n = 3 if lb["kind"] in ("leg", "arm") else 2
+        assert all(turn.get(b, 0) >= 30 for b in lb["bones"][:n]), lb["name"]
+    moved = set(turn)
     names = {b.name for b in bones}
     assert moved <= names
     for _, axis, _ in pose:

@@ -11,6 +11,7 @@
     POST /api/assets/{id}/skeleton        Step 3: fit, bind, test pose (queued; needs clean.glb).
                                           A monster sends its confirmed {spine, limbs}
     GET  /api/assets/{id}/skeleton/limbs  a monster's proposed limb chains and counts
+                                          (?fresh=1: the proposal, not the confirmed limbs)
     GET  /api/library[?trash=1]           cards: thumbnail flag, type, date, last step, timings
     POST /api/assets/{id}/duplicate, /trash, /restore   copy, move to library/_trash, put back
     POST /api/batch, GET /api/batch/{id}  several prompts through draw + 3D on the one queue
@@ -306,9 +307,10 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         return check_mesh(mesh, asset.get("prompt"), asset["type"])
 
     @app.get("/api/assets/{asset_id}/skeleton/limbs")
-    def monster_limbs(asset_id: str) -> dict:
+    def monster_limbs(asset_id: str, fresh: bool = False) -> dict:
         """A monster's proposed limb chains, worked out once from its shape and kept; the user's
-        edits are sent back with Build skeleton (no automatic re-proposal)."""
+        edits are sent back with Build skeleton (no automatic re-proposal). fresh: the app's
+        own proposal again, leaving out the limbs the user confirmed (Start the limbs again)."""
         try:
             store.get_asset(asset_id)
             clean_glb = store.step_dir(asset_id, "clean") / "clean.glb"
@@ -317,7 +319,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
             raise missing("model") from None
         if not clean_glb.is_file():
             raise HTTPException(409, "Clean up the model first, then build its skeleton.")
-        for name in ("chain.json", "proposal.json"):
+        for name in ("proposal.json",) if fresh else ("chain.json", "proposal.json"):
             if (out / name).is_file():
                 data = json.loads((out / name).read_text(encoding="utf-8"))
                 return {**data, "confirmed": name == "chain.json"}
@@ -349,6 +351,14 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         path.write_text(json.dumps(keep), encoding="utf-8")
         return path
 
+    def markers_outside(clean_glb: Path, chain: Path) -> list[list[int]]:
+        """[limb, joint] of every confirmed marker outside the body (limb -1: the body line)."""
+        from .skeleton.glb import read_mesh
+        from .skeleton.limbs import outside_joints
+
+        found = outside_joints(*read_mesh(clean_glb), json.loads(chain.read_text("utf-8")))
+        return [list(x) for x in found]
+
     @app.post("/api/assets/{asset_id}/skeleton")
     def skeleton(asset_id: str, body: dict | None = Body(None)) -> dict:  # noqa: B008
         # TODO(PR #9): the Clean step will write library/<id>/clean/clean.glb through this
@@ -370,6 +380,8 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
             res = rig(clean_glb, out, asset["type"], settings.blender_exe, repo=settings.repo,
                       **({"chain": chain} if chain else {}))
             result = {**res.public(), "total_s": round(time.time() - t0, 1)}
+            if chain:
+                result["outside"] = markers_outside(clean_glb, chain)
             store.write_result(asset_id, "skeleton", result)
             store.mark_reached(asset_id, "skeleton")
             return result
