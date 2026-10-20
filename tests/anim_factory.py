@@ -100,3 +100,40 @@ def write_anim_glb(path: Path, names=CLIP_NAMES, bad: str | None = None) -> Path
 
 
 __all__ = ["FPS", "GAIT", "LEG", "clips_json", "foot_track", "write_anim_glb"]
+
+
+def write_budget_glb(path: Path, tris: int = 100, materials: int = 1, tex_px: int = 0) -> Path:
+    """A mesh with `tris` triangles split over `materials` materials and, if tex_px, one
+    embedded PNG texture tex_px pixels square: for the export gate."""
+    import io
+
+    from PIL import Image
+
+    pos = np.array([(0, 0, 0), (1, 0, 0), (0, 1, 0)], "<f4").tobytes()
+    blob = bytearray(pos)
+    views = [{"buffer": 0, "byteOffset": 0, "byteLength": len(pos)}]
+    accessors = [{"bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3",
+                  "min": [0, 0, 0], "max": [1, 1, 0]}]
+    prims = []
+    per = [tris // materials + (1 if i < tris % materials else 0) for i in range(materials)]
+    for i, n in enumerate(per):
+        idx = np.tile(np.array([0, 1, 2], "<u2"), n).tobytes()
+        idx += b"\0" * (-len(idx) % 4)
+        views.append({"buffer": 0, "byteOffset": len(blob), "byteLength": len(idx)})
+        blob.extend(idx)
+        accessors.append({"bufferView": len(views) - 1, "componentType": 5123,
+                          "count": 3 * n, "type": "SCALAR"})
+        prims.append({"attributes": {"POSITION": 0}, "indices": len(accessors) - 1,
+                      "material": i})
+    gltf = {"asset": {"version": "2.0"}, "scene": 0, "scenes": [{"nodes": [0]}],
+            "nodes": [{"mesh": 0}], "meshes": [{"primitives": prims}],
+            "materials": [{"name": f"m{i}"} for i in range(materials)]}
+    if tex_px:
+        buf = io.BytesIO()
+        Image.new("RGB", (tex_px, tex_px), (200, 120, 40)).save(buf, "PNG")
+        png = buf.getvalue() + b"\0" * (-len(buf.getvalue()) % 4)
+        views.append({"buffer": 0, "byteOffset": len(blob), "byteLength": len(buf.getvalue())})
+        blob.extend(png)
+        gltf["images"] = [{"bufferView": len(views) - 1, "mimeType": "image/png"}]
+    gltf.update(accessors=accessors, bufferViews=views, buffers=[{"byteLength": len(blob)}])
+    return _pack(path, gltf, bytes(blob))
