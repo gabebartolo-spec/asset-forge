@@ -1,6 +1,7 @@
 # Handoff: gpu-pool (builder)
 
-Date: 2026-10-20. State: done; PR open and ready (lead merges). Branch `claude/gpu-pool`,
+Date: 2026-10-20. State: done; PR #28 open and ready, CI running, Auto-fix on (lead merges). Branch `claude/gpu-pool`
+(commit 8237abf + this handoff),
 worktree `.claude/worktrees/confident-allen-f3502b`.
 
 ## Task (lead brief, director 2026-10-20: "why is there only 1 gpu queue? open as many as you can")
@@ -40,6 +41,11 @@ Replace the one-at-a-time `models/gpu.lock` with a VRAM budget (D-030 in the PR'
 ## Not exercised
 - Two real generators at once in the app (card was busy with af-clean). Needs for Blender
   bakes/renders are not in the table (exclusive by default) until measured.
+
+## Running jobs / open decisions
+- None running. No open decisions. Unfinished changes: none.
+- Finding for the lead's learnings (forge-proof-evidence): the live-lock run caught the private
+  worktree lock that the unit tests could not see.
 
 ## Next
 - Lead: merge; record D-030; tell running agents they may pass `--vram <MB>` from the table.
