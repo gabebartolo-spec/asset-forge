@@ -144,11 +144,13 @@ body.lib #steps, body.lib main, body.lib footer { display: none; }
 .cbtns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 6px; }
 .cbtns button { min-height: 44px; padding: 4px 12px; }
 .cbtns button.primary { min-width: 0; font-size: 14px; background: var(--accent); color: #fff; }
+.cbtns button.primary:disabled { background: var(--panel); color: var(--dim); border-color: var(--line); cursor: default; }
 #trash-box { margin-top: 18px; }
 #trash-box summary { cursor: pointer; color: var(--dim); }
 #batch-panel .row { align-items: center; flex-wrap: wrap; }
 .brow { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
 .brow input { flex: 1 1 100%; min-width: 0; min-height: 44px; background: var(--bg); color: var(--text); border: 2px solid var(--line); border-radius: 10px; padding: 6px 10px; font: inherit; font-size: 15px; }
+.brow input::placeholder { color: var(--dim); opacity: 1; }
 .brow select { flex: 1; min-height: 44px; background: var(--bg); color: var(--text); border: 2px solid var(--line); border-radius: 10px; padding: 0 6px; font: inherit; font-size: 15px; }
 .brow button { padding: 4px 10px; }
 button.primary.small { min-width: 0; font-weight: 600; background: var(--accent); color: #fff; border-color: transparent; }

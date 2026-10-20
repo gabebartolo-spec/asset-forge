@@ -19,10 +19,10 @@ function when(t) {
 }
 function timings(t) {
   const parts = [];
-  if (t.draw !== undefined) parts.push(`drawing ${secs(t.draw)}`);
-  if (t.generate !== undefined) parts.push(`3D model ${secs(t.generate)}`);
-  if (t.clean !== undefined) parts.push(`clean up ${secs(t.clean)}`);
-  if (t.skeleton !== undefined) parts.push(`skeleton ${secs(t.skeleton)}`);
+  if (t.draw !== undefined) parts.push(`Picture ${secs(t.draw)}`);
+  if (t.generate !== undefined) parts.push(`Make ${secs(t.generate)}`);
+  if (t.clean !== undefined) parts.push(`Clean up ${secs(t.clean)}`);
+  if (t.skeleton !== undefined) parts.push(`Skeleton ${secs(t.skeleton)}`);
   return parts.length ? "Took: " + parts.join(", ") : "";
 }
 
@@ -41,7 +41,7 @@ function card(a, trashed) {
   body.append(el("div", "cmeta", `${TYPE_WORDS[a.type] || a.type} · ${when(a.created)}`));
   const status = a.busy ? "Being made now..."
     : a.failed ? "Did not finish. Open it and press Redo."
-    : a.reached ? `Done up to: ${STEP_WORDS[a.reached] || a.reached}` : "Not made yet";
+    : a.reached ? `Last step: ${STEP_WORDS[a.reached] || a.reached}` : "Not made yet";
   body.append(el("div", "cstate" + (a.failed ? " bad" : a.busy ? " busy" : ""), status));
   const t = timings(a.timings || {});
   if (t) body.append(el("div", "cmeta", t));
@@ -55,7 +55,7 @@ function card(a, trashed) {
   };
   if (trashed) add("Put back", () => act(`/api/assets/${a.id}/restore`));
   else {
-    add("Open", () => ctx.open(a.id), "primary");
+    add("Open", () => ctx.open(a.id), "primary").disabled = !a.thumb && !!a.busy;
     if (a.reached === "skeleton") add("Open at Make", () => ctx.open(a.id, "generate"));
     const idle = !a.busy;
     add("Copy", () => act(`/api/assets/${a.id}/duplicate`)).disabled = !idle;
@@ -94,7 +94,7 @@ function addRow(prompt = "") {
   const sel = el("select");
   sel.setAttribute("aria-label", "What is it");
   ctx.types().forEach((t) => sel.append(new Option(t.label, t.id)));
-  const rm = el("button", "secondary small", "Remove");
+  const rm = el("button", "secondary small", "Remove this line");
   rm.type = "button";
   rm.onclick = () => { row.remove(); renderBatchButtons(); };
   row.append(inp, sel, rm);
@@ -103,7 +103,7 @@ function addRow(prompt = "") {
 }
 function renderBatchButtons() {
   const n = $("batch-rows").children.length;
-  $("batch-rows").querySelectorAll("button").forEach((b) => (b.disabled = n < 2));
+  $("batch-rows").querySelectorAll("button").forEach((b) => b.classList.toggle("hidden", n < 2));
   $("batch-add").disabled = n >= 20;
 }
 

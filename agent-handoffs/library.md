@@ -1,5 +1,5 @@
 # library builder handoff (2026-10-20)
-## State: branch claude/library pushed, PR NOT opened (3-PR cap); lead opens it. Screens go to the screen critic.
+## State: PR #17 open; round 2 (screen-critic fixes 1-6) done and pushed, PR marked ready. Lead merges.
 
 Task: Phase 6 Library and batch (Library tab, batch queue, step timings). No GPU; generation mocked.
 Worktree asset-forge-wt/library (own .venv, gitignored). Run: PYTHONPATH=src .venv/Scripts/python.exe -m pytest.
@@ -67,3 +67,9 @@ only until Clean is wired; then Clean is added and it stops at Skeleton per desi
 - Review needed: lead + screen critic
 - Director gate: none (look approval after critic)
 - Ordering with other PRs: app.js/index.html header tabs conflict possible with sprites (Sprite tab line)
+
+## Round 2 (library-b2): screen fixes
+Placeholder uses --dim (#9aa3b2); Open disabled (and greyed) while a card has no picture and is busy; lone batch row has
+no Remove, else "Remove this line"; card says "Last step: X"; timings "Picture / Make / Clean up / Skeleton".
+Shots re-taken in a fresh library per size (real Hi3DGen/TripoSG copy via subclasses; only run() faked), added lib_*_0_empty.png.
+Open question for lead: real generator copy itself says "video memory (VRAM)"; not changed (not mine).
