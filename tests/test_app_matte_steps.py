@@ -54,3 +54,14 @@ def test_clean_hook_builds_the_documented_blender_command(tmp_path):
     assert cmd[:6] == ["blender", "-b", "--factory-startup", "-P", clean_py, "--"]
     assert cmd[6:] == [str(tmp_path / "raw.glb"), str(tmp_path / "clean"), "--type", "monster",
                        "--ref", str(tmp_path / "ref.png")]
+
+
+def test_clean_hook_defaults_to_multiview_colour_when_models_are_given(tmp_path):
+    models = tmp_path / "models"
+    cmd = clean_command("blender", tmp_path, tmp_path / "raw.glb", tmp_path / "clean", "animal",
+                        tmp_path / "ref.png", generator="hi3dgen", models_dir=models)
+    tail = cmd[cmd.index("--ref") + 2:]
+    assert tail == ["--generator", "hi3dgen",
+                    "--mv-python", str(models / "envs" / "sdxl" / "Scripts" / "python.exe"),
+                    "--mv-src", str(models / "src" / "mv_adapter"),
+                    "--hf-home", str(models / "hf")]

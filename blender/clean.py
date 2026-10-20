@@ -257,8 +257,9 @@ def pick_yaw(verts, ref, kind, generator):
         table[yaw] = round(iou(splat_outline(side, 0), rm), 4)
     ranked = sorted(table.values(), reverse=True)
     if ranked[0] - ranked[1] < ANIMAL_MARGIN:
-        raise SystemExit(f"animal head direction is ambiguous (outline match {table}); "
-                         "pass --turn DEG")
+        raise SystemExit("Could not tell which way the animal's head points from the picture. "
+                         "Use a side-on picture with the whole animal in view, then press Redo. "
+                         f"(outline match by turn: {table}; developers: --turn DEG)")
     return max(table, key=table.get), table, "side outline (profile, head toward -Y)"
 
 
@@ -270,10 +271,15 @@ def pick_yaw(verts, ref, kind, generator):
 # surface: the hollow is filled and a detached part is bridged to the body, then the filler is fused
 # in by a second voxel remesh (the outer surface is untouched).
 SOLID_N = 128            # voxels along the longest side
-SOLID_SEAL = 3           # voxels: an opening up to twice this wide is sealed to find the hollow
-SOLID_MIN_CAVITY = 0.03  # hollow volume (share of the filled solid) from which it is filled
+SOLID_ESCAPE = 3         # a free voxel with a clear straight line to the border in at least this
+                         # many of the 26 grid directions is outside; the rest is hollow
+SOLID_MIN_CAVITY = 0.10  # hollow share of (solid + hollow) from which it is filled (measured:
+                         # hollow Hi3DGen shells 0.31-0.61, every solid model <= 0.017)
+SOLID_FILL_PASSES = 4    # fill, count escapes again, fill what is now enclosed (closes a mouth)
 SOLID_MIN_PART = 0.002   # parts smaller than this share of the solid are left to drop_floaters
 SOLID_MAX_GAP = 12       # voxels: a part further than this from the body is not bridged
+SOLID_BRIDGE_R = 2.5     # voxels: radius of the cylinder painted across a gap
+SOLID_BRIDGE_EXT = 2     # voxels: the cylinder runs this far into the part and the body
 
 
 def _dil(m, k=1):
@@ -289,21 +295,36 @@ def _dil(m, k=1):
     return m
 
 
-def _ero(m, k=1):
-    return ~_dil(~m, k)
+def _shift2(m, du, dv):
+    """2D shift of m by (du, dv) cells (each -1, 0 or 1); cells shifted in from outside are True."""
+    out = np.ones_like(m)
+    su = slice(None) if du == 0 else (slice(0, -1) if du == 1 else slice(1, None))
+    tu = slice(None) if du == 0 else (slice(1, None) if du == 1 else slice(0, -1))
+    sv = slice(None) if dv == 0 else (slice(0, -1) if dv == 1 else slice(1, None))
+    tv = slice(None) if dv == 0 else (slice(1, None) if dv == 1 else slice(0, -1))
+    out[su, sv] = m[tu, tv]
+    return out
 
 
-def _flood(seed, free, steps=None):
-    """Voxels of `free` connected to `seed` (6-neighbour), or within `steps` moves of it."""
-    r = seed & free
-    k = 0
-    while steps is None or k < steps:
-        n = _dil(r) & free
-        k += 1
-        if steps is None and k % 8 == 0 and n.sum() == r.sum():
-            return n
-        r = n
-    return r
+def escape_count(solid):
+    """For each voxel, in how many of the 26 grid directions a straight line reaches the grid's
+    border without crossing solid (solid voxels get 0). One sweep of 2D slices per direction."""
+    free = ~solid
+    cnt = np.zeros(solid.shape, np.uint8)
+    for d in [(x, y, z) for x in (-1, 0, 1) for y in (-1, 0, 1) for z in (-1, 0, 1) if x or y or z]:
+        ax = next(a for a in range(3) if d[a])
+        f = np.moveaxis(free, ax, 0)
+        du, dv = [d[a] for a in range(3) if a != ax]
+        e = np.empty_like(f)
+        order = range(f.shape[0] - 1, -1, -1) if d[ax] > 0 else range(f.shape[0])
+        prev = None
+        for i in order:
+            # voxel p escapes if p + d escapes (p + d outside the grid counts as escaped)
+            nxt = np.ones_like(f[i]) if prev is None else _shift2(prev, du, dv)
+            e[i] = f[i] & nxt
+            prev = e[i]
+        cnt += np.moveaxis(e, 0, ax)
+    return cnt
 
 
 def voxel_solid(obj, n=SOLID_N):
@@ -313,7 +334,7 @@ def voxel_solid(obj, n=SOLID_N):
     co = verts_np(obj).astype(np.float64)
     lo, hi = co.min(axis=0), co.max(axis=0)
     h = float(max(hi - lo)) / n
-    pad = 2 + SOLID_SEAL + SOLID_MAX_GAP
+    pad = 2 + SOLID_MAX_GAP
     org = lo - pad * h
     shape = tuple(int(np.ceil((hi[a] - lo[a]) / h)) + 2 * pad for a in range(3))
     votes = np.zeros(shape, np.uint8)
@@ -348,53 +369,98 @@ def voxel_solid(obj, n=SOLID_N):
 
 def _label_big(solid, min_share=SOLID_MIN_PART, most=8):
     """Connected parts of `solid` of at least min_share of it, biggest first (bool grids)."""
-    left = solid.copy()
-    total = max(int(solid.sum()), 1)
+    idx = np.full(solid.shape, -1, np.int64)
+    n = int(solid.sum())
+    idx[solid] = np.arange(n)
+    pairs = []
+    for ax in range(3):
+        a = np.moveaxis(idx, ax, 0)
+        both = (a[1:] >= 0) & (a[:-1] >= 0)
+        pairs.append(np.stack([a[1:][both], a[:-1][both]], 1))
+    e = np.concatenate(pairs)
+    lab = np.arange(n)
+    while True:  # union-find: hook the larger root onto the smaller, then jump pointers
+        li, lj = lab[e[:, 0]], lab[e[:, 1]]
+        diff = li != lj
+        if not diff.any():
+            break
+        lab[np.maximum(li, lj)[diff]] = np.minimum(li, lj)[diff]
+        while True:
+            nxt = lab[lab]
+            if (nxt == lab).all():
+                break
+            lab = nxt
+    roots, size = np.unique(lab, return_counts=True)
+    order = np.argsort(-size)
     parts = []
-    while left.sum() >= min_share * total and len(parts) < most:
-        seed = np.zeros_like(left)
-        seed[tuple(np.argwhere(left)[0])] = True
-        comp = _flood(seed, left)
-        if comp.sum() >= min_share * total:
-            parts.append(comp)
-        left &= ~comp
-    parts.sort(key=lambda c: -int(c.sum()))
+    for r in roots[order][:most]:
+        if size[roots == r][0] < min_share * max(n, 1):
+            break
+        m = np.zeros_like(solid)
+        m[solid] = lab == r
+        parts.append(m)
     return parts
 
 
+def _paint_cylinder(mask, a, b, r, ext):
+    """Set the voxels within r of the segment a-b, extended by ext voxels past both ends."""
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    ab = b - a
+    ln = float(np.linalg.norm(ab))
+    u = ab / ln if ln > 0 else np.array([0.0, 0.0, 1.0])
+    a, b = a - u * ext, b + u * ext
+    lo = np.maximum(np.floor(np.minimum(a, b) - r).astype(int), 0)
+    hi = np.minimum(np.ceil(np.maximum(a, b) + r).astype(int) + 1, mask.shape)
+    g = np.stack(np.meshgrid(*[np.arange(lo[k], hi[k]) for k in range(3)], indexing="ij"), -1)
+    t = np.clip(((g - a) @ u) / max(float(np.linalg.norm(b - a)), 1e-9), 0, 1)
+    dist = np.linalg.norm(g - (a + t[..., None] * (b - a)), axis=-1)
+    mask[lo[0]:hi[0], lo[1]:hi[1], lo[2]:hi[2]] |= dist <= r
+
+
 def solid_filler(solid):
-    """Voxels to add: the sealed hollow (kept one voxel inside the walls) and bridges from each
-    detached part to the body at their closest approach. Returns (filler, info)."""
+    """Voxels to add: the hollow and a cylinder from each detached part to the body across their
+    closest approach. Returns (filler, info). An open hollow has voxels near its mouth that still
+    see out; the escape count is taken again after each fill, so the mouth closes in a few passes.
+    """
     info = {}
-    border = np.zeros_like(solid)
-    border[[0, -1]] = border[:, [0, -1]] = border[:, :, [0, -1]] = True
-    sealed = _ero(_dil(solid, SOLID_SEAL), SOLID_SEAL) | solid
-    outside = _flood(_flood(border, ~sealed), ~solid, SOLID_SEAL + 1)
-    hollow = ~solid & ~outside
-    filled = solid | hollow
-    cav = float(hollow.sum() / max(filled.sum(), 1))
-    info["hollow_share"] = round(cav, 4)
-    filler = np.zeros_like(solid)
-    if cav >= SOLID_MIN_CAVITY:
-        filler |= _dil(hollow, 1) & ~_dil(outside, 1)
-    else:
-        filled = solid
+    filled = solid.copy()
+    for k in range(SOLID_FILL_PASSES):
+        free = ~filled
+        hollow = free & (escape_count(filled) < SOLID_ESCAPE)
+        if k == 0:
+            cav = float(hollow.sum() / max(int(solid.sum() + hollow.sum()), 1))
+            info["hollow_share"] = round(cav, 4)
+            if cav < SOLID_MIN_CAVITY:
+                break
+        if hollow.sum() < SOLID_MIN_PART * solid.sum():
+            break
+        filled |= hollow
+    filler = filled & ~solid
+    filler |= _dil(filler, 1) & solid  # reach one voxel into the walls so the remesh fuses them
     parts = _label_big(filled)
     info["parts_voxels"] = [int(p.sum()) for p in parts]
     bridges = []
     if len(parts) > 1:
         body = parts[0]
         for part in parts[1:]:
-            grown_p, grown_b = part, body
+            grown = part
             for k in range(1, SOLID_MAX_GAP + 1):
-                grown_p, grown_b = _dil(grown_p), _dil(grown_b)
-                if (grown_p & grown_b).any():
-                    bridge = grown_p & grown_b
-                    filler |= bridge & ~filled
-                    bridges.append(2 * k)
-                    body = body | part | bridge
+                grown = _dil(grown)
+                touch = grown & body
+                if touch.any():
+                    c = np.argwhere(touch)[0]
+                    pv = np.argwhere(part)
+                    pa = pv[np.argmin(((pv - c) ** 2).sum(1))]
+                    bv = np.argwhere(body & _dil(part, k + 1))
+                    pb = bv[np.argmin(((bv - pa) ** 2).sum(1))]
+                    cyl = np.zeros_like(solid)
+                    _paint_cylinder(cyl, pa, pb, SOLID_BRIDGE_R, SOLID_BRIDGE_EXT)
+                    filler |= cyl & ~filled
+                    bridges.append(round(float(np.linalg.norm(pb - pa)), 1))
+                    body = body | part | cyl
                     break
     info["bridges_gap_voxels"] = bridges
+    info["parts_after"] = len(_label_big(solid | filler))
     info["filler_voxels"] = int(filler.sum())
     return filler, info
 
@@ -1121,7 +1187,9 @@ def mv_generate(obj_co, vi, vn, d0, ref_path, work_dir, mv):
         r = subprocess.run(cmd, capture_output=True, text=True, env=env)
         info["seconds_generator"] = round(time.perf_counter() - t1, 2)
         if r.returncode:
-            raise SystemExit(f"multiview generator failed: {r.stderr[-2000:]}")
+            raise SystemExit("Painting the sides the picture cannot see failed. Press Redo; if it "
+                             "fails again, close other programs using the graphics card. "
+                             f"(multiview generator log: {r.stderr[-2000:]})")
     gen = view_dir / "multiview.json"
     if gen.exists():
         info["generator"] = json.loads(gen.read_text())
