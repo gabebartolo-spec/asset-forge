@@ -73,3 +73,4 @@ HF model cards); VRAM is from READMEs until the bake-off measures it. Not legal 
 | Qwen3-1.7B (`Qwen/Qwen3-1.7B`) | text LLM | Apache-2.0 | CLEARED | HF card `license: apache-2.0` (API, 2026-10-20); about 3.4 GB in bf16; Qwen2.5-3B is NOT Apache (Qwen research licence), so not used |
 | transformers, huggingface_hub, accelerate | library | Apache-2.0 | CLEARED | run only in `models/envs/promptgen`, never imported by the app |
 | PyTorch | library | BSD-3-Clause | CLEARED | same env |
+| Quaternius Universal Animation Library [Standard] v3.0 | humanoid animation clips (data) | CC0 1.0 | CLEARED | public domain, commercial use free (itch.io page and `License.txt` in the zip, 2026-10-21); 10 clips baked to `src/asset_forge/animate/data/ual_humanoid.json` by `blender/bake_library.py`; the zip is not in git |

@@ -29,9 +29,12 @@ export class Viewer {
     this.resize();
     this.markers = null;
     this.mixer = null;
+    this.clock = new THREE.Clock();
+    this.playing = null; // { action, speed } while a clip plays (Step 4)
     this.chains = null; // a monster's limb markers (editChains)
     this.initChainPointer();
     this.renderer.setAnimationLoop(() => {
+      this.tickClip(this.clock.getDelta());
       this.controls.update();
       this.updateMarkers();
       this.renderer.render(this.scene, this.camera);
@@ -53,6 +56,8 @@ export class Viewer {
     this.model = null;
     this.markers = null;
     this.mixer = null;
+    this.playing = null;
+    this.grid.position.z = 0;
     this.ready = false;
   }
 
@@ -83,6 +88,9 @@ export class Viewer {
     holder.add(root);
     this.scene.add(holder);
     this.model = holder;
+    this.root = root;
+    this.unit = scale;              // viewer units per metre
+    this.anims = gltf.animations;
     const h = box.max.y - box.min.y;
     if (!keepView) {
       this.controls.target.set(0, h / 2, 0);
@@ -159,6 +167,28 @@ export class Viewer {
       pos.setXYZ(k * 2 + 1, ...m.dots[b].position.toArray());
     });
     pos.needsUpdate = true;
+  }
+
+  // Step 4: play one clip on a loop at game speed. The clips are in place, so the grid runs
+  // under the feet at the clip's ground speed (m/s): a planted foot should stay on its square.
+  playClip(name, speed = 0) {
+    const clip = (this.anims || []).find((c) => c.name === name);
+    if (!clip || !this.root) return false;
+    this.mixer = this.mixer || new THREE.AnimationMixer(this.root);
+    this.mixer.stopAllAction();
+    const action = this.mixer.clipAction(clip);
+    action.reset().setLoop(THREE.LoopRepeat, Infinity).play();
+    this.playing = { action, speed };
+    this.grid.position.z = 0;
+    return true;
+  }
+
+  tickClip(dt) {
+    if (!this.playing || !this.mixer) return;
+    this.mixer.update(dt);
+    const cell = 4 / 16; // the grid's square
+    const z = this.grid.position.z - this.playing.speed * this.unit * dt;
+    this.grid.position.z = ((z % cell) + cell) % cell - cell; // forward is +Z, the ground runs back
   }
 
   setBones(on) {

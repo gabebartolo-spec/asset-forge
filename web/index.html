@@ -27,7 +27,7 @@
   <li data-step="1" class="current" id="pill1">1 Make</li>
   <li data-step="2">2 Clean up</li>
   <li data-step="3" class="soonpill" id="pill3">3 Skeleton</li>
-  <li data-step="4" class="soonpill">4 Animate <span class="soon">soon</span></li>
+  <li data-step="4" class="soonpill" id="pill4">4 Animate <span class="soon" id="pill4-soon">soon</span></li>
 </ol>
 
 <main>
@@ -118,6 +118,19 @@
     <p class="muted" id="skel-wait">Press <b>Build skeleton</b>, bottom right. It takes under a minute.</p>
     <!-- TODO(PR #9): the Clean step will hand its model over here; until it merges, the page opens
          an existing model with clean.glb at /?asset=ID. -->
+  </aside>
+
+  <aside class="panel hidden" id="panel-4">
+    <h2>Make it move</h2>
+    <p>Six animations are made from the skeleton: standing, walking, running, an attack, being hit
+      and fainting. They all go in one file for your game.</p>
+    <div class="block hidden" id="anim-look">
+      <h3>Watch each one</h3>
+      <div class="seg clips" id="clips" role="radiogroup" aria-label="Animation"></div>
+      <p class="muted" id="clip-facts"></p>
+    </div>
+    <p class="muted" id="anim-wait">Press <b>Make animations</b>, bottom right. It takes under a minute.</p>
+    <p class="muted hidden" id="export-done"></p>
   </aside>
 </main>
 

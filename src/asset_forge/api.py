@@ -39,9 +39,11 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .anatomy import check_mesh
+from .animate import NOT_YET, animate
 from .config import Settings, load_settings
 from .cutout import CutoutError, Cutter, as_png, default_cutter, needs_model
 from .draw import DrawError, ReferenceDrawer, default_drawer
+from .export import export_animated
 from .generators import Registry
 from .gpu_lock import gpu_lock, vram_need
 from .jobqueue import GpuQueue, Job
@@ -441,10 +443,66 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         return gpu_queue.submit(asset_id, "skeleton", run).public()
 
     register_library(app, store, gpu_queue, registry, drawer, draw_now, generate_now)
+    register_animate(app, store, gpu_queue, settings, missing)
 
     if settings.web_dir.is_dir():
         app.mount("/", StaticFiles(directory=settings.web_dir, html=True), name="web")
     return app
+
+
+def register_animate(app: FastAPI, store: Store, gpu_queue: GpuQueue, settings: Settings,
+                     missing: Callable[[str], HTTPException]) -> None:
+    """Step 4: POST .../animate makes the six clips from the skeleton; POST .../export gates
+    the animated .glb, checks it in headless Godot and copies it to exports/<id>/. Both run
+    on the GPU queue (one Blender or Godot job at a time)."""
+
+    def asset_or_404(asset_id: str) -> dict:
+        try:
+            return store.get_asset(asset_id)
+        except NotFound:
+            raise missing("model") from None
+
+    @app.post("/api/assets/{asset_id}/animate")
+    def animate_step(asset_id: str) -> dict:
+        asset = asset_or_404(asset_id)
+        if asset["type"] == "monster":
+            raise HTTPException(400, NOT_YET)
+        rigged = store.step_dir(asset_id, "skeleton") / "rigged.blend"
+        if not rigged.is_file():
+            raise HTTPException(409, "Build the skeleton first (step 3), then animate it.")
+        out = store.step_dir(asset_id, "animate")
+
+        def run(job: Job) -> dict:
+            job.set_message("Making the six animations...")
+            t0 = time.time()
+            res = animate(rigged, out, settings.blender_exe, asset_type=asset["type"],
+                          repo=settings.repo)
+            result = {**res.public(), "total_s": round(time.time() - t0, 1)}
+            store.write_result(asset_id, "animate", result)
+            store.mark_reached(asset_id, "animate")
+            return result
+
+        return gpu_queue.submit(asset_id, "animate", run).public()
+
+    @app.post("/api/assets/{asset_id}/export")
+    def export_step(asset_id: str) -> dict:
+        asset = asset_or_404(asset_id)
+        anim_dir = store.step_dir(asset_id, "animate")
+        if not (anim_dir / "animated.glb").is_file():
+            raise HTTPException(409, "Make the animations first (press Animate), then export.")
+        exports = settings.library_dir.parent / "exports"
+
+        def run(job: Job) -> dict:
+            job.set_message("Checking the model against its budget and in Godot...")
+            dest, report = export_animated(anim_dir, asset_id, asset["type"],
+                                           exports_dir=exports)
+            result = {"folder": str(dest), "files": sorted(p.name for p in dest.iterdir()),
+                      **report}
+            (anim_dir / "export.json").write_text(json.dumps(result, indent=1),
+                                                  encoding="utf-8")
+            return result
+
+        return gpu_queue.submit(asset_id, "export", run).public()
 
 
 def default_app() -> FastAPI:

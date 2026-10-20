@@ -9,6 +9,7 @@ const state = {
   expanding: false, source: "", variation: 0, // "Expand my idea": the words it started from
   reference: false, refUrl: "",               // text-only: the drawn picture is ready to check
   showing: null,                              // what the viewer shows: "model", "ref" or null
+  anim: null, clip: "walk", exported: null,   // Step 4: the clips made, the one playing, the export
   limbWarn: "",                               // Step 1: the model's legs or arms do not match the words
   chain: null, limbSel: -1, limbsEdited: false, // Step 3, monsters: the limb chains being checked
   builtChain: null, outside: [], resetAsk: false, // what was built, and its markers outside the body
@@ -79,6 +80,7 @@ function render() {
   const pill3 = $("pill3");
   pill3.classList.toggle("clickable", state.cleanReady && state.step !== 3);
   pill3.onclick = state.cleanReady && state.step !== 3 ? () => goStep3() : null;
+  renderPill4();
   document.querySelectorAll("#steps li").forEach((li) => {
     const n = Number(li.dataset.step);
     li.classList.toggle("current", n === state.step);
@@ -113,8 +115,8 @@ function render() {
     }
     redo.disabled = state.busy || state.expanding || !state.asset;
   } else if (state.step === 3) {
-    next.textContent = state.busy ? "Working..." : state.rig ? "Next: Animate (coming next)" : "Build skeleton";
-    next.disabled = state.busy || !!state.rig;
+    next.textContent = state.busy ? "Working..." : state.rig ? "Next: Animate" : "Build skeleton";
+    next.disabled = state.busy;
     $("skel-look").classList.toggle("hidden", !state.rig);
     $("skel-wait").classList.toggle("hidden", !!state.rig);
     $("tog-bones").setAttribute("aria-pressed", String(state.bones));
@@ -123,6 +125,8 @@ function render() {
       redo.textContent = state.resetAsk ? "Yes, start again" : "Start the limbs again";
       redo.disabled = state.busy;
     }
+  } else if (state.step === 4) {
+    renderStep4(next);
   } else {
     next.textContent = "Coming next";
     next.disabled = true;
@@ -459,6 +463,136 @@ async function toggle(which) {
   render();
 }
 
+// ------------------------------------------------------------------ Step 4: Animate and export
+const CLIPS = [["idle", "Idle"], ["walk", "Walk"], ["run", "Run"],
+  ["attack", "Attack"], ["hit", "Hit"], ["faint", "Faint"]];
+
+function renderPill4() {
+  const pill4 = $("pill4"), can = !!state.rig && state.step !== 4;
+  pill4.classList.toggle("clickable", can);
+  pill4.onclick = can ? () => goStep4() : null;
+  $("pill4-soon").classList.toggle("hidden", !!state.rig);
+  $("panel-4").classList.toggle("hidden", state.step !== 4);
+}
+
+function renderStep4(next) {
+  next.textContent = state.busy ? "Working..." : state.anim ? "Export for Godot" : "Make animations";
+  next.disabled = state.busy;
+  $("anim-look").classList.toggle("hidden", !state.anim);
+  $("anim-wait").classList.toggle("hidden", !!state.anim);
+  document.querySelectorAll("#clips button").forEach((b) => {
+    b.setAttribute("aria-checked", String(b.dataset.clip === state.clip));
+    b.disabled = state.busy;
+  });
+  const done = $("export-done");
+  done.classList.toggle("hidden", !state.exported);
+  if (state.exported) done.textContent = `Exported to ${state.exported.folder}`;
+}
+
+function buildClipPicker() {
+  const box = $("clips");
+  box.textContent = "";
+  for (const [id, label] of CLIPS) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.role = "radio";
+    b.dataset.clip = id;
+    b.textContent = label;
+    b.onclick = () => { if (!state.busy) showClip(id); };
+    box.append(b);
+  }
+}
+
+function clipFacts(id) {
+  const c = (state.anim.clips || []).find((x) => x.name === id) || {};
+  const secs = c.seconds ? `${c.seconds.toFixed(1)} s` : "";
+  if (c.speed_m_s) {
+    const steps = !c.strides_per_s ? "" : state.anim.template === "humanoid"
+      ? `, ${Math.round(c.strides_per_s * 120)} steps a minute` : `, ${c.strides_per_s.toFixed(1)} strides a second`;
+    return `${CLIPS.find((x) => x[0] === id)[1]}: ${c.speed_m_s.toFixed(2)} m/s${steps}, loops. ` +
+      "The grid moves at the same speed: each planted foot should stay on its square.";
+  }
+  return `${CLIPS.find((x) => x[0] === id)[1]}: ${secs}${c.loop ? ", loops" : ", plays once in a game (repeats here)"}.`;
+}
+
+function showClip(id) {
+  if (!state.anim) return;
+  state.clip = id;
+  const c = (state.anim.clips || []).find((x) => x.name === id) || {};
+  if (!viewer.playClip(id, c.speed_m_s || 0)) note($("note"), `I could not play ${id}.`, "error");
+  $("clip-facts").textContent = clipFacts(id);
+  render();
+}
+
+async function showAnimations(keepView) {
+  await viewer.load(fileUrl("animate", "animated.glb", state.anim.total_s), { keepView });
+  showMsg("");
+  showClip(state.clip);
+}
+
+async function goStep4() {
+  state.step = 4;
+  state.showing = "model";
+  if (!$("clips").children.length) buildClipPicker();
+  render();
+  viewer = viewer || new Viewer($("viewer"));
+  note($("note"), "");
+  try {
+    if (state.anim) await showAnimations(false);
+    else await viewer.load(fileUrl("skeleton", "rigged.glb", state.rig.total_s));
+  } catch {
+    note($("note"), "I could not show the model. Go back and try again.", "error");
+  }
+  render();
+}
+
+async function runStep4Job(path, words, onDone) {
+  state.busy = true;
+  note($("note"), "");
+  render();
+  try {
+    const job = await api(`/api/assets/${state.asset.id}/${path}`, { method: "POST" });
+    for (;;) {
+      const j = await api(`/api/jobs/${job.id}`);
+      if (j.state === "done") { await onDone(j.result); break; }
+      if (j.state === "failed") throw new Error(j.error || j.message);
+      showMsg(j.state === "running" ? `${words} ${clock(j.elapsed_s)}`
+        : "Waiting for your turn...\nIt starts by itself when the graphics card is free.", "busy");
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  } catch (e) {
+    showMsg("");
+    note($("note"), e.message, "error");
+  }
+  state.busy = false;
+  render();
+}
+
+function makeAnimations() {
+  if (state.busy) return;
+  showMsg("Making the six animations...\nThis takes under a minute.", "busy");
+  return runStep4Job("animate", "Making the animations...", async (r) => {
+    state.anim = r;
+    state.exported = null;
+    state.clip = "walk";
+    await showAnimations(false);
+    $("foot-info").textContent = `Animations made in ${Math.round(r.total_s)} s`;
+    const extra = (r.notes || []).join(" ");
+    note($("note"), `Watch each one, then press Export for Godot. ${extra}`.trim(), "ok");
+  });
+}
+
+function exportModel() {
+  if (state.busy) return;
+  showMsg("Checking the model against its budget and in Godot...", "busy");
+  return runStep4Job("export", "Checking the model...", async (r) => {
+    state.exported = r;
+    showMsg("");
+    showClip(state.clip);
+    note($("note"), "Exported. It passed the budget and loads cleanly in Godot.", "ok");
+  });
+}
+
 function fail(text) {
   state.busy = false;
   if (state.reference) showRef("Your picture is still here. Press Make 3D model to try again.");
@@ -521,7 +655,8 @@ async function init() {
   $("expand").onclick = () => expand(false);
   $("reroll").onclick = () => expand(true);
   $("next").onclick = async () => {
-    if (state.step === 3) return buildSkeleton();
+    if (state.step === 4) return state.anim ? exportModel() : makeAnimations();
+    if (state.step === 3) return state.rig ? goStep4() : buildSkeleton();
     if (state.step === 2) return;
     if (state.done) { state.step = 2; render(); } else start();
   };
@@ -567,6 +702,7 @@ async function openAsset(id, step) {
   const g = a.steps.generate || {};
   const hasPic = (g.files || []).includes("input.png");
   state.file = null; state.rig = null; state.bones = state.pose = false;
+  state.anim = state.exported = null;
   $("cut-row").classList.add("hidden");
   state.done = state.reference = false; state.meshUrl = null; state.step = 1; state.source = "";
   state.asset = null;
@@ -597,6 +733,11 @@ async function openAsset(id, step) {
     state.reference = true;
   }
   grow();
+  if (state.rig && a.steps.animate && a.steps.animate.result && step !== "generate") {
+    state.anim = a.steps.animate.result;
+    await goStep4();
+    return;
+  }
   if (state.cleanReady && step !== "generate") { await goStep3(); return; }
   if (state.done) {
     try { await viewer.load(state.meshUrl); showMsg(""); state.showing = "model"; } catch {
