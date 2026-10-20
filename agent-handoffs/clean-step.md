@@ -21,7 +21,11 @@ src/asset_forge/multiview.py: run_batch(jobs) + --batch JOBS.json: loads the gen
 
 ## Seconds (B3 humanoid): subprocess 89.7 s = ~13 s python/torch import + 16.8 s weight load +
 59.4 s denoise (50 steps) + decode; control maps 2 s; bake itself ~4 s.
-Batch run of 3 models: scratch b7/batch.log (see result there).
+Batch (--batch, one load, 3 models): wall 212 s = 91 s first + ~60 s each after; views pixel-
+identical to the single runs (mean abs diff 0.0), so M2 gates hold. VRAM peak 9.29 GB alloc /
+10.9 reserved (cap 11). Per model: ~89 s alone, ~63 s in a batch of 10. Not cut: steps (50).
+Sheets: b7/runs/M2s/triposg/humanoid/after (best, pass), b7/runs/M2s/hi3dgen/fox/after (worst).
+Tests: clean blender tests 15 pass; test_clean_fox_gates x2 fail = non-MV route, failing since 9a2ec52.
 
 ## Known caps
 - triposg fox single_part (2 parts) -> max 9/10 for any colour method.
