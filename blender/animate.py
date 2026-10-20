@@ -226,12 +226,14 @@ def render_previews(clips, actions, arm, model, body, out: Path, size: int):
         cam_data.clip_end = 100 * body.height
         folder = out / clip.name
         folder.mkdir(parents=True, exist_ok=True)
-        for f in range(clip.frames - (1 if clip.loop else 0)):
+        step = max(1, clip.fps // 30)  # previews play at 30 frames a second
+        shots = range(0, clip.frames - (1 if clip.loop else 0), step)
+        for i, f in enumerate(shots):
             scene.frame_set(f)
             plane.location.y = (clip.speed * f / clip.fps) % (2 * tile)
-            scene.render.filepath = str(folder / f"{f:04d}.png")
+            scene.render.filepath = str(folder / f"{i:04d}.png")
             bpy.ops.render.render(write_still=True)
-        made[clip.name] = clip.frames - (1 if clip.loop else 0)
+        made[clip.name] = {"frames": len(shots), "fps": clip.fps / step}
     bpy.data.objects.remove(plane, do_unlink=True)
     bpy.data.objects.remove(cam, do_unlink=True)
     return made
@@ -278,6 +280,8 @@ def main():
         "legs": [lg.name for lg in body.legs],
         "clips": [{"name": c.name, "frames": c.frames, "seconds": round(c.seconds, 3),
                    "loop": c.loop, "speed_m_s": round(c.speed, 4),
+                   "froude": round(c.froude, 3),
+                   "strides_per_s": round(1 / c.gait.seconds, 3) if c.gait else None,
                    "feet_out_of_reach_frames": c.short, "land_frame": c.land_frame}
                   for c in clips],
         "grounding": grounded, "previews": previews, "short_legs": body.short_legs,

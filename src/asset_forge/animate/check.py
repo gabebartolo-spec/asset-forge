@@ -10,6 +10,7 @@ Pure Python + numpy, reads glTF 2.0 binary directly.
 
 from __future__ import annotations
 
+import struct
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -161,10 +162,13 @@ class AnimReport:
 
 
 def foot_joints(template: str, legs: list[str]) -> list[str]:
-    joints = [f"{lg}Foot" for lg in legs]
+    """The joint of each foot that must stay put while it is on the ground. A person's heel
+    lifts at push-off and the foot turns about its ball, so the ball (the Toes joint) is the
+    one that stays: a flat foot moves as one piece, so a sliding foot moves its ball too. An
+    animal's paw is short; its ankle stays within the limit while the paw tip turns."""
     if template == "humanoid":
-        joints += [f"{lg}Toes" for lg in legs]
-    return joints
+        return [f"{lg}Toes" for lg in legs]
+    return [f"{lg}Foot" for lg in legs]
 
 
 def check_animated_glb(glb: Path, rep: dict) -> AnimReport:
@@ -172,7 +176,7 @@ def check_animated_glb(glb: Path, rep: dict) -> AnimReport:
     out = AnimReport()
     try:
         anims = read_animations(Path(glb))
-    except (OSError, ValueError, KeyError) as e:
+    except (OSError, ValueError, KeyError, struct.error) as e:
         out.problems.append(f"The animated file could not be read ({e}).")
         return out
     have = list(anims.clips)

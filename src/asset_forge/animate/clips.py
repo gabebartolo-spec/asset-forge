@@ -24,12 +24,39 @@ from asset_forge.animate.curves import Keys
 from asset_forge.animate.gait import BIPED, QUAD_TROT, QUAD_WALK, Gait
 from asset_forge.animate.kin import UP, about, rot, rot_between, unit
 
-FPS = 30
+FPS = 30            # keys per second; small bodies step fast and get FAST_FPS
+FAST_FPS = 60
+MIN_RUN_KEYS = 12   # a run stride shorter than this many keys at FPS is keyed at FAST_FPS
 CLIP_NAMES = ("idle", "walk", "run", "attack", "hit", "faint")
 LOOPING = ("idle", "walk", "run")
 G = 9.81
 REACH = 0.97  # a leg never stretches past 97% of its length (keeps the knee from snapping)
 I3 = np.eye(3)
+
+# Gait speed by the Froude number Fr = v^2 / (g L) (L = leg length): animals of every size
+# that move alike move at the same Fr, so a small animal steps fast instead of shuffling.
+# Walk ~0.25 for people, quadrupeds and birds alike; run/trot between 1 and 2.5.
+FROUDE = {"walk": {"humanoid": 0.25, "four_legged": 0.25, "bird": 0.25},
+          "run": {"humanoid": 1.5, "four_legged": 2.0, "bird": 1.5}}
+
+
+def froude_speed(fr: float, leg: float) -> float:
+    """Ground speed in m/s at Froude number `fr` for a leg `leg` metres long."""
+    return float(np.sqrt(fr * G * leg))
+
+
+def stride_length(fr: float, leg: float) -> float:
+    """One full stride (a cycle) in metres, by Alexander's dynamic-similarity rule
+    stride / leg = 2.3 Fr^0.3 (Alexander and Jayes 1983, mammals and birds)."""
+    return 2.3 * fr**0.3 * leg
+
+
+def _quantum(phases: dict[str, float]) -> int:
+    """Smallest frame step that puts every foot's landing on a whole frame."""
+    for q in (2, 4, 8):
+        if all(abs(ph * q - round(ph * q)) < 1e-9 for ph in phases.values()):
+            return q
+    return 8
 
 
 def pitch(a: float) -> np.ndarray:
@@ -58,6 +85,7 @@ class Clip:
     short: dict[str, int] = field(default_factory=dict)  # leg -> frames its foot fell short
     land_frame: int | None = None     # faint: the frame the body reaches the ground
     gait: Gait | None = None
+    froude: float = 0.0               # v^2 / (g L) of walk and run
 
     @property
     def frames(self) -> int:
@@ -82,6 +110,7 @@ class Animator:
         self.b = body
         self.L = body.leg_len
         self.H = body.height
+        self.fps = self._fps()
         self.base = self._base()
         self.notes: list[str] = []
         for name in body.short_legs:
@@ -127,12 +156,25 @@ class Animator:
     def spot(self, lg, forward: float = 0.0, lift: float = 0.0) -> np.ndarray:
         return np.array([lg.ankle[0], lg.ankle[1], lg.ground_z]) + FWD * forward + UP * lift
 
-    def cycle(self, k: float, minimum: int) -> int:
-        """Frames per stride, scaled with leg length (same Froude number for every size), in
-        steps of 4 so each foot lands on a whole frame; small bodies get a floor so the
-        steps do not blur."""
-        n = int(round(k * np.sqrt(self.L / G) * FPS / 4)) * 4
-        return max(minimum, n)
+    def _fps(self) -> int:
+        fr = FROUDE["run"][self.b.template]
+        stride_s = stride_length(fr, self.L) / froude_speed(fr, self.L)
+        return FPS if stride_s * FPS >= MIN_RUN_KEYS else FAST_FPS
+
+    def plan(self, fr: float, duty: float, phases: dict, most: float) -> tuple[int, float]:
+        """(frames per stride, stroke) for a gait at Froude number `fr`: the speed is fixed by
+        Fr, the stride by Alexander's rule, shortened when the leg cannot reach (`most`, the
+        longest stroke the hip drop allows), and the cadence follows. Frames come in steps
+        that land every foot on a whole frame; the stroke is then set so the speed stays
+        exactly the Froude speed."""
+        v = froude_speed(fr, self.L)
+        want = min(duty * stride_length(fr, self.L), most)
+        q = _quantum(phases)
+        exact = want / (duty * v) * self.fps
+        n = max(q, int(round(exact / q)) * q)
+        if v * duty * n / self.fps > most + 1e-9:
+            n = max(q, int(exact // q) * q)
+        return n, v * duty * n / self.fps
 
     def drop_needed(self, lg, target: np.ndarray, hips_xy=(0.0, 0.0)) -> float:
         """How far the hip must come down so the leg reaches `target` at REACH."""
@@ -143,21 +185,44 @@ class Animator:
             return float("inf")
         return max(0.0, float(hip[2] - target[2]) - float(np.sqrt(lim**2 - horiz**2)))
 
-    def stroke(self, drop_max: float) -> float:
-        """Longest stroke whose ends need at most `drop_max` of hip drop on every leg."""
+    def pivot(self, lg) -> np.ndarray:
+        """The point a lifting heel turns about: the ball of the foot, or the paw tip."""
+        return self.b.head[f"{lg.name}Toes"] if self.b.template == "humanoid" else lg.tip
+
+    def roll_offset(self, lg, deg: float) -> np.ndarray:
+        """How the ankle moves when the heel lifts by `deg` about the pivot."""
+        return (pitch(deg) - I3) @ (lg.ankle - self.pivot(lg))
+
+    def stroke(self, drop_max: float, roll: float = 0.0) -> tuple[float, dict[str, float]]:
+        """The longest stroke every leg can make with at most `drop_max` of hip drop, and where
+        each leg's stroke is centred (forward offset from its rest spot). A leg reaches some
+        way ahead of its hip and, with the heel lifted by `roll` degrees at push-off, further
+        behind it; its stroke sits in the middle of that window."""
         legs = [lg for lg in self.b.legs if lg.name not in self.b.short_legs] or self.b.legs
 
-        def ok(S):
-            return all(self.drop_needed(lg, self.spot(lg, sg * S / 2)) <= drop_max
-                       for lg in legs for sg in (1, -1))
+        def reach(lg, sg):
+            under = float((lg.hip - lg.ankle) @ FWD)  # the spot under the hip
 
-        lo, hi = 0.0, 1.2 * self.L
-        if ok(hi):
-            return hi
-        for _ in range(40):
-            mid = 0.5 * (lo + hi)
-            lo, hi = (mid, hi) if ok(mid) else (lo, mid)
-        return lo
+            def ok(x):
+                p = self.spot(lg, under + sg * x)
+                return self.drop_needed(lg, p + (self.roll_offset(lg, roll) if sg < 0 else 0.0)
+                                        ) <= drop_max
+
+            lo, hi = 0.0, 1.2 * self.L
+            if not ok(lo):
+                return under, 0.0
+            for _ in range(40):
+                mid = 0.5 * (lo + hi)
+                lo, hi = (mid, hi) if ok(mid) else (lo, mid)
+            return under, lo
+
+        win = {}
+        for lg in self.b.legs:
+            under, ahead = reach(lg, 1)
+            _, behind = reach(lg, -1)
+            win[lg.name] = (under + (ahead - behind) / 2, ahead + behind)
+        S = min(win[lg.name][1] for lg in legs)
+        return S, {k: v[0] for k, v in win.items()}
 
     def finish(self, clip: Clip) -> Clip:
         for p in clip.poses:
@@ -169,21 +234,32 @@ class Animator:
 
     # ------------------------------------------------------------------ walk and run
     def gait_clip(self, name: str, gait_kw: dict, crouch: float, bob_max: float,
-                  compress: float, upper: Callable, swing_pitch: Callable) -> Clip:
-        """crouch, bob_max, compress are fractions of leg length: the knee bend everywhere, the
-        most the hips may dip at the stroke ends, an extra dip at mid-stance (running)."""
-        S = self.stroke((crouch + bob_max) * self.L)
-        g = Gait(stroke=S, fps=FPS, **gait_kw)
+                  compress: float, upper: Callable, swing_pitch: Callable,
+                  roll: float = 30.0) -> Clip:
+        """gait_kw: duty, lift, phases. crouch, bob_max, compress are fractions of leg length:
+        the knee bend everywhere, the most the hips may dip at the stroke ends, an extra dip at
+        mid-stance (running). roll: degrees the heel lifts at push-off. The speed comes from
+        FROUDE[name]."""
+        fr = FROUDE[name][self.b.template]
+        most, centre = self.stroke((crouch + bob_max) * self.L, roll)
+        frames, S = self.plan(fr, gait_kw["duty"], gait_kw["phases"], most)
+        g = Gait(frames=frames, stroke=S, fps=self.fps, **gait_kw)
         n = g.frames
         sway = [upper(f / n, g)[1].get("Hips", np.zeros(3)) for f in range(n)]
-        feet_all, need = [], np.zeros(n)
+        feet_all, toes_all, need = [], [], np.zeros(n)
         for f in range(n):
-            feet = {}
+            feet, toes = {}, {}
             for lg in self.b.legs:
                 x, z, on, s = g.foot(lg.name, f)
-                feet[lg.name] = (self.spot(lg, x, z), I3 if on else pitch(swing_pitch(s)))
+                a = roll * g.roll(lg.name, f)
+                feet[lg.name] = (self.spot(lg, centre[lg.name] + x, z)
+                                 + self.roll_offset(lg, a),
+                                 pitch(a) if on else pitch(a + swing_pitch(s)))
+                if self.b.template == "humanoid":  # the toes stay flat as the heel lifts
+                    toes[f"{lg.name}Toes"] = pitch(-a)
                 need[f] = max(need[f], self.drop_needed(lg, feet[lg.name][0], sway[f][:2]))
             feet_all.append(feet)
+            toes_all.append(toes)
         need = np.minimum(need, 0.5 * self.L)
         drop = _periodic_cover(need, max(1, n // 16)) + crouch * self.L
         if compress:  # running: the knees give a little at mid-stance
@@ -195,23 +271,25 @@ class Animator:
         for f in range(n + 1):  # frame n repeats frame 0: the loop seam
             k = f % n
             rot_, move, rep = upper(k / n, g)
+            rot_ = {**rot_, **toes_all[k]}
             hips = move.get("Hips", np.zeros(3)) + np.array([0.0, 0.0, -drop[k]])
             move = {**move, "Hips": hips}
             poses.append(self.pose(rot_, move, feet_all[k], replace=rep))
-        return self.finish(Clip(name, FPS, True, g.speed, poses, gait=g))
+        return self.finish(Clip(name, self.fps, True, g.speed, poses, gait=g,
+                                froude=g.speed**2 / (G * self.L)))
 
     # ------------------------------------------------------------------ one-shot helper
     def keyed_clip(self, name: str, keys: Keys, frame_fn: Callable[[dict, float], Pose],
                    loop: bool = False) -> Clip:
-        n = int(round(keys.end * FPS))
-        poses = [frame_fn(keys.at(f / FPS), f / FPS) for f in range(n + 1)]
-        return self.finish(Clip(name, FPS, loop, 0.0, poses))
+        n = int(np.ceil(keys.end * self.fps - 1e-9))  # the last frame reaches the last key
+        poses = [frame_fn(keys.at(f / self.fps), f / self.fps) for f in range(n + 1)]
+        return self.finish(Clip(name, self.fps, loop, 0.0, poses))
 
 
 # ====================================================================== humanoid
 class Humanoid(Animator):
     def idle(self) -> Clip:
-        n = 120
+        n = 4 * self.fps
         L = self.L
 
         def frame(f):
@@ -228,7 +306,7 @@ class Humanoid(Animator):
             return self.pose(r, mv, self.planted())
 
         poses = [frame(f % n) for f in range(n + 1)]
-        return self.finish(Clip("idle", FPS, True, 0.0, poses))
+        return self.finish(Clip("idle", self.fps, True, 0.0, poses))
 
     def _upper(self, phi, g, run: bool):
         L = self.L
@@ -253,10 +331,10 @@ class Humanoid(Animator):
             return self._upper(phi, g, run)
 
         if run:
-            kw = dict(frames=self.cycle(2.3, 16), duty=0.36, lift=0.24 * self.L, phases=BIPED)
+            kw = dict(duty=0.36, lift=0.24 * self.L, phases=BIPED)
             return self.gait_clip(name, kw, 0.07, 0.05, 0.03, upper,
                                   lambda s: 28 * np.sin(np.pi * s) ** 2)
-        kw = dict(frames=self.cycle(3.6, 24), duty=0.62, lift=0.09 * self.L, phases=BIPED)
+        kw = dict(duty=0.62, lift=0.09 * self.L, phases=BIPED)
         return self.gait_clip(name, kw, 0.02, 0.05, 0.0, upper,
                               lambda s: 14 * np.sin(np.pi * s) * (1 - 1.3 * s))
 
@@ -267,7 +345,16 @@ class Humanoid(Animator):
         return self._gait("run", True)
 
     def attack(self) -> Clip:
-        """Right-hand swipe with a lunge step of the left foot."""
+        """Right-hand swipe with a lunge step of the left foot (shortened until the leg
+        reaches the step on every frame)."""
+        clip = None
+        for k in range(8):
+            clip = self._attack(0.42 * 0.9**k)
+            if not clip.short:
+                break
+        return clip
+
+    def _attack(self, stride_frac: float) -> Clip:
         L = self.L
         k = Keys([0.0, 0.30, 0.42, 0.55, 0.92],
                  hx=[0, -0.03, 0.16, 0.15, 0], hz=[0, 0.04, 0.10, 0.09, 0],
@@ -282,7 +369,7 @@ class Humanoid(Animator):
         reach = Keys([0.0, 0.03, 0.15, 0.27, 0.65, 0.75, 0.85, 0.92],
                      s=[0, 0, 0.45, 1.0, 1.0, 0.55, 0, 0])
         lift = Keys([0.0, 0.12, 0.30, 0.62, 0.75, 0.88, 0.92], z=[0, 0.07, 0, 0, 0.06, 0, 0])
-        stride = 0.42 * L
+        stride = stride_frac * L
         left = self.b.leg("Left")
 
         def frame(c, t):
@@ -329,7 +416,7 @@ class Humanoid(Animator):
                  out=[0, 5, 8, 25, 25, 25, 25], elbow=[12, 20, 25, 30, 30, 30, 30],
                  fall=[0, 0, 4, 88, 83, 88, 88])
         pivot = self._front_pivot()
-        land = int(round(0.88 * FPS))
+        land = int(round(0.88 * self.fps))
 
         def frame(c, t):
             r = {"Spine": pitch(c["chest"] * 0.4), "Chest": pitch(c["chest"] * 0.6),
@@ -361,7 +448,7 @@ class FourLegged(Animator):
                 for i in range(1, n + 1)}
 
     def idle(self) -> Clip:
-        n = 120
+        n = 4 * self.fps
         L = self.L
 
         def frame(f):
@@ -374,7 +461,7 @@ class FourLegged(Animator):
             mv = {"Hips": [0.01 * L * np.sin(2 * np.pi * t), 0.0, -0.02 * L - 0.005 * L * br]}
             return self.pose(r, mv, self.planted())
 
-        return self.finish(Clip("idle", FPS, True, 0.0, [frame(f % n) for f in range(n + 1)]))
+        return self.finish(Clip("idle", self.fps, True, 0.0, [frame(f % n) for f in range(n + 1)]))
 
     def _gait(self, name: str, trot: bool) -> Clip:
         def upper(phi, g):
@@ -389,9 +476,9 @@ class FourLegged(Animator):
 
         curl = lambda s: 40 * np.sin(np.pi * s)  # noqa: E731
         if trot:
-            kw = dict(frames=self.cycle(2.3, 16), duty=0.42, lift=0.22 * self.L, phases=QUAD_TROT)
+            kw = dict(duty=0.42, lift=0.22 * self.L, phases=QUAD_TROT)
             return self.gait_clip(name, kw, 0.05, 0.05, 0.03, upper, curl)
-        kw = dict(frames=self.cycle(3.6, 24), duty=0.70, lift=0.16 * self.L, phases=QUAD_WALK)
+        kw = dict(duty=0.70, lift=0.16 * self.L, phases=QUAD_WALK)
         return self.gait_clip(name, kw, 0.03, 0.04, 0.0, upper, curl)
 
     def walk(self) -> Clip:
@@ -450,7 +537,7 @@ class FourLegged(Animator):
             return self.pose(r, mv, self.planted(), root=about(roll(c["fall"]), pivot))
 
         clip = self.keyed_clip("faint", k, frame)
-        clip.land_frame = int(round(0.90 * FPS))
+        clip.land_frame = int(round(0.90 * self.fps))
         return clip
 
 
@@ -464,7 +551,7 @@ class Bird(Animator):
         return out
 
     def idle(self) -> Clip:
-        n = 120
+        n = 4 * self.fps
         L = self.L
         look = Keys([0, 0.4, 0.55, 1.5, 1.65, 2.5, 2.62, 3.4, 4.0],
                     y=[0, 0, 25, 25, -18, -18, 6, 6, 0], p=[0, 0, -6, -6, 4, 4, 0, 0, 0])
@@ -480,7 +567,7 @@ class Bird(Animator):
             mv = {"Hips": [0.0, 0.0, -0.02 * L - 0.01 * L * (0.5 + 0.5 * br)]}
             return self.pose(r, mv, self.planted())
 
-        return self.finish(Clip("idle", FPS, True, 0.0, [frame(f % n) for f in range(n + 1)]))
+        return self.finish(Clip("idle", self.fps, True, 0.0, [frame(f % n) for f in range(n + 1)]))
 
     def _gait(self, name: str, run: bool) -> Clip:
         def upper(phi, g):
@@ -495,9 +582,9 @@ class Bird(Animator):
 
         curl = lambda s: 45 * np.sin(np.pi * s)  # noqa: E731
         if run:
-            kw = dict(frames=self.cycle(2.3, 16), duty=0.38, lift=0.28 * self.L, phases=BIPED)
+            kw = dict(duty=0.38, lift=0.28 * self.L, phases=BIPED)
             return self.gait_clip(name, kw, 0.08, 0.06, 0.03, upper, curl)
-        kw = dict(frames=self.cycle(3.6, 24), duty=0.6, lift=0.22 * self.L, phases=BIPED)
+        kw = dict(duty=0.6, lift=0.22 * self.L, phases=BIPED)
         return self.gait_clip(name, kw, 0.04, 0.05, 0.0, upper, curl)
 
     def walk(self) -> Clip:
@@ -554,7 +641,7 @@ class Bird(Animator):
             return self.pose(r, mv, self.planted(), root=about(roll(c["fall"]), pivot))
 
         clip = self.keyed_clip("faint", k, frame)
-        clip.land_frame = int(round(0.90 * FPS))
+        clip.land_frame = int(round(0.90 * self.fps))
         return clip
 
 

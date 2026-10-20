@@ -51,6 +51,21 @@ class Gait:
         x = h00 * -half + h10 * m + h01 * half + h11 * m
         return x, self.lift * np.sin(np.pi * s), False, s
 
+    def roll(self, leg: str, frame: float, start: float = 0.55, settle: float = 0.4) -> float:
+        """How far (0-1) the heel is lifted: it rises over the last part of the stance (from
+        `start` of it) as the leg pushes off, and settles over the first `settle` of the swing.
+        The foot pivots about its ball or tip, which stays planted, so this lengthens the
+        stride without sliding."""
+        phi = (frame / self.frames + self.phases[leg]) % 1.0
+        if phi < self.duty:
+            return _smooth((phi / self.duty - start) / (1.0 - start))
+        return 1.0 - _smooth((phi - self.duty) / (1.0 - self.duty) / settle)
+
+
+def _smooth(x: float) -> float:
+    x = min(max(x, 0.0), 1.0)
+    return x * x * (3.0 - 2.0 * x)
+
 
 @dataclass
 class Slide:
