@@ -43,6 +43,7 @@ What it does, in order (every number is in report.json):
 
 import json
 import math
+import os
 import sys
 import time
 from pathlib import Path
@@ -88,6 +89,13 @@ def parse():
         raise SystemExit(f"--generator must be one of {sorted(GENERATOR_FRONT_YAW)}; measure a new "
                          "generator's front once and add it to GENERATOR_FRONT_YAW")
     opts["voxel_div"] = get("--voxel-div", float, 220.0)
+    # method B colour: --mv-python EXE --mv-src DIR [--hf-home DIR], or --mv-views DIR (reuse)
+    opts["mv"] = None
+    if "--mv-views" in argv:
+        opts["mv"] = {"views": get("--mv-views")}
+    elif "--mv-python" in argv:
+        opts["mv"] = {"python": get("--mv-python"), "src": get("--mv-src"),
+                      "hf_home": get("--hf-home")}
     if opts["type"] not in BUDGETS:
         raise SystemExit(f"--type must be one of {sorted(BUDGETS)}")
     return opts
@@ -254,6 +262,202 @@ def pick_yaw(verts, ref, kind, generator):
     return max(table, key=table.get), table, "side outline (profile, head toward -Y)"
 
 
+# ---------------------------------------------------------------- solid rebuild
+
+# Some generators (Hi3DGen) return a thin hollow shell: voxel remesh keeps it hollow, so about half
+# of the triangle budget and texture goes on an inside wall nobody sees. Others (TripoSG fox) leave
+# a limb a few mm off the body: two parts. Both are fixed on a coarse voxel copy of the remeshed
+# surface: the hollow is filled and a detached part is bridged to the body, then the filler is fused
+# in by a second voxel remesh (the outer surface is untouched).
+SOLID_N = 128            # voxels along the longest side
+SOLID_SEAL = 3           # voxels: an opening up to twice this wide is sealed to find the hollow
+SOLID_MIN_CAVITY = 0.03  # hollow volume (share of the filled solid) from which it is filled
+SOLID_MIN_PART = 0.002   # parts smaller than this share of the solid are left to drop_floaters
+SOLID_MAX_GAP = 12       # voxels: a part further than this from the body is not bridged
+
+
+def _dil(m, k=1):
+    for _ in range(k):
+        d = m.copy()
+        d[1:] |= m[:-1]
+        d[:-1] |= m[1:]
+        d[:, 1:] |= m[:, :-1]
+        d[:, :-1] |= m[:, 1:]
+        d[:, :, 1:] |= m[:, :, :-1]
+        d[:, :, :-1] |= m[:, :, 1:]
+        m = d
+    return m
+
+
+def _ero(m, k=1):
+    return ~_dil(~m, k)
+
+
+def _flood(seed, free, steps=None):
+    """Voxels of `free` connected to `seed` (6-neighbour), or within `steps` moves of it."""
+    r = seed & free
+    k = 0
+    while steps is None or k < steps:
+        n = _dil(r) & free
+        k += 1
+        if steps is None and k % 8 == 0 and n.sum() == r.sum():
+            return n
+        r = n
+    return r
+
+
+def voxel_solid(obj, n=SOLID_N):
+    """Inside of obj's closed surface on a voxel grid (ray parity along x, y and z, majority vote).
+    Returns (solid (nx,ny,nz) bool, origin, voxel size); a 2-voxel empty border is added."""
+    bvh = bvhtree.BVHTree.FromObject(obj, bpy.context.evaluated_depsgraph_get())
+    co = verts_np(obj).astype(np.float64)
+    lo, hi = co.min(axis=0), co.max(axis=0)
+    h = float(max(hi - lo)) / n
+    pad = 2 + SOLID_SEAL + SOLID_MAX_GAP
+    org = lo - pad * h
+    shape = tuple(int(np.ceil((hi[a] - lo[a]) / h)) + 2 * pad for a in range(3))
+    votes = np.zeros(shape, np.uint8)
+    span = float(max(hi - lo)) * 4
+    for ax in range(3):
+        a1, a2 = [a for a in range(3) if a != ax]
+        cen = [org[a] + (np.arange(shape[a]) + 0.5) * h for a in range(3)]
+        d = Vector(tuple(1.0 if a == ax else 0.0 for a in range(3)))
+        for i in range(shape[a1]):
+            for j in range(shape[a2]):
+                p = [0.0, 0.0, 0.0]
+                p[a1], p[a2], p[ax] = cen[a1][i], cen[a2][j], org[ax] - h
+                o = Vector(p)
+                hits = []
+                while True:
+                    loc, _n, _i, dist = bvh.ray_cast(o, d, span)
+                    if loc is None:
+                        break
+                    t = loc[ax]
+                    if not hits or t - hits[-1] > 1e-7 * span:
+                        hits.append(t)
+                    o = loc + d * (1e-6 * span)
+                if len(hits) < 2:
+                    continue
+                k = np.searchsorted(np.array(hits), cen[ax], side="right")
+                inside = (k % 2) == 1
+                idx = [slice(None)] * 3
+                idx[a1], idx[a2] = i, j
+                votes[tuple(idx)] += inside.astype(np.uint8)
+    return votes >= 2, org, h
+
+
+def _label_big(solid, min_share=SOLID_MIN_PART, most=8):
+    """Connected parts of `solid` of at least min_share of it, biggest first (bool grids)."""
+    left = solid.copy()
+    total = max(int(solid.sum()), 1)
+    parts = []
+    while left.sum() >= min_share * total and len(parts) < most:
+        seed = np.zeros_like(left)
+        seed[tuple(np.argwhere(left)[0])] = True
+        comp = _flood(seed, left)
+        if comp.sum() >= min_share * total:
+            parts.append(comp)
+        left &= ~comp
+    parts.sort(key=lambda c: -int(c.sum()))
+    return parts
+
+
+def solid_filler(solid):
+    """Voxels to add: the sealed hollow (kept one voxel inside the walls) and bridges from each
+    detached part to the body at their closest approach. Returns (filler, info)."""
+    info = {}
+    border = np.zeros_like(solid)
+    border[[0, -1]] = border[:, [0, -1]] = border[:, :, [0, -1]] = True
+    sealed = _ero(_dil(solid, SOLID_SEAL), SOLID_SEAL) | solid
+    outside = _flood(_flood(border, ~sealed), ~solid, SOLID_SEAL + 1)
+    hollow = ~solid & ~outside
+    filled = solid | hollow
+    cav = float(hollow.sum() / max(filled.sum(), 1))
+    info["hollow_share"] = round(cav, 4)
+    filler = np.zeros_like(solid)
+    if cav >= SOLID_MIN_CAVITY:
+        filler |= _dil(hollow, 1) & ~_dil(outside, 1)
+    else:
+        filled = solid
+    parts = _label_big(filled)
+    info["parts_voxels"] = [int(p.sum()) for p in parts]
+    bridges = []
+    if len(parts) > 1:
+        body = parts[0]
+        for part in parts[1:]:
+            grown_p, grown_b = part, body
+            for k in range(1, SOLID_MAX_GAP + 1):
+                grown_p, grown_b = _dil(grown_p), _dil(grown_b)
+                if (grown_p & grown_b).any():
+                    bridge = grown_p & grown_b
+                    filler |= bridge & ~filled
+                    bridges.append(2 * k)
+                    body = body | part | bridge
+                    break
+    info["bridges_gap_voxels"] = bridges
+    info["filler_voxels"] = int(filler.sum())
+    return filler, info
+
+
+def voxel_box_mesh(mask, org, h, name="filler"):
+    """Closed mesh of the voxel blocks in `mask` (outward quads on every exposed face)."""
+    nx, ny, nz = mask.shape
+    m = np.pad(mask, 1)
+    quads = []
+    for ax in range(3):
+        a = np.diff(m.astype(np.int8), axis=ax)
+        for sgn in (1, -1):  # 1: empty->solid (face looks toward -ax), -1: solid->empty (+ax)
+            idx = np.argwhere(a == sgn)
+            if not len(idx):
+                continue
+            base = idx.astype(np.int64)
+            base[:, ax] += 1                       # corner plane along ax (in padded coords)
+            base -= 1                              # back to unpadded corner coords
+            base[:, ax] = idx[:, ax]
+            u, v = [b for b in range(3) if b != ax]
+            c0 = base.copy()
+            c1 = base.copy()
+            c1[:, u] += 1
+            c2 = c1.copy()
+            c2[:, v] += 1
+            c3 = base.copy()
+            c3[:, v] += 1
+            q = np.stack([c0, c1, c2, c3], axis=1)
+            if (sgn == -1) != (ax != 1):  # u x v is +ax except for ax = y: flip to face outward
+                q = q[:, ::-1]
+            quads.append(q)
+    q = np.concatenate(quads)
+    flat = q.reshape(-1, 3)
+    key = (flat[:, 0] * (ny + 3) + flat[:, 1]) * (nz + 3) + flat[:, 2]
+    uniq, inv = np.unique(key, return_inverse=True)
+    corners = np.zeros((len(uniq), 3))
+    corners[inv] = flat
+    verts = org + corners * h
+    faces = inv.reshape(-1, 4)
+    me = bpy.data.meshes.new(name)
+    me.from_pydata(verts.tolist(), [], faces.tolist())
+    me.update()
+    ob = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(ob)
+    return ob
+
+
+def make_solid(work, voxel_size):
+    """Fill a hollow shell, bridge detached parts (block comment above). Returns (obj, info)."""
+    t0 = time.perf_counter()
+    solid, org, h = voxel_solid(work)
+    filler, info = solid_filler(solid)
+    info["voxel_size"] = round(h, 6)
+    if filler.any():
+        ob = voxel_box_mesh(filler, org, h)
+        work = join([work, ob])
+        select_only(work)
+        work.data.remesh_voxel_size = voxel_size
+        bpy.ops.object.voxel_remesh()
+    info["seconds"] = round(time.perf_counter() - t0, 2)
+    return work, info
+
+
 # ---------------------------------------------------------------- silhouettes
 
 def render_silhouettes(objs_by_name, centre, scale, work_dir):
@@ -343,6 +547,15 @@ MIRROR_SNAP = 0.02   # mirrored source must land within this x height of the sur
 SPECK_FULL = (0.5, 0.7)    # facing cos from which the cap lifts completely
 HEAD_DARK = 0.04          # picture: darkest fraction of the head box taken as the face features
 MIRROR_DIRS = ((1.0, 0.0, 0.0),)  # camera directions that are side views (animals)
+# Outline warp (animals, side view): the picture's outline is fitted onto the model's outline seen
+# from the reference camera by a smooth 2D displacement (non-rigid ICP on the two contours), not by
+# per-row sideways shifts only: a bird whose beak sits lower on the model, or a fox whose legs
+# stand further forward, then has the picture's beak and legs land on the model's.
+WARP_GRID = 128          # mask resolution of both outlines (bounding-box normalised)
+WARP_NODES = 16          # control nodes per side of the displacement grid (bilinear)
+WARP_ITERS = 30
+WARP_SMOOTH = (30.0, 1.0)  # smoothness weight, annealed from the first to the second value
+WARP_CLOUD = 60000       # surface points used for the model's outline
 
 
 def luma(c):
@@ -383,6 +596,102 @@ def row_extents(sn, vn, rows):
     return lo, hi
 
 
+def _grow(m, k=1):
+    for _ in range(k):
+        d = m.copy()
+        d[1:] |= m[:-1]
+        d[:-1] |= m[1:]
+        d[:, 1:] |= m[:, :-1]
+        d[:, :-1] |= m[:, 1:]
+        m = d
+    return m
+
+
+def _shrink(m, k=1):
+    return ~_grow(~m, k)
+
+
+def warp_mask(uv, n=WARP_GRID):
+    """Filled outline of points uv (n,2) in [0,1]^2 (v up): splat, close."""
+    g = np.zeros((n, n), bool)
+    iy = np.clip((uv[:, 1] * n).astype(int), 0, n - 1)
+    ix = np.clip((uv[:, 0] * n).astype(int), 0, n - 1)
+    g[iy, ix] = True
+    return _shrink(_grow(g, 2), 2)
+
+
+def warp_contour(m):
+    ys, xs = np.nonzero(m & ~_shrink(m, 1))
+    return np.stack([(xs + 0.5) / m.shape[1], (ys + 0.5) / m.shape[0]], axis=1)
+
+
+def warp_weights(x, c=WARP_NODES):
+    """Bilinear weights of points x (n,2) in [0,1]^2 on a c x c node grid: (idx (n,4), w (n,4))."""
+    t = np.clip(x, 0, 1) * (c - 1)
+    i0 = np.minimum(t.astype(int), c - 2)
+    f = t - i0
+    ix, iy, fx, fy = i0[:, 0], i0[:, 1], f[:, 0], f[:, 1]
+    idx = np.stack([iy * c + ix, iy * c + ix + 1, (iy + 1) * c + ix, (iy + 1) * c + ix + 1], 1)
+    return idx, np.stack([(1 - fx) * (1 - fy), fx * (1 - fy), (1 - fx) * fy, fx * fy], 1)
+
+
+def warp_apply(D, x):
+    idx, w = warp_weights(x, int(round(np.sqrt(len(D)))))
+    return x + (D[idx] * w[..., None]).sum(axis=1)
+
+
+def _nearest(a, b):
+    out = np.empty(len(a), int)
+    for i in range(0, len(a), 1024):
+        out[i:i + 1024] = ((a[i:i + 1024, None, :] - b[None]) ** 2).sum(-1).argmin(1)
+    return out
+
+
+def fit_outline_warp(model_uv, pic_mask):
+    """Smooth displacement D (nodes^2, 2): picture uv = warp_apply(D, model uv), both in their own
+    bounding-box frames. Each round matches every model contour point to its nearest picture contour
+    point and every picture contour point to its nearest warped model contour point, then solves the
+    least-squares node displacements with a smoothness term that starts stiff (a near-global move)
+    and relaxes (local fits: a beak, a leg). Returns (D, outline IoU before, after)."""
+    c = WARP_NODES
+    n = pic_mask.shape[0]
+    mm = warp_mask(model_uv, n)
+    mc, pc = warp_contour(mm), warp_contour(pic_mask)
+    # nearest picture contour point for every grid cell (the forward match is a lookup)
+    gy, gx = np.mgrid[0:n, 0:n]
+    cells = np.stack([(gx.ravel() + 0.5) / n, (gy.ravel() + 0.5) / n], axis=1)
+    near_pc = _nearest(cells, pc).reshape(n, n)
+    idx, w = warp_weights(mc, c)
+    A = np.zeros((len(mc), c * c))
+    np.put_along_axis(A, idx, w, axis=1)
+    lap = []
+    for y in range(c):
+        for x in range(c):
+            for dx, dy in ((1, 0), (0, 1)):
+                if x + dx < c and y + dy < c:
+                    r = np.zeros(c * c)
+                    r[y * c + x], r[(y + dy) * c + x + dx] = -1.0, 1.0
+                    lap.append(r)
+    lap = np.array(lap)
+    LtL = lap.T @ lap / len(lap)
+    AtA_f = A.T @ A / len(mc)
+    D = np.zeros((c * c, 2))
+    for it in range(WARP_ITERS):
+        lam = WARP_SMOOTH[0] * (WARP_SMOOTH[1] / WARP_SMOOTH[0]) ** (it / max(WARP_ITERS - 1, 1))
+        wm = mc + A @ D
+        g = np.clip((wm * n).astype(int), 0, n - 1)
+        tf = pc[near_pc[g[:, 1], g[:, 0]]] - mc
+        j = _nearest(pc, wm)
+        Ab, tb = A[j], pc - mc[j]
+        M = AtA_f + Ab.T @ Ab / len(pc) + lam * LtL + 1e-3 * np.eye(c * c)
+        rhs = A.T @ tf / len(mc) + Ab.T @ tb / len(pc)
+        D = np.linalg.solve(M, rhs)
+    after = warp_mask(warp_apply(D, model_uv), n)
+    i0 = float((mm & pic_mask).sum() / max((mm | pic_mask).sum(), 1))
+    i1 = float((after & pic_mask).sum() / max((after | pic_mask).sum(), 1))
+    return D, i0, i1
+
+
 class Registration:
     """Fit the reference's alpha outline to the model's outline seen from the reference camera.
     Both outlines are normalised to their own bounding box (scale per axis), then each height row
@@ -390,12 +699,23 @@ class Registration:
     (a smoothed shear), so a head that the generator centred but the picture drew left of centre
     still lands on the geometric head."""
 
-    def __init__(self, P_all, right, ref, depth_dir=None):
+    def __init__(self, P_all, right, ref, depth_dir=None, cloud=None):
+        """cloud: dense surface points (the texel positions); given, the outline is fitted by the
+        2D warp (fit_outline_warp) instead of the per-row shift."""
         s, z = P_all @ right, P_all[:, 2]
         self.s0, self.sw = s.min(), max(np.ptp(s), 1e-9)
         self.z0, self.zh = z.min(), max(np.ptp(z), 1e-9)
         ys, xs = np.where(ref_mask(ref))
         self.rx0, self.rx1, self.ry0, self.ry1 = xs.min(), xs.max() + 1, ys.min(), ys.max() + 1
+        self.warp, self.warp_iou = None, None
+        if cloud is not None:
+            cl = cloud[:: max(1, len(cloud) // WARP_CLOUD)]
+            uv = np.stack([(cl @ right - self.s0) / self.sw, (cl[:, 2] - self.z0) / self.zh], 1)
+            g = (np.arange(WARP_GRID) + 0.5) / WARP_GRID
+            gx = np.rint(self.rx0 + g * (self.rx1 - 1 - self.rx0)).astype(int)
+            gy = np.rint(self.ry0 + g * (self.ry1 - 1 - self.ry0)).astype(int)
+            self.warp, i0, i1 = fit_outline_warp(uv, ref_mask(ref)[np.ix_(gy, gx)])
+            self.warp_iou = (round(i0, 4), round(i1, 4))
         rw, rh = self.rx1 - 1 - self.rx0, self.ry1 - 1 - self.ry0
         mlo, mhi = row_extents((s - self.s0) / self.sw, (z - self.z0) / self.zh, REG_ROWS)
         rlo, rhi = row_extents((xs - self.rx0) / max(rw, 1), (ys - self.ry0) / max(rh, 1),
@@ -479,7 +799,11 @@ class Registration:
     def to_ref(self, sv, z):
         """(s along camera right, z) of source points -> reference pixel coordinates."""
         vn = np.clip((z - self.z0) / self.zh, 0, 1)
-        xn = (sv - self.s0) / self.sw + np.interp(vn, self.rows_v, self.shift)
+        if self.warp is not None:
+            w = warp_apply(self.warp, np.stack([(sv - self.s0) / self.sw, vn], axis=1))
+            xn, vn = w[:, 0], w[:, 1]
+        else:
+            xn = (sv - self.s0) / self.sw + np.interp(vn, self.rows_v, self.shift)
         px = self.rx0 + xn * (self.rx1 - 1 - self.rx0)
         py = self.ry0 + vn * (self.ry1 - 1 - self.ry0)
         return px, py
@@ -530,6 +854,278 @@ def fill_colour(c, s, edges, deg):
     if np.isnan(out[:, 0]).any():
         out[np.isnan(out[:, 0])] = c[s > 0].mean(axis=0) if (s > 0).any() else 0.5
     return diffuse(out, edges, deg, 3)
+
+
+# ---------------------------------------------------------------- multi-view colour (method B)
+# MV-Adapter image+geometry (src/asset_forge/multiview.py) paints six views of OUR mesh from the
+# reference picture; the views are aligned to the mesh because they are conditioned on its own
+# position and normal maps, rendered here. Its frame: the model centred, max |coord| = 0.5,
+# orthographic box +-0.55, cameras at distance 1.8 looking at the origin, z up; view 0 is the
+# reference camera (the mesh is turned about z so that d0 points to -y).
+MV_SIZE = 768
+MV_BOX = 0.55
+MV_VIEWS = ((-90.0, 0.0), (0.0, 0.0), (90.0, 0.0), (180.0, 0.0), (90.0, 89.99), (90.0, -89.99))
+MV_POWER = 4          # view weight = facing ** MV_POWER (a view seen head-on wins)
+MV_DEPTH_TOL = 0.006  # z-test: texel within this distance (model frame units) of the view's surface
+MV_ERODE = 2          # px dropped at each view's silhouette (the edge pixels blend the background)
+MV_FULL_WEIGHT = 0.3  # summed view weight from which the views replace the fill completely
+MV_GAIN = (0.5, 2.0)  # allowed per-channel contrast change when matching the views to the picture
+MV_MATCH_GRID = (6, 12)  # cells (across, down) of the picture's outline box, colour match
+MV_MATCH_PRIOR = 200     # samples worth of the whole-view statistics mixed into each cell
+MV_MATCH_FACING = 0.05   # view weight (facing ** MV_POWER) from which a texel counts
+MV_PICTURE = True     # the picture paints what its camera directly sees; the views the rest
+
+
+def mv_frame(co, d0):
+    """(R, c, s): std = s * R @ (p - c); R turns d0 onto -y about z."""
+    ang = math.atan2(-1.0, 0.0) - math.atan2(d0[1], d0[0])
+    ca, sa = math.cos(ang), math.sin(ang)
+    R = np.array([[ca, -sa, 0.0], [sa, ca, 0.0], [0.0, 0.0, 1.0]])
+    c = (co.min(axis=0) + co.max(axis=0)) / 2
+    s = 0.5 / max(np.abs((co - c) @ R.T).max(), 1e-9)
+    return R, c, s
+
+
+def mv_cameras():
+    """Per view (camera position, lookat, right, up), MV-Adapter's get_c2w convention."""
+    cams = []
+    for az, el in MV_VIEWS:
+        a, e = math.radians(az), math.radians(el)
+        pos = 1.8 * np.array([math.cos(e) * math.cos(a), math.cos(e) * math.sin(a), math.sin(e)])
+        look = -pos / np.linalg.norm(pos)
+        right = np.cross(look, [0.0, 0.0, 1.0])
+        right /= np.linalg.norm(right)
+        up = np.cross(right, look)
+        cams.append((pos, look, right, up / np.linalg.norm(up)))
+    return cams
+
+
+def mv_pixel(q, cam, size=MV_SIZE):
+    """std points (m,3) -> (column, row, depth) floats; row 0 = top."""
+    pos, look, right, up = cam
+    d = q - pos
+    col = (d @ right + MV_BOX) / (2 * MV_BOX) * size
+    row = (MV_BOX - d @ up) / (2 * MV_BOX) * size
+    return col, row, d @ look
+
+
+def mv_control(q, vi, vn_std, size=MV_SIZE):
+    """Rasterise the mesh (std frame) in the six views: per view the visible surface position,
+    smooth normal and depth (inf on the background). Returns pos, nrm (6,size,size,3), depth."""
+    cams = mv_cameras()
+    pos = np.zeros((6, size, size, 3), np.float32)
+    nrm = np.zeros((6, size, size, 3), np.float32)
+    dep = np.full((6, size, size), np.inf)
+    for k, cam in enumerate(cams):
+        col, row, z = mv_pixel(q, cam, size)
+        X, Y, Z = col[vi], row[vi], z[vi]  # (nt,3)
+        zb, pb, nb = dep[k], pos[k], nrm[k]
+        for t in range(len(vi)):
+            a, b, c = (X[t, 0], Y[t, 0]), (X[t, 1], Y[t, 1]), (X[t, 2], Y[t, 2])
+            den = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1])
+            if abs(den) < 1e-12:
+                continue
+            x0, x1 = max(int(min(a[0], b[0], c[0])), 0), min(int(max(a[0], b[0], c[0])) + 1, size)
+            y0, y1 = max(int(min(a[1], b[1], c[1])), 0), min(int(max(a[1], b[1], c[1])) + 1, size)
+            if x1 <= x0 or y1 <= y0:
+                continue
+            gx, gy = np.meshgrid(np.arange(x0, x1) + 0.5, np.arange(y0, y1) + 0.5)
+            w0 = ((b[1] - c[1]) * (gx - c[0]) + (c[0] - b[0]) * (gy - c[1])) / den
+            w1 = ((c[1] - a[1]) * (gx - c[0]) + (a[0] - c[0]) * (gy - c[1])) / den
+            w2 = 1 - w0 - w1
+            m = (w0 >= 0) & (w1 >= 0) & (w2 >= 0)
+            if not m.any():
+                continue
+            w = np.stack([w0[m], w1[m], w2[m]], axis=1)
+            zz = w @ Z[t]
+            ys, xs = np.nonzero(m)
+            ys, xs = ys + y0, xs + x0
+            near = zz < zb[ys, xs]
+            if not near.any():
+                continue
+            ys, xs, w = ys[near], xs[near], w[near]
+            zb[ys, xs] = zz[near]
+            pb[ys, xs] = w @ q[vi[t]]
+            nn = w @ vn_std[vi[t]]
+            nb[ys, xs] = nn / np.maximum(np.linalg.norm(nn, axis=1, keepdims=True), 1e-12)
+    return pos, nrm, dep
+
+
+def mv_write_control(path, pos, nrm, dep):
+    bg = ~np.isfinite(dep)
+    p = np.clip(pos + 0.5, 0, 1)
+    n = np.clip(nrm / 2 + 0.5, 0, 1)
+    p[bg], n[bg] = 0.5, 0.5
+    np.savez(path, pos=p.astype(np.float32), normal=n.astype(np.float32))
+
+
+def mv_load_views(view_dir):
+    """The six generated views as (6,H,W,3) float, row 0 = top (display values, like the ref)."""
+    out = []
+    for k in range(len(MV_VIEWS)):
+        img = bpy.data.images.load(str(Path(view_dir) / f"view_{k}.png"))
+        w, h = img.size
+        px = np.empty(w * h * 4, np.float32)
+        img.pixels.foreach_get(px)
+        out.append(px.reshape(h, w, 4)[::-1, :, :3])
+        bpy.data.images.remove(img)
+    return np.stack(out)
+
+
+def mv_sample_views(views, dep, frame, P, Nn):
+    """Colour of surface points P (model frame, normals Nn) in each view that sees them: z-test
+    against the view's depth, weight facing ** MV_POWER, silhouettes eroded. Returns
+    (rgb (K,n,3), w (K,n)); w = 0 where the view does not see the point."""
+    R, c, s = frame
+    q = s * (P - c) @ R.T
+    nq = Nn @ R.T
+    size = views.shape[1]
+    cols = np.zeros((len(views), len(P), 3))
+    ws = np.zeros((len(views), len(P)))
+    for k, cam in enumerate(mv_cameras()):
+        fg = np.isfinite(dep[k])
+        for _ in range(MV_ERODE):
+            e = fg.copy()
+            e[1:] &= fg[:-1]
+            e[:-1] &= fg[1:]
+            e[:, 1:] &= fg[:, :-1]
+            e[:, :-1] &= fg[:, 1:]
+            fg = e
+        col, row, z = mv_pixel(q, cam, size)
+        ix = np.clip(col.astype(int), 0, size - 1)
+        iy = np.clip(row.astype(int), 0, size - 1)
+        facing = np.clip(-(nq @ cam[1]), 0, 1)
+        ok = fg[iy, ix] & (np.abs(z - np.where(fg[iy, ix], dep[k][iy, ix], np.inf))
+                           <= MV_DEPTH_TOL)
+        ws[k] = np.where(ok, facing ** MV_POWER, 0.0)
+        cols[k] = views[k][iy, ix]
+    return cols, ws
+
+
+def mv_blend(cols, ws):
+    """Weighted blend of the per-view colours. Returns (rgb, summed weight)."""
+    wsum = ws.sum(axis=0)
+    return (cols * ws[..., None]).sum(axis=0) / np.maximum(wsum[:, None], 1e-12), wsum
+
+
+_XYZ = np.array([[0.4124, 0.3576, 0.1805], [0.2126, 0.7152, 0.0722], [0.0193, 0.1192, 0.9505]])
+_WHITE = np.array([0.95047, 1.0, 1.08883])
+
+
+def srgb_to_lab(c):
+    c = np.clip(c, 0, 1)
+    lin = np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+    xyz = lin @ _XYZ.T / _WHITE
+    f = np.where(xyz > 0.008856, np.cbrt(xyz), 7.787 * xyz + 16 / 116)
+    return np.stack([116 * f[..., 1] - 16, 500 * (f[..., 0] - f[..., 1]),
+                     200 * (f[..., 1] - f[..., 2])], axis=-1)
+
+
+def lab_to_srgb(lab):
+    fy = (lab[..., 0] + 16) / 116
+    f = np.stack([fy + lab[..., 1] / 500, fy, fy - lab[..., 2] / 200], axis=-1)
+    xyz = np.where(f > 0.206893, f ** 3, (f - 16 / 116) / 7.787) * _WHITE
+    lin = np.clip(xyz @ np.linalg.inv(_XYZ).T, 0, 1)
+    return np.where(lin <= 0.0031308, lin * 12.92, 1.055 * lin ** (1 / 2.4) - 0.055)
+
+
+def _mean_var(x, n0=0, prior=None):
+    if prior is None or n0 == 0:
+        return x.mean(axis=0), x.var(axis=0)
+    m0, v0 = prior
+    n = len(x)
+    m = (x.sum(axis=0) + n0 * m0) / (n + n0)
+    v = (((x - m) ** 2).sum(axis=0) + n0 * (v0 + (m0 - m) ** 2)) / (n + n0)
+    return m, v
+
+
+def mv_match(cols, ws, uv, pic, pic_uv, grid=MV_MATCH_GRID):
+    """Per-view colour matching. The generator lights each view its own way (a back view brighter
+    or washed out), so each view is matched to the picture on its own: in each cell of a grid over
+    the picture's outline box (uv 0..1 through the same registration the gates use; one cell holds
+    the same body part front and back, near and far flank) the view's Lab mean and spread move onto
+    the picture's pixels' mean and spread in that cell, measured on the texels the view sees.
+    A cell with few samples leans on the whole-view statistics (MV_MATCH_PRIOR).
+    Returns (gain, offset) Lab fields (K, gu, gv, 3) and the texels counted per view."""
+    gu, gv = grid
+
+    def cells(u):
+        return (np.clip((u[0] * gu).astype(int), 0, gu - 1),
+                np.clip((u[1] * gv).astype(int), 0, gv - 1))
+
+    iu, iv = cells(uv)
+    lab_p = srgb_to_lab(pic)
+    pu, pv = cells(pic_uv)
+    prior_p = _mean_var(lab_p)
+    K = len(cols)
+    gain = np.ones((K, gu, gv, 3))
+    offs = np.zeros((K, gu, gv, 3))
+    counts = []
+    for k in range(K):
+        sel = ws[k] > MV_MATCH_FACING
+        counts.append(int(sel.sum()))
+        if sel.sum() < 20 or len(lab_p) < 20:
+            continue
+        lab_v = srgb_to_lab(cols[k][sel])
+        prior_v = _mean_var(lab_v)
+        cu, cv = iu[sel], iv[sel]
+        for a in range(gu):
+            for b in range(gv):
+                m_v, v_v = _mean_var(lab_v[(cu == a) & (cv == b)], MV_MATCH_PRIOR, prior_v)
+                m_p, v_p = _mean_var(lab_p[(pu == a) & (pv == b)], MV_MATCH_PRIOR, prior_p)
+                g = np.clip(np.sqrt(v_p / np.maximum(v_v, 1e-6)), *MV_GAIN)
+                gain[k, a, b], offs[k, a, b] = g, m_p - g * m_v
+    return gain, offs, counts
+
+
+def mv_apply(match, cols, uv):
+    """Matched per-view colours: the cell fields bilinearly interpolated at each point."""
+    gain, offs = match[:2]
+    gu, gv = gain.shape[1:3]
+    x = np.clip(uv[0] * gu - 0.5, 0, gu - 1)
+    y = np.clip(uv[1] * gv - 0.5, 0, gv - 1)
+    x0, y0 = np.minimum(x.astype(int), gu - 2), np.minimum(y.astype(int), gv - 2)
+    fx, fy = (x - x0)[:, None], (y - y0)[:, None]
+
+    def at(F):
+        return ((F[x0, y0] * (1 - fx) + F[x0 + 1, y0] * fx) * (1 - fy)
+                + (F[x0, y0 + 1] * (1 - fx) + F[x0 + 1, y0 + 1] * fx) * fy)
+
+    out = np.empty_like(cols)
+    for k in range(len(cols)):
+        out[k] = lab_to_srgb(srgb_to_lab(cols[k]) * at(gain[k]) + at(offs[k]))
+    return out
+
+
+def mv_generate(obj_co, vi, vn, d0, ref_path, work_dir, mv):
+    """Render the control maps, run the generator (unless mv['views'] is given) and return
+    (views, depth, frame, info)."""
+    import subprocess
+    frame = mv_frame(obj_co, d0)
+    R, c, s = frame
+    t0 = time.perf_counter()
+    pos, nrm, dep = mv_control(s * (obj_co - c) @ R.T, vi, vn @ R.T)
+    info = {"seconds_control_maps": round(time.perf_counter() - t0, 2)}
+    view_dir = Path(mv["views"]) if mv.get("views") else Path(work_dir) / "multiview"
+    if not mv.get("views"):
+        view_dir.mkdir(parents=True, exist_ok=True)
+        mv_write_control(view_dir / "control.npz", pos, nrm, dep)
+        script = HERE.parent / "src" / "asset_forge" / "multiview.py"
+        cmd = [mv["python"], "-I", str(script), str(view_dir / "control.npz"), str(ref_path),
+               str(view_dir), "--mv-src", mv["src"]]
+        t1 = time.perf_counter()
+        env = dict(os.environ)
+        if mv.get("hf_home"):
+            env["HF_HOME"] = mv["hf_home"]
+        env["HF_HUB_OFFLINE"] = "1"  # weights are on disk; never download during a clean
+        r = subprocess.run(cmd, capture_output=True, text=True, env=env)
+        info["seconds_generator"] = round(time.perf_counter() - t1, 2)
+        if r.returncode:
+            raise SystemExit(f"multiview generator failed: {r.stderr[-2000:]}")
+    gen = view_dir / "multiview.json"
+    if gen.exists():
+        info["generator"] = json.loads(gen.read_text())
+    return mv_load_views(view_dir), dep, frame, info
 
 
 # Measured colour gates (Step 2 fidelity check). Regions are boxes in the reference outline's own
@@ -761,8 +1357,11 @@ def ref_specks(ref):
     return box_blur(out[..., None].astype(np.float64), 2)[..., 0] > 0.01
 
 
-def bake_colour(obj, ref, d0, size, ref_name=None):
-    """Project `ref` onto obj (see module docstring). Returns (RGBA array, stats, info)."""
+def bake_colour(obj, ref, d0, size, ref_name=None, mv=None, ref_path=None, work_dir=None):
+    """Project `ref` onto obj (see module docstring). Returns (RGBA array, stats, info).
+    mv (method B): {"python", "src", "hf_home"} to generate six views, or {"views": DIR} to reuse
+    them; the picture then paints only what its camera directly sees (no mirror) and the views
+    paint everything else they see; the graph fill is left for what no view sees."""
     me = obj.data
     me.calc_loop_triangles()
     uvl = me.uv_layers.active.data
@@ -822,7 +1421,8 @@ def bake_colour(obj, ref, d0, size, ref_name=None):
     right = np.cross(f, [0, 0, 1.0])
     right /= np.linalg.norm(right)
     mirror = tuple(round(x, 3) for x in d0) in MIRROR_DIRS
-    reg = Registration(co, right, ref, None if mirror else d0)
+    use_mirror = mirror and mv is None
+    reg = Registration(co, right, ref, None if mirror else d0, cloud=p if mirror else None)
     height = max(np.ptp(co[:, 2]), 1e-9)
     mask = ref_mask(ref, erode=3)
     ref_s_img = ref.astype(np.float64)
@@ -856,7 +1456,7 @@ def bake_colour(obj, ref, d0, size, ref_name=None):
         Q, WQ, NQ = Pp.copy(), w.copy(), Nn.copy()
         snap = np.zeros(len(Pp))
         far = np.zeros(len(Pp), bool)
-        if mirror:
+        if use_mirror:
             tail = in_tail(Pp)
             for k in np.nonzero(w < -MIN_FACING)[0]:
                 m = Vector((2 * cx - Pp[k, 0], Pp[k, 1], Pp[k, 2]))
@@ -924,8 +1524,38 @@ def bake_colour(obj, ref, d0, size, ref_name=None):
         n_speck_v = int(speck.sum())
     else:
         n_speck_v = 0
-    fill_v = fill_colour(vcol, s_fill, edges, deg)
-    if mirror:
+    mv_info = None
+    if mv is not None:
+        views, mv_dep, mv_fr, mv_info = mv_generate(co, vi, vn, d0, ref_path, work_dir, mv)
+        rw1, rh1 = max(reg.rx1 - 1 - reg.rx0, 1), max(reg.ry1 - 1 - reg.ry0, 1)
+
+        def plane_uv(Pp):  # the gates' frame: u from the outline's left, v from its top
+            px, py = reg.to_ref(Pp @ right, Pp[:, 2])
+            return ((px - reg.rx0) / rw1, (py - reg.ry0) / rh1)
+
+        rm = ref_mask(ref)
+        yy, xx = np.nonzero(rm)
+        sn = np.einsum("mk,mkc->mc", bw, vn[vi[tt]])
+        sn /= np.maximum(np.linalg.norm(sn, axis=1, keepdims=True), 1e-12)
+        tc_k, tw_k = mv_sample_views(views, mv_dep, mv_fr, p, sn)
+        # The generator lights and exposes each view its own way: match every view to the
+        # picture cell by cell (mv_match) before the views are blended.
+        match = mv_match(tc_k, tw_k, plane_uv(p), ref[yy, xx, :3].astype(np.float64),
+                         ((xx - reg.rx0) / rw1, (yy - reg.ry0) / rh1))
+        vc_k, vw_k = mv_sample_views(views, mv_dep, mv_fr, co, vn)
+        mv_vc, mv_vw = mv_blend(mv_apply(match, vc_k, plane_uv(co)), vw_k)
+        mv_info["calibration"] = {
+            "method": "per view, per image-plane cell: Lab mean and spread onto the picture's",
+            "grid": list(MV_MATCH_GRID), "view_texels": match[2],
+            "mean_L_gain": match[0][..., 0].mean(axis=(1, 2)).round(3).tolist(),
+            "mean_L_offset": match[1][..., 0].mean(axis=(1, 2)).round(2).tolist()}
+        src = s_fill > 0  # the picture's own sunlit sources first, the views everywhere else
+        fill_v = fill_colour(np.where(src[:, None], vcol, mv_vc),
+                             np.where(src, s_fill, np.clip(mv_vw / MV_FULL_WEIGHT, 0, 1)),
+                             edges, deg)
+    else:
+        fill_v = fill_colour(vcol, s_fill, edges, deg)
+    if mirror and mv is None:
         neutral = (sat(vcol) < PALE_SAT_MAX) & (lum_v > NEUTRAL_LUMA_MIN) & (s_fill > 0)
         if neutral.any():
             bright = (lum_v / max(np.quantile(lum_v[neutral], 0.95), 1e-6)) ** NEUTRAL_POWER
@@ -944,6 +1574,15 @@ def bake_colour(obj, ref, d0, size, ref_name=None):
     # Texel level: detail from the picture inside the trusted area, vertex-interpolated fill else.
     fill_t = np.einsum("mk,mkc->mc", bw, fill_v[vi[tt]])
     alpha_t = np.einsum("mk,mk->m", bw, a_vert[vi[tt]])
+    if mv is not None:
+        mv_tc, mv_tw = mv_blend(mv_apply(match, tc_k, plane_uv(p)), tw_k)
+        del tc_k, tw_k
+        k_mv = np.clip(mv_tw / MV_FULL_WEIGHT, 0, 1)[:, None]
+        fill_t = fill_t * (1 - k_mv) + mv_tc * k_mv
+        mv_info["texels_from_views"] = int((mv_tw > 0).sum())
+        mv_info["texels_no_view"] = int((mv_tw <= 0).sum())
+        if not MV_PICTURE:
+            alpha_t = np.zeros_like(alpha_t)
     colour = fill_t.copy()
     known = np.zeros(len(tt), bool)
     n_speck = [0]
@@ -997,7 +1636,8 @@ def bake_colour(obj, ref, d0, size, ref_name=None):
         "texels_projected_full_trust": int((alpha_used >= 0.99).sum()),
         "texels_low_frequency": int(len(ty) - painted),
         "mirrored_far_side": False,
-        "mirrored_left_right": bool(mirror),
+        "mirrored_left_right": bool(use_mirror),
+        "multiview": mv_info,
         "mirrored_points": int(n_mirrored[0]),
         "region_gates": gates,
         "registration": {
@@ -1009,6 +1649,7 @@ def bake_colour(obj, ref, d0, size, ref_name=None):
             "head_width_ratio_allowed": list(HEAD_WIDTH_RATIO),
             "head_painted_from_reference": head_ok,
             "max_row_shift": round(float(np.abs(reg.shift).max()), 4),
+            "outline_warp_iou_before_after": reg.warp_iou,
             "head_to_head": reg.head_cues,
         },
         "fill": {
@@ -1192,6 +1833,8 @@ def main():
     select_only(work)
     work.data.remesh_voxel_size = max(work.dimensions) / o["voxel_div"]
     bpy.ops.object.voxel_remesh()
+    work, solid_info = make_solid(work, work.data.remesh_voxel_size)
+    report["solid"] = solid_info
     remesh_tris = tri_count(work)
     lap("voxel_remesh", t0)
 
@@ -1248,7 +1891,8 @@ def main():
     lap("uv_unwrap", t0)
 
     t0 = time.perf_counter()
-    img_arr, bake_stats, bake_info = bake_colour(work, ref, d0, tex_px, Path(o["ref"]).stem)
+    img_arr, bake_stats, bake_info = bake_colour(work, ref, d0, tex_px, Path(o["ref"]).stem,
+                                                mv=o["mv"], ref_path=o["ref"], work_dir=out)
     img = make_material(work, img_arr, out, tex_px)
     albedo = albedo_check(out / "texture.png", bake_info, ref)
     lap("colour_bake", t0)
