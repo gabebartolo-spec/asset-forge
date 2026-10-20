@@ -7,14 +7,19 @@
   then do it" (D-026).
 
 ## Live (verify with gh pr list / ListAgents; in-process agents die with this session)
-- main: #15 Skeleton, #16 board, #11 Sprites back end, #17 Library merged this session.
-- PR #9 clean: clean-b5 (opus) testing multi-view vs part-wise colour on 10 models, new fix-list
-  gates (9a2ec52). Then fresh realism-critic (own scratch subfolder) -> merge or one more life.
-- anim-b2 (opus): asset-forge-wt/animation, claude/animation; lead calls in D-026. Clips ->
-  fresh motion-critic.
-- step2-page (sonnet): asset-forge-wt/step2-page, no PR until #9 merges; body in its handoff.
-- monster-rig (opus): asset-forge-wt/monster-rig, no PR (cap 3); sheets -> realism-critic.
-- Waiting: sprite backs by multi-view (after item 5 proves the model).
+- main: #15, #16, #11, #17, #19 merged this session. Open PRs: #9 only (ours).
+- PR #9 clean: clean-b6 (opus) running method B = MV-Adapter ig2mv SDXL (Apache-2.0; weights in
+  models/hf/hub). C (part-wise) = 3/10. Stop rule: neither >= 8/10 -> report, director decision.
+  Also asked: gate messages in plain words. Lighting removal out of scope (lead).
+- anim-b3 (opus): claude/animation; cadence fix (100-120 steps/min, real gait data), API,
+  Step 4 page, GIFs, draft PR. Clips -> fresh motion-critic.
+- claude/step2-page 1d474f3: done + critic round fixed, NO PR until #9 merges. Open it then and
+  fix two things first: "It broke 2 limits" lists 1 bullet (count the row too or reword); flaky
+  KeyError 'timings' in test_clean_api/test_library (race: settle, not rerun).
+- monster-rig (opus): claude/monster-rig, no PR (cap); Step 1 limb gate = option A (Re-roll main,
+  "Use it anyway" quiet; extra legs stay in the mesh). scipy allowed (licence row).
+- Waiting: sprite backs by multi-view (if B wins), sprite mode B (needs a worktree slot).
+- Not ours: asset-forge-wt/context-trim (another session). Lead worktree: .claude/worktrees/lead-s6.
 
 ## Next steps
 1. On each report: check evidence, spawn the right fresh critic, filter findings.
@@ -26,7 +31,7 @@
 ## Restart kit
 Briefs are in this session's transcript; respawn from each lane's handoff file above with the
 team-kit template (~/.claude/skills/game-studio-lead/references/team-kit.md). GPU: models/gpu.lock.
-Worktrees in asset-forge-wt: clean-step, animation, step2-page, monster-rig (4 = cap). Next lane: sprite mode B.
+Worktrees in asset-forge-wt (ours): clean-step, animation, step2-page, monster-rig (4 = cap).
 
 ## Gotchas
 - Generators disagree on which camera the reference faces; check facing per prompt.
