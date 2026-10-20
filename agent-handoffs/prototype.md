@@ -43,4 +43,6 @@ Output: `C:/Users/DANTE/AppData/Roaming/Claude/side-session-notes/local_7fdc3e78
   refuses subpaths): the runner copies them from the library folder on disk. Gap for design 5.7.
 
 ## State
-Step 1 done. Next: write runner + unit test, run it.
+Step 1 done; runner (tools/e2e/run_e2e.py) + tests/test_e2e_runner.py + tools/e2e/shots.py committed.
+Run 1 in progress: app from this worktree on 127.0.0.1:7871 (FORGE_MODELS_DIR=main models), runner
+and shots in background; outputs in e2e/run1/ (run.log, shots.log). Kill only the app PID you started.
