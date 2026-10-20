@@ -131,8 +131,10 @@ def world_positions(anims: GlbAnimations, clip: str, joints: list[str], fps: flo
 def seam_errors(anims: GlbAnimations, clip: str) -> tuple[float, float, int]:
     """(worst rotation pop, worst position pop in metres, channels that stall at the seam).
 
-    A pop: the last key is not the first. A stall: the motion is moving into and out of the seam
-    but the last step is (almost) zero, i.e. a frame is shown twice and the loop hitches."""
+    A pop: the last key is not the first. A stall: the motion runs on through the seam in the
+    same direction but the last step is (almost) zero, i.e. a frame is shown twice and the loop
+    hitches. (A sway that turns round at the seam also has a short step there; it is not a
+    stall, because the motion reverses.)"""
     rot, pos, stalls = 0.0, 0.0, 0
     for ch in anims.clips[clip]:
         v = ch.values
@@ -145,8 +147,9 @@ def seam_errors(anims: GlbAnimations, clip: str) -> tuple[float, float, int]:
         elif ch.path == "translation":
             pos = max(pos, float(np.abs(a - b).max()))
         last = float(np.abs(v[-1] - v[-2]).max())
-        around = min(float(np.abs(v[1] - v[0]).max()), float(np.abs(v[-2] - v[-3]).max()))
-        if around > 1e-4 and last < 0.1 * around:
+        d_in, d_out = v[-2] - v[-3], v[1] - v[0]
+        around = min(float(np.abs(d_out).max()), float(np.abs(d_in).max()))
+        if around > 1e-4 and last < 0.1 * around and float(d_in @ d_out) > 0:
             stalls += 1
     return rot, pos, stalls
 

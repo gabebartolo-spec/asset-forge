@@ -41,7 +41,8 @@ def clips_json(speed: float = GAIT.speed, names=CLIP_NAMES) -> dict:
 
 def write_anim_glb(path: Path, names=CLIP_NAMES, bad: str | None = None) -> Path:
     """bad: None (passes), "pop" (walk ends away from its start), "stall" (walk shows its last
-    frame twice), "rot_pop" (idle turns the head and does not turn it back)."""
+    frame twice), "rot_pop" (idle turns the head and does not turn it back), "turn" (a
+    smooth idle sway that turns round at the seam: must pass)."""
     nodes = [{"name": "Root", "children": [1, 2, 3]},
              {"name": "LeftFoot", "translation": [0.1, 0.0, 0.0]},
              {"name": "RightFoot", "translation": [-0.1, 0.0, 0.0]},
@@ -85,6 +86,8 @@ def write_anim_glb(path: Path, names=CLIP_NAMES, bad: str | None = None) -> Path
             ang = 0.05 * np.sin(2 * np.pi * np.arange(frames) / (frames - 1))
             if bad == "rot_pop":
                 ang[-1] = 0.3
+            if bad == "turn":  # turning points half a frame before the seam and mid-clip
+                ang = 0.05 * np.cos(2 * np.pi * (np.arange(frames) + 0.5) / (frames - 1))
         q = np.stack([np.zeros(frames), np.sin(ang / 2), np.zeros(frames), np.cos(ang / 2)], 1)
         samplers.append({"input": add(times, "SCALAR"), "output": add(q, "VEC4"),
                          "interpolation": "LINEAR"})

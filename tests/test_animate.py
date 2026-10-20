@@ -101,6 +101,13 @@ def test_seam_errors_measure_the_pop(tmp_path):
     assert seam_errors(read_animations(write_anim_glb(tmp_path / "b.glb")), "walk")[1] < 1e-6
 
 
+def test_a_sway_turning_round_at_the_seam_is_not_a_hitch(tmp_path):
+    # a sway with its turning point half a frame before the seam: the last step is tiny, as at
+    # a hitch, but the motion reverses there, so the loop is smooth
+    a = read_animations(write_anim_glb(tmp_path / "a.glb", bad="turn"))
+    assert seam_errors(a, "idle")[2] == 0
+
+
 def test_an_unreadable_file_is_plain_words(tmp_path):
     p = tmp_path / "junk.glb"
     p.write_bytes(b"nope")
