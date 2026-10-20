@@ -1,6 +1,5 @@
 # Handoff: animation (anim-b3, Phase 4 first slice), updated 2026-10-20
-State: back end, export, cadence fix, API, Step 4 page, previews tool and blender tests committed;
-running: blender tests + six-rig previews/export (under models/gpu.lock); then UI real-click proof, PR.
+State: draft PR #20 open, CI green; awaiting lead motion review.
 Branch claude/animation (worktree ../asset-forge-wt/animation, own .venv), origin/main merged (f208bd0).
 Brief (lead): DONE = draft PR (do not merge), CI green, PR body per forge-pr with Evidence, Not
 exercised, Board and log. Clips go to the lead (motion critic), never the director.
@@ -37,10 +36,7 @@ index.html panel-4 + pill4; viewer.js playClip(name, speed) + tickClip (grid scr
 app.js Step 4 functions in one block (renderPill4, renderStep4, buildClipPicker, showClip, goStep4,
 runStep4Job, makeAnimations, exportModel). Step 3 "Next: Animate" now enabled.
 
-## Left (in order)
-1. Read evidence blender_tests.txt and previews_six.txt; GIFs in previews_v2/.
-2. UI real-click proof: scratch server with a library asset seeded from models/skeleton_out
-   (clean.glb + skeleton/rigged.blend + result.json), Playwright msedge headless, 1366x768 and
-   1920x1080: pill 4 -> Make animations -> clip picker clicks -> Export. Shots to evidence/shots_step4.
-3. PR body (forge-pr template), push, draft PR, CI watch, report to lead (<=8 lines).
-4. Delete scratch servers; no scratch branches pushed.
+## Done (anim-b3)
+Draft PR #20 open, CI green (39362246572 tests, 39362246599 lint). Blender tests 6/6, six rigs OK with
+36 GIFs in evidence previews_v2/, real clicks at 1366 (humanoid) and 1920 (fox) in shots_step4/.
+Left: lead motion review of the GIFs; Step 3 foot-fit finding; do not merge (lead merges).
