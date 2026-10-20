@@ -21,6 +21,8 @@ LEFT = np.array([1.0, 0.0, 0.0])
 # little behind the hip-ankle line, and a humanoid knee bending backwards is the worst defect).
 #   humanoid: knees forward. four-legged: front legs fold back, hind knees forward.
 #   bird: the visible joint is the ankle, it points back.
+STAND_REACH = {"humanoid": 0.995}
+
 _POLE = {"humanoid": {"": 1.0}, "four_legged": {"Front": -1.0, "Hind": 1.0}, "bird": {"": -1.0}}
 
 
@@ -81,11 +83,15 @@ class Body:
         self.leg_len = float(np.mean([lg.length for lg in self.legs]))
         lo = min(lg.ankle[2] for lg in self.legs)
         self.short_legs: list[str] = []
+        # A standing leg reaches at most this much of its length. A person stands straight-
+        # legged (at 0.96 the feet floated 3 cm and every clip stood on bent knees, a crouch);
+        # an animal's leg keeps a little bend.
+        most = STAND_REACH.get(template, 0.96)
         for lg in self.legs:  # a paw the model holds up still stands on the ground...
             lg.ground_z = float(min(lg.ankle[2], lo + 0.02 * self.height))
             # ...unless its bones are too short to reach it (the fit followed the raised paw)
             horiz = float(np.linalg.norm((lg.hip - lg.ankle)[:2]))
-            dz = float(np.sqrt(max((0.96 * lg.length) ** 2 - horiz**2, 0.0)))
+            dz = float(np.sqrt(max((most * lg.length) ** 2 - horiz**2, 0.0)))
             if lg.hip[2] - lg.ground_z > dz:
                 lg.ground_z = float(lg.hip[2] - dz)
                 if lg.ground_z > lo + 0.05 * self.height:

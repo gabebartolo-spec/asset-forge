@@ -238,8 +238,14 @@ def render_previews(clips, actions, arm, model, body, out: Path, size: int):
     scene.camera = cam
     az, el = math.radians(55), math.radians(12)
     d = Vector((math.sin(az) * math.cos(el), -math.cos(az) * math.cos(el), math.sin(el)))
-    made = {}
-    anchor = None  # idle's box centre: every clip is framed on it, so switching clips never pops
+    # One frame for the whole rig: every clip's box is measured first, then all clips share
+    # idle's centre and one ortho scale (the one that holds the widest clip), so the figure is
+    # the same size and in the same place in every preview, first frame to last.
+    look = -np.array(d)
+    right = np.cross(look, [0.0, 0.0, 1.0])
+    right /= np.linalg.norm(right)
+    up_v = np.cross(right, look)
+    boxes = []
     for clip, act in zip(clips, actions, strict=True):
         use_action(arm, act)
         lo, hi = np.full(3, np.inf), np.full(3, -np.inf)
@@ -247,21 +253,21 @@ def render_previews(clips, actions, arm, model, body, out: Path, size: int):
             scene.frame_set(f)
             a, b = mesh_box(model)
             lo, hi = np.minimum(lo, a), np.maximum(hi, b)
-        if anchor is None:
-            anchor = (lo + hi) / 2
-        centre = Vector(anchor.tolist())
-        # the view's right and up; the frame must hold the clip's box about the fixed centre
-        look = -np.array(d)
-        right = np.cross(look, [0.0, 0.0, 1.0])
-        right /= np.linalg.norm(right)
-        up_v = np.cross(right, look)
+        boxes.append((lo, hi))
+    anchor = (boxes[0][0] + boxes[0][1]) / 2  # idle's box centre
+    half = 0.0
+    for lo, hi in boxes:
         corners = np.array([[x, y, z] for x in (lo[0], hi[0]) for y in (lo[1], hi[1])
                             for z in (lo[2], hi[2])]) - anchor
-        half = max(np.abs(corners @ right).max(), np.abs(corners @ up_v).max())
-        cam_data.ortho_scale = float(2 * half) * 1.15
-        cam.location = centre + d * 30 * body.height
-        cam.rotation_euler = (-d).to_track_quat("-Z", "Y").to_euler()
-        cam_data.clip_end = 100 * body.height
+        half = max(half, np.abs(corners @ right).max(), np.abs(corners @ up_v).max())
+    centre = Vector(anchor.tolist())
+    cam_data.ortho_scale = float(2 * half) * 1.15
+    cam.location = centre + d * 30 * body.height
+    cam.rotation_euler = (-d).to_track_quat("-Z", "Y").to_euler()
+    cam_data.clip_end = 100 * body.height
+    made = {}
+    for clip, act in zip(clips, actions, strict=True):
+        use_action(arm, act)
         folder = out / clip.name
         folder.mkdir(parents=True, exist_ok=True)
         step = max(1, clip.fps // 30)  # previews play at 30 frames a second
