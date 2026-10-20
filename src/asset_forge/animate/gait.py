@@ -61,6 +61,15 @@ class Gait:
             return _smooth((phi / self.duty - start) / (1.0 - start))
         return 1.0 - _smooth((phi - self.duty) / (1.0 - self.duty) / settle)
 
+    def strike(self, leg: str, frame: float, flat: float = 0.2, ready: float = 0.35) -> float:
+        """How far (0-1) the toes are up for heel strike: they come up over the last `ready`
+        of the swing, the heel lands, and the foot rocks down about the heel to lie flat by
+        `flat` of the stance (the heel stays planted, so nothing slides)."""
+        phi = (frame / self.frames + self.phases[leg]) % 1.0
+        if phi < self.duty:
+            return 1.0 - _smooth(phi / self.duty / flat)
+        return _smooth(((phi - self.duty) / (1.0 - self.duty) - (1.0 - ready)) / ready)
+
 
 def _smooth(x: float) -> float:
     x = min(max(x, 0.0), 1.0)

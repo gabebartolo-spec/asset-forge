@@ -183,8 +183,8 @@ def test_walk_and_run_move_at_their_froude_number(made):
 
 
 def test_froude_numbers_are_walk_a_quarter_and_run_between_one_and_two_and_a_half():
-    for t in STICKS:
-        assert FROUDE["walk"][t] == pytest.approx(0.25)
+    for t in STICKS:  # people: a fifth, with L hip to ankle (1.37 m/s free walk, Perry 2010)
+        assert FROUDE["walk"][t] == pytest.approx(0.20 if t == "humanoid" else 0.25)
         assert 1.0 <= FROUDE["run"][t] <= 2.5
 
 
@@ -208,9 +208,11 @@ def test_cadence_follows_the_stride_rule(made):
     b, clips = made
     for name in ("walk", "run"):
         fr = FROUDE[name][b.template]
-        alexander = froude_speed(fr, b.leg_len) / stride_length(fr, b.leg_len)
+        rule = froude_speed(fr, b.leg_len) / animator(b).stride(name)
         strides_per_s = 1 / clips[name].gait.seconds
-        assert alexander * 0.8 <= strides_per_s <= alexander * 1.6, (name, strides_per_s)
+        # Animals and birds by Alexander (1976), people by their gait data (HUMAN_STRIDE): a
+        # clip may step up to a quarter faster (a short reach) and a little slower (whole frames)
+        assert rule * 0.85 <= strides_per_s <= rule * 1.25, (name, strides_per_s, rule)
 
 
 def test_a_run_stride_has_enough_keys_to_see_the_steps(made):
@@ -228,3 +230,32 @@ def test_monsters_get_plain_words_not_yet(tmp_path):
 def test_no_skeleton_says_what_to_click(tmp_path):
     with pytest.raises(AnimFailed, match="step 3"):
         animate(tmp_path / "rigged.blend", tmp_path, "blender.exe", "animal")
+
+
+# ------------------------------------------------------------------ real gait data
+# Adults walking freely (Perry and Burnfield, Gait Analysis, 2nd ed. 2010): cadence about 113
+# steps/min, stride 1.41 m, 1.37 m/s, so a stride is about 0.8 of standing height. Recreational
+# runners at 3-4 m/s: about 155-180 steps/min (Cavanagh and Kram 1989).
+
+def _steps_per_min(clip) -> float:
+    return 2 * 60 / clip.gait.seconds   # two steps per stride
+
+
+def _hip_drop(b, clip) -> float:
+    return max(-float(p.move["Hips"][2]) for p in clip.poses) / b.leg_len
+
+
+def test_a_person_walks_at_a_real_cadence_and_stride():
+    b = body("humanoid")
+    walk = animator(b).walk()
+    assert 100 <= _steps_per_min(walk) <= 120, _steps_per_min(walk)
+    stride = walk.speed * walk.gait.seconds
+    assert 0.7 <= stride / b.height <= 0.85, stride / b.height
+    assert 1.1 <= walk.speed <= 1.5, walk.speed
+    assert _hip_drop(b, walk) <= 0.08, _hip_drop(b, walk)   # no deep crouch
+
+
+def test_a_person_runs_at_a_real_cadence():
+    b = body("humanoid")
+    run = animator(b).run()
+    assert 150 <= _steps_per_min(run) <= 180, _steps_per_min(run)

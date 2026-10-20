@@ -35,9 +35,15 @@ I3 = np.eye(3)
 
 # Gait speed by the Froude number Fr = v^2 / (g L) (L = leg length): animals of every size
 # that move alike move at the same Fr, so a small animal steps fast instead of shuffling.
-# Walk ~0.25 for people, quadrupeds and birds alike; run/trot between 1 and 2.5.
-FROUDE = {"walk": {"humanoid": 0.25, "four_legged": 0.25, "bird": 0.25},
+# Walk ~0.25 for quadrupeds and birds; run/trot between 1 and 2.5. People: L here is hip to
+# ankle, so a free adult walk (1.37 m/s, Perry and Burnfield 2010; L about 0.83 m) is Fr ~0.2.
+FROUDE = {"walk": {"humanoid": 0.20, "four_legged": 0.25, "bird": 0.25},
           "run": {"humanoid": 1.5, "four_legged": 2.0, "bird": 1.5}}
+
+# People take longer strides than the all-animal rule gives, in leg lengths (L hip to ankle):
+# walk 1.41 m at L ~0.83 m = 1.7 (Perry and Burnfield 2010: 113 steps/min); run about 2.5 m at
+# 3.5 m/s = 3.0 (about 165 steps/min, Cavanagh and Kram 1989).
+HUMAN_STRIDE = {"walk": 1.65, "run": 3.0}
 
 
 def froude_speed(fr: float, leg: float) -> float:
@@ -47,7 +53,7 @@ def froude_speed(fr: float, leg: float) -> float:
 
 def stride_length(fr: float, leg: float) -> float:
     """One full stride (a cycle) in metres, by Alexander's dynamic-similarity rule
-    stride / leg = 2.3 Fr^0.3 (Alexander and Jayes 1983, mammals and birds)."""
+    stride / leg = 2.3 Fr^0.3 (Alexander 1976, fitted to mammals including people, and birds)."""
     return 2.3 * fr**0.3 * leg
 
 
@@ -158,17 +164,25 @@ class Animator:
 
     def _fps(self) -> int:
         fr = FROUDE["run"][self.b.template]
-        stride_s = stride_length(fr, self.L) / froude_speed(fr, self.L)
+        stride_s = self.stride("run") / froude_speed(fr, self.L)
         return FPS if stride_s * FPS >= MIN_RUN_KEYS else FAST_FPS
 
-    def plan(self, fr: float, duty: float, phases: dict, most: float) -> tuple[int, float]:
+    def stride(self, name: str) -> float:
+        """The stride (metres per cycle) a gait wants: people by their own gait data, animals
+        and birds by Alexander's rule."""
+        if self.b.template == "humanoid":
+            return HUMAN_STRIDE[name] * self.L
+        return stride_length(FROUDE[name][self.b.template], self.L)
+
+    def plan(self, fr: float, duty: float, phases: dict, most: float,
+             stride: float | None = None) -> tuple[int, float]:
         """(frames per stride, stroke) for a gait at Froude number `fr`: the speed is fixed by
-        Fr, the stride by Alexander's rule, shortened when the leg cannot reach (`most`, the
-        longest stroke the hip drop allows), and the cadence follows. Frames come in steps
-        that land every foot on a whole frame; the stroke is then set so the speed stays
-        exactly the Froude speed."""
+        Fr, the stride by `stride` (default Alexander's rule), shortened when the leg cannot
+        reach (`most`, the longest stroke the hip drop allows), and the cadence follows.
+        Frames come in steps that land every foot on a whole frame; the stroke is then set so
+        the speed stays exactly the Froude speed."""
         v = froude_speed(fr, self.L)
-        want = min(duty * stride_length(fr, self.L), most)
+        want = min(duty * (stride if stride is not None else stride_length(fr, self.L)), most)
         q = _quantum(phases)
         exact = want / (duty * v) * self.fps
         n = max(q, int(round(exact / q)) * q)
@@ -186,18 +200,30 @@ class Animator:
         return max(0.0, float(hip[2] - target[2]) - float(np.sqrt(lim**2 - horiz**2)))
 
     def pivot(self, lg) -> np.ndarray:
-        """The point a lifting heel turns about: the ball of the foot, or the paw tip."""
-        return self.b.head[f"{lg.name}Toes"] if self.b.template == "humanoid" else lg.tip
+        """The point a lifting heel turns about: the toe tip, or the paw tip. (A person's fitted
+        ball joint sits under the ankle, so turning about it would not lengthen the stride.)"""
+        return lg.tip
+
+    def heel(self, lg) -> np.ndarray:
+        """The point a landing foot rocks on before it lies flat: a person's heel, on the
+        ground a little behind the ankle. Animals land on the paw (no heel strike)."""
+        return np.array([lg.ankle[0], lg.ankle[1], lg.tip[2]]) - FWD * 0.035 * self.H
 
     def roll_offset(self, lg, deg: float) -> np.ndarray:
         """How the ankle moves when the heel lifts by `deg` about the pivot."""
         return (pitch(deg) - I3) @ (lg.ankle - self.pivot(lg))
 
-    def stroke(self, drop_max: float, roll: float = 0.0) -> tuple[float, dict[str, float]]:
+    def strike_offset(self, lg, deg: float) -> np.ndarray:
+        """How the ankle moves when the toes are up by `deg` with the heel on the ground."""
+        return (pitch(-deg) - I3) @ (lg.ankle - self.heel(lg)) if deg else np.zeros(3)
+
+    def stroke(self, drop_max: float, roll: float = 0.0,
+               strike: float = 0.0) -> tuple[float, dict[str, float]]:
         """The longest stroke every leg can make with at most `drop_max` of hip drop, and where
         each leg's stroke is centred (forward offset from its rest spot). A leg reaches some
         way ahead of its hip and, with the heel lifted by `roll` degrees at push-off, further
-        behind it; its stroke sits in the middle of that window."""
+        behind it, and with the toes up by `strike` degrees at heel strike, further ahead; its
+        stroke sits in the middle of that window."""
         legs = [lg for lg in self.b.legs if lg.name not in self.b.short_legs] or self.b.legs
 
         def reach(lg, sg):
@@ -205,8 +231,8 @@ class Animator:
 
             def ok(x):
                 p = self.spot(lg, under + sg * x)
-                return self.drop_needed(lg, p + (self.roll_offset(lg, roll) if sg < 0 else 0.0)
-                                        ) <= drop_max
+                off = self.roll_offset(lg, roll) if sg < 0 else self.strike_offset(lg, strike)
+                return self.drop_needed(lg, p + off) <= drop_max
 
             lo, hi = 0.0, 1.2 * self.L
             if not ok(lo):
@@ -235,31 +261,30 @@ class Animator:
     # ------------------------------------------------------------------ walk and run
     def gait_clip(self, name: str, gait_kw: dict, crouch: float, bob_max: float,
                   compress: float, upper: Callable, swing_pitch: Callable,
-                  roll: float = 30.0) -> Clip:
+                  roll: float = 30.0, strike: float = 0.0) -> Clip:
         """gait_kw: duty, lift, phases. crouch, bob_max, compress are fractions of leg length:
         the knee bend everywhere, the most the hips may dip at the stroke ends, an extra dip at
-        mid-stance (running). roll: degrees the heel lifts at push-off. The speed comes from
-        FROUDE[name]."""
+        mid-stance (running). roll: degrees the heel lifts at push-off; strike: degrees the
+        toes are up when the heel lands. The speed comes from FROUDE[name], the stride from
+        self.stride(name)."""
         fr = FROUDE[name][self.b.template]
-        most, centre = self.stroke((crouch + bob_max) * self.L, roll)
-        frames, S = self.plan(fr, gait_kw["duty"], gait_kw["phases"], most)
+        most, centre = self.stroke((crouch + bob_max) * self.L, roll, strike)
+        frames, S = self.plan(fr, gait_kw["duty"], gait_kw["phases"], most, self.stride(name))
         g = Gait(frames=frames, stroke=S, fps=self.fps, **gait_kw)
         n = g.frames
         sway = [upper(f / n, g)[1].get("Hips", np.zeros(3)) for f in range(n)]
-        feet_all, toes_all, need = [], [], np.zeros(n)
+        feet_all, need = [], np.zeros(n)
         for f in range(n):
-            feet, toes = {}, {}
+            feet = {}
             for lg in self.b.legs:
                 x, z, on, s = g.foot(lg.name, f)
                 a = roll * g.roll(lg.name, f)
+                h = strike * g.strike(lg.name, f)
                 feet[lg.name] = (self.spot(lg, centre[lg.name] + x, z)
-                                 + self.roll_offset(lg, a),
-                                 pitch(a) if on else pitch(a + swing_pitch(s)))
-                if self.b.template == "humanoid":  # the toes stay flat as the heel lifts
-                    toes[f"{lg.name}Toes"] = pitch(-a)
+                                 + self.roll_offset(lg, a) + self.strike_offset(lg, h),
+                                 pitch(a - h) if on else pitch(a - h + swing_pitch(s)))
                 need[f] = max(need[f], self.drop_needed(lg, feet[lg.name][0], sway[f][:2]))
             feet_all.append(feet)
-            toes_all.append(toes)
         need = np.minimum(need, 0.5 * self.L)
         drop = _periodic_cover(need, max(1, n // 16)) + crouch * self.L
         if compress:  # running: the knees give a little at mid-stance
@@ -271,7 +296,6 @@ class Animator:
         for f in range(n + 1):  # frame n repeats frame 0: the loop seam
             k = f % n
             rot_, move, rep = upper(k / n, g)
-            rot_ = {**rot_, **toes_all[k]}
             hips = move.get("Hips", np.zeros(3)) + np.array([0.0, 0.0, -drop[k]])
             move = {**move, "Hips": hips}
             poses.append(self.pose(rot_, move, feet_all[k], replace=rep))
@@ -333,10 +357,13 @@ class Humanoid(Animator):
         if run:
             kw = dict(duty=0.36, lift=0.24 * self.L, phases=BIPED)
             return self.gait_clip(name, kw, 0.07, 0.05, 0.03, upper,
-                                  lambda s: 28 * np.sin(np.pi * s) ** 2)
+                                  lambda s: 28 * np.sin(np.pi * s) ** 2, roll=35.0, strike=8.0)
+        # walk: heel strike (toes up ~15 deg) and push-off over the toes (heel up ~45 deg) give
+        # the stride its length; the hips dip no more than 7.5% of the leg
         kw = dict(duty=0.62, lift=0.09 * self.L, phases=BIPED)
-        return self.gait_clip(name, kw, 0.02, 0.05, 0.0, upper,
-                              lambda s: 14 * np.sin(np.pi * s) * (1 - 1.3 * s))
+        return self.gait_clip(name, kw, 0.02, 0.055, 0.0, upper,
+                              lambda s: 14 * np.sin(np.pi * s) * (1 - 1.3 * s),
+                              roll=45.0, strike=15.0)
 
     def walk(self) -> Clip:
         return self._gait("walk", False)
@@ -476,9 +503,9 @@ class FourLegged(Animator):
 
         curl = lambda s: 40 * np.sin(np.pi * s)  # noqa: E731
         if trot:
-            kw = dict(duty=0.42, lift=0.22 * self.L, phases=QUAD_TROT)
+            kw = dict(duty=0.38, lift=0.22 * self.L, phases=QUAD_TROT)
             return self.gait_clip(name, kw, 0.05, 0.05, 0.03, upper, curl)
-        kw = dict(duty=0.70, lift=0.16 * self.L, phases=QUAD_WALK)
+        kw = dict(duty=0.62, lift=0.16 * self.L, phases=QUAD_WALK)
         return self.gait_clip(name, kw, 0.03, 0.04, 0.0, upper, curl)
 
     def walk(self) -> Clip:
