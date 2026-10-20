@@ -1,0 +1,1844 @@
+{
+  "hi3dgen/humanoid": {
+    "type": "humanoid",
+    "input": "humanoid.glb",
+    "generator_input_only": true,
+    "triangles": 7756,
+    "triangle_budget": 8000,
+    "materials": 1,
+    "texture": {
+      "width": 1024,
+      "height": 1024,
+      "max_px": 1024
+    },
+    "raw_triangles": 272446,
+    "voxel_remesh_triangles": 183364,
+    "loose_parts": {
+      "raw_after_weld": 26,
+      "floaters_deleted": 22,
+      "after_clean": 1,
+      "floaters_deleted_after_decimate": 1
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0073,
+      "side": 0.0059,
+      "top": 0.0099
+    },
+    "dimensions_m": [
+      1.0274,
+      0.4085,
+      1.7996
+    ],
+    "height_m": 1.7996,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
+    "orientation": {
+      "turn_deg": 0.0,
+      "decided_by": "generator convention (hi3dgen)",
+      "generator": "hi3dgen",
+      "outline_iou_by_turn": {}
+    },
+    "colour_route": {
+      "camera_toward": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\humanoid.png",
+      "texels_covered": 307852,
+      "texels_projected": 19272,
+      "texels_projected_full_trust": 0,
+      "texels_low_frequency": 288580,
+      "mirrored_far_side": false,
+      "mirrored_left_right": false,
+      "mirrored_points": 0,
+      "region_gates": null,
+      "registration": {
+        "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the reference outline onto the centre of the model outline), 64 rows",
+        "head_band": 0.16,
+        "head_shift_of_width": -0.0103,
+        "head_width_ratio": 0.801,
+        "head_width_ratio_allowed": [
+          0.4,
+          2.0
+        ],
+        "head_painted_from_reference": true,
+        "max_row_shift": 0.1471,
+        "head_to_head": {
+          "reference_head_x": 0.5025,
+          "model_head_x": 0.5014,
+          "head_shift_applied": 0.0011,
+          "feature_offset_px": [
+            -17.3,
+            -50.4
+          ],
+          "head_width_px": 136.2,
+          "disagreement_head_widths": 0.127
+        }
+      },
+      "fill": {
+        "min_facing_cos": 0.34,
+        "full_facing_cos": 0.7,
+        "shadow_rel_to_band_median": 0.55,
+        "shadow_bands": 8,
+        "shadow_vertices_ignored": 95,
+        "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "speck_area_frac": 0.0025,
+        "ref_speck_pixels": 0,
+        "texels_speck_replaced": 0,
+        "fill_specks_dropped": 0,
+        "seam_feather_height_frac": 0.05,
+        "seam_feather_iterations": 10
+      }
+    },
+    "albedo_vs_reference": [
+      {
+        "band": 0,
+        "albedo_luma": 0.2396,
+        "ref_luma": 0.2383,
+        "albedo_sat": 0.1222,
+        "ref_sat": 0.1688,
+        "luma_ratio": 1.005,
+        "sat_ratio": 0.724
+      },
+      {
+        "band": 1,
+        "albedo_luma": 0.27,
+        "ref_luma": 0.231,
+        "albedo_sat": 0.1638,
+        "ref_sat": 0.1994,
+        "luma_ratio": 1.169,
+        "sat_ratio": 0.821
+      },
+      {
+        "band": 2,
+        "albedo_luma": 0.3178,
+        "ref_luma": 0.2888,
+        "albedo_sat": 0.1699,
+        "ref_sat": 0.2179,
+        "luma_ratio": 1.1,
+        "sat_ratio": 0.78
+      },
+      {
+        "band": 3,
+        "albedo_luma": 0.4158,
+        "ref_luma": 0.4177,
+        "albedo_sat": 0.1077,
+        "ref_sat": 0.1456,
+        "luma_ratio": 0.995,
+        "sat_ratio": 0.74
+      }
+    ],
+    "timings_s": {
+      "import_and_weld": 0.83,
+      "voxel_remesh": 0.27,
+      "orient_scale": 0.01,
+      "decimate": 1.67,
+      "uv_unwrap": 0.09,
+      "colour_bake": 1.08,
+      "silhouette": 0.87,
+      "sheets": 0.43,
+      "export": 0.76,
+      "total": 5.71
+    },
+    "gate_failures": [],
+    "lit_vs_reference": {
+      "ref_luma": 0.291,
+      "lit_luma": 0.278,
+      "luma_ratio": 0.955,
+      "ref_sat": 0.192,
+      "lit_sat": 0.154,
+      "sat_ratio": 0.8
+    }
+  },
+  "hi3dgen/spider": {
+    "type": "monster",
+    "input": "spider.glb",
+    "generator_input_only": true,
+    "triangles": 7760,
+    "triangle_budget": 8000,
+    "materials": 1,
+    "texture": {
+      "width": 1024,
+      "height": 1024,
+      "max_px": 1024
+    },
+    "raw_triangles": 220302,
+    "voxel_remesh_triangles": 140184,
+    "loose_parts": {
+      "raw_after_weld": 12,
+      "floaters_deleted": 11,
+      "after_clean": 1,
+      "floaters_deleted_after_decimate": 0
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0159,
+      "side": 0.0138,
+      "top": 0.0182
+    },
+    "dimensions_m": [
+      4.5933,
+      4.7551,
+      1.9958
+    ],
+    "height_m": 1.9958,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
+    "orientation": {
+      "turn_deg": 0.0,
+      "decided_by": "generator convention (hi3dgen)",
+      "generator": "hi3dgen",
+      "outline_iou_by_turn": {}
+    },
+    "colour_route": {
+      "camera_toward": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\spider.png",
+      "texels_covered": 276182,
+      "texels_projected": 7028,
+      "texels_projected_full_trust": 56,
+      "texels_low_frequency": 269154,
+      "mirrored_far_side": false,
+      "mirrored_left_right": false,
+      "mirrored_points": 0,
+      "region_gates": null,
+      "registration": {
+        "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the reference outline onto the centre of the model outline), 64 rows",
+        "head_band": 0.16,
+        "head_shift_of_width": 0.015,
+        "head_width_ratio": 0.483,
+        "head_width_ratio_allowed": [
+          0.4,
+          2.0
+        ],
+        "head_painted_from_reference": true,
+        "max_row_shift": 0.0251,
+        "head_to_head": {
+          "reference_head_x": 0.4924,
+          "model_head_x": 0.5011,
+          "head_shift_applied": -0.0087,
+          "feature_offset_px": [
+            17.2,
+            -22.3
+          ],
+          "head_width_px": 123.5,
+          "disagreement_head_widths": 0.139
+        }
+      },
+      "fill": {
+        "min_facing_cos": 0.34,
+        "full_facing_cos": 0.7,
+        "shadow_rel_to_band_median": 0.55,
+        "shadow_bands": 8,
+        "shadow_vertices_ignored": 45,
+        "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "speck_area_frac": 0.0025,
+        "ref_speck_pixels": 0,
+        "texels_speck_replaced": 0,
+        "fill_specks_dropped": 0,
+        "seam_feather_height_frac": 0.05,
+        "seam_feather_iterations": 4
+      }
+    },
+    "albedo_vs_reference": [
+      {
+        "band": 0,
+        "albedo_luma": 0.3485,
+        "ref_luma": 0.1684,
+        "albedo_sat": 0.303,
+        "ref_sat": 0.1624,
+        "luma_ratio": 2.069,
+        "sat_ratio": 1.866
+      },
+      {
+        "band": 1,
+        "albedo_luma": 0.3479,
+        "ref_luma": 0.2187,
+        "albedo_sat": 0.3038,
+        "ref_sat": 0.2204,
+        "luma_ratio": 1.591,
+        "sat_ratio": 1.378
+      },
+      {
+        "band": 2,
+        "albedo_luma": 0.3473,
+        "ref_luma": 0.2912,
+        "albedo_sat": 0.3044,
+        "ref_sat": 0.2803,
+        "luma_ratio": 1.193,
+        "sat_ratio": 1.086
+      },
+      {
+        "band": 3,
+        "albedo_luma": 0.3834,
+        "ref_luma": 0.3878,
+        "albedo_sat": 0.3153,
+        "ref_sat": 0.307,
+        "luma_ratio": 0.989,
+        "sat_ratio": 1.027
+      }
+    ],
+    "timings_s": {
+      "import_and_weld": 0.79,
+      "voxel_remesh": 0.18,
+      "orient_scale": 0.01,
+      "decimate": 1.09,
+      "uv_unwrap": 0.04,
+      "colour_bake": 0.94,
+      "silhouette": 0.83,
+      "sheets": 0.39,
+      "export": 0.72,
+      "total": 4.76
+    },
+    "gate_failures": [],
+    "lit_vs_reference": {
+      "ref_luma": 0.314,
+      "lit_luma": 0.298,
+      "luma_ratio": 0.949,
+      "ref_sat": 0.278,
+      "lit_sat": 0.309,
+      "sat_ratio": 1.111
+    }
+  },
+  "hi3dgen/brute": {
+    "type": "monster",
+    "input": "brute.glb",
+    "generator_input_only": true,
+    "triangles": 7760,
+    "triangle_budget": 8000,
+    "materials": 1,
+    "texture": {
+      "width": 1024,
+      "height": 1024,
+      "max_px": 1024
+    },
+    "raw_triangles": 592418,
+    "voxel_remesh_triangles": 276516,
+    "loose_parts": {
+      "raw_after_weld": 16,
+      "floaters_deleted": 14,
+      "after_clean": 1,
+      "floaters_deleted_after_decimate": 0
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0056,
+      "side": 0.0043,
+      "top": 0.0047
+    },
+    "dimensions_m": [
+      2.0068,
+      0.8674,
+      1.9987
+    ],
+    "height_m": 1.9987,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
+    "orientation": {
+      "turn_deg": 0.0,
+      "decided_by": "generator convention (hi3dgen)",
+      "generator": "hi3dgen",
+      "outline_iou_by_turn": {}
+    },
+    "colour_route": {
+      "camera_toward": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\brute.png",
+      "texels_covered": 360331,
+      "texels_projected": 37129,
+      "texels_projected_full_trust": 1309,
+      "texels_low_frequency": 323202,
+      "mirrored_far_side": false,
+      "mirrored_left_right": false,
+      "mirrored_points": 0,
+      "region_gates": null,
+      "registration": {
+        "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the reference outline onto the centre of the model outline), 64 rows",
+        "head_band": 0.16,
+        "head_shift_of_width": 0.0294,
+        "head_width_ratio": 0.877,
+        "head_width_ratio_allowed": [
+          0.4,
+          2.0
+        ],
+        "head_painted_from_reference": false,
+        "max_row_shift": 0.2553,
+        "head_to_head": {
+          "reference_head_x": 0.4321,
+          "model_head_x": 0.471,
+          "head_shift_applied": -0.0389,
+          "feature_offset_px": [
+            52.7,
+            -9.4
+          ],
+          "head_width_px": 136.2,
+          "disagreement_head_widths": 0.387
+        }
+      },
+      "fill": {
+        "min_facing_cos": 0.34,
+        "full_facing_cos": 0.7,
+        "shadow_rel_to_band_median": 0.55,
+        "shadow_bands": 8,
+        "shadow_vertices_ignored": 171,
+        "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "speck_area_frac": 0.0025,
+        "ref_speck_pixels": 0,
+        "texels_speck_replaced": 0,
+        "fill_specks_dropped": 0,
+        "seam_feather_height_frac": 0.05,
+        "seam_feather_iterations": 7
+      }
+    },
+    "albedo_vs_reference": [
+      {
+        "band": 0,
+        "albedo_luma": 0.2826,
+        "ref_luma": 0.3163,
+        "albedo_sat": 0.132,
+        "ref_sat": 0.1473,
+        "luma_ratio": 0.893,
+        "sat_ratio": 0.896
+      },
+      {
+        "band": 1,
+        "albedo_luma": 0.2913,
+        "ref_luma": 0.2664,
+        "albedo_sat": 0.1363,
+        "ref_sat": 0.133,
+        "luma_ratio": 1.093,
+        "sat_ratio": 1.025
+      },
+      {
+        "band": 2,
+        "albedo_luma": 0.3465,
+        "ref_luma": 0.3237,
+        "albedo_sat": 0.1459,
+        "ref_sat": 0.1597,
+        "luma_ratio": 1.07,
+        "sat_ratio": 0.914
+      },
+      {
+        "band": 3,
+        "albedo_luma": 0.4071,
+        "ref_luma": 0.4771,
+        "albedo_sat": 0.1622,
+        "ref_sat": 0.1844,
+        "luma_ratio": 0.853,
+        "sat_ratio": 0.88
+      }
+    ],
+    "timings_s": {
+      "import_and_weld": 1.9,
+      "voxel_remesh": 0.43,
+      "orient_scale": 0.01,
+      "decimate": 2.37,
+      "uv_unwrap": 0.03,
+      "colour_bake": 1.17,
+      "silhouette": 0.94,
+      "sheets": 0.49,
+      "export": 0.83,
+      "total": 7.82
+    },
+    "gate_failures": [],
+    "lit_vs_reference": {
+      "ref_luma": 0.358,
+      "lit_luma": 0.3,
+      "luma_ratio": 0.839,
+      "ref_sat": 0.16,
+      "lit_sat": 0.148,
+      "sat_ratio": 0.927
+    }
+  },
+  "hi3dgen/fox": {
+    "type": "animal",
+    "input": "fox.glb",
+    "generator_input_only": true,
+    "triangles": 1940,
+    "triangle_budget": 2000,
+    "materials": 1,
+    "texture": {
+      "width": 512,
+      "height": 512,
+      "max_px": 512
+    },
+    "raw_triangles": 330788,
+    "voxel_remesh_triangles": 245328,
+    "loose_parts": {
+      "raw_after_weld": 1,
+      "floaters_deleted": 0,
+      "after_clean": 1,
+      "floaters_deleted_after_decimate": 0
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0181,
+      "side": 0.0149,
+      "top": 0.0114
+    },
+    "dimensions_m": [
+      0.1631,
+      0.5754,
+      0.4012
+    ],
+    "height_m": 0.4012,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
+    "orientation": {
+      "turn_deg": 270,
+      "decided_by": "side outline (profile, head toward -Y)",
+      "generator": "hi3dgen",
+      "outline_iou_by_turn": {
+        "0": 0.4482,
+        "90": 0.3401,
+        "180": 0.4693,
+        "270": 0.7769
+      }
+    },
+    "colour_route": {
+      "camera_toward": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\fox.png",
+      "texels_covered": 89032,
+      "texels_projected": 11848,
+      "texels_projected_full_trust": 1221,
+      "texels_low_frequency": 77184,
+      "mirrored_far_side": false,
+      "mirrored_left_right": true,
+      "mirrored_points": 10327,
+      "region_gates": {
+        "reference": "fox",
+        "passed": true,
+        "gates": [
+          {
+            "gate": "legs_dark_fraction",
+            "value": 0.823,
+            "limit": ">= 0.48",
+            "ok": true
+          },
+          {
+            "gate": "chest_p90_luma_ratio",
+            "value": 0.936,
+            "limit": "0.85 .. 1.25",
+            "ok": true
+          },
+          {
+            "gate": "chest_pale_fraction",
+            "value": 0.181,
+            "limit": ">= 0.16",
+            "ok": true
+          },
+          {
+            "gate": "flank_colour_distance",
+            "value": 0.094,
+            "limit": "<= 0.12",
+            "ok": true
+          },
+          {
+            "gate": "tail_body_colour_distance",
+            "value": 0.015,
+            "limit": "<= 0.15",
+            "ok": true
+          },
+          {
+            "gate": "tail_body_pale_fraction",
+            "value": 0.008,
+            "limit": "<= 0.22",
+            "ok": true
+          },
+          {
+            "gate": "tail_tip_pale_fraction",
+            "value": 0.071,
+            "limit": ">= 0.06",
+            "ok": true
+          }
+        ],
+        "reference_regions": {
+          "chest": {
+            "n": 14116,
+            "rgb": [
+              0.47,
+              0.43,
+              0.444
+            ],
+            "p90_luma": 0.703,
+            "pale": 0.271,
+            "dark": 0.021
+          },
+          "flank": {
+            "n": 44484,
+            "rgb": [
+              0.769,
+              0.452,
+              0.299
+            ],
+            "p90_luma": 0.803,
+            "pale": 0.015,
+            "dark": 0.015
+          },
+          "tail_body": {
+            "n": 20269,
+            "rgb": [
+              0.601,
+              0.349,
+              0.274
+            ],
+            "p90_luma": 0.891,
+            "pale": 0.125,
+            "dark": 0.265
+          },
+          "tail_tip": {
+            "n": 7778,
+            "rgb": [
+              0.628,
+              0.514,
+              0.48
+            ],
+            "p90_luma": 0.988,
+            "pale": 0.395,
+            "dark": 0.22
+          },
+          "legs": {
+            "n": 23626,
+            "rgb": [
+              0.122,
+              0.073,
+              0.078
+            ],
+            "p90_luma": 0.16,
+            "pale": 0.001,
+            "dark": 0.966
+          }
+        },
+        "albedo_regions": {
+          "chest": {
+            "n": 5699,
+            "rgb": [
+              0.624,
+              0.48,
+              0.426
+            ],
+            "p90_luma": 0.658,
+            "pale": 0.181,
+            "dark": 0.0
+          },
+          "flank": {
+            "n": 20056,
+            "rgb": [
+              0.687,
+              0.451,
+              0.344
+            ],
+            "p90_luma": 0.696,
+            "pale": 0.087,
+            "dark": 0.0
+          },
+          "tail_body": {
+            "n": 6789,
+            "rgb": [
+              0.594,
+              0.363,
+              0.277
+            ],
+            "p90_luma": 0.572,
+            "pale": 0.008,
+            "dark": 0.104
+          },
+          "tail_tip": {
+            "n": 1316,
+            "rgb": [
+              0.542,
+              0.353,
+              0.288
+            ],
+            "p90_luma": 0.694,
+            "pale": 0.071,
+            "dark": 0.177
+          },
+          "legs": {
+            "n": 5710,
+            "rgb": [
+              0.246,
+              0.135,
+              0.114
+            ],
+            "p90_luma": 0.241,
+            "pale": 0.0,
+            "dark": 0.823
+          }
+        }
+      },
+      "registration": {
+        "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the reference outline onto the centre of the model outline), 64 rows",
+        "head_band": 0.16,
+        "head_shift_of_width": 0.0032,
+        "head_width_ratio": 0.579,
+        "head_width_ratio_allowed": [
+          0.4,
+          2.0
+        ],
+        "head_painted_from_reference": true,
+        "max_row_shift": 0.1223,
+        "head_to_head": null
+      },
+      "fill": {
+        "min_facing_cos": 0.34,
+        "full_facing_cos": 0.7,
+        "shadow_rel_to_band_median": 0.55,
+        "shadow_bands": 8,
+        "shadow_vertices_ignored": 24,
+        "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "speck_area_frac": 0.0025,
+        "ref_speck_pixels": 14379,
+        "texels_speck_replaced": 1044,
+        "fill_specks_dropped": 9,
+        "seam_feather_height_frac": 0.05,
+        "seam_feather_iterations": 4
+      }
+    },
+    "albedo_vs_reference": [
+      {
+        "band": 0,
+        "albedo_luma": 0.1924,
+        "ref_luma": 0.1841,
+        "albedo_sat": 0.5221,
+        "ref_sat": 0.4034,
+        "luma_ratio": 1.045,
+        "sat_ratio": 1.294
+      },
+      {
+        "band": 1,
+        "albedo_luma": 0.3831,
+        "ref_luma": 0.3336,
+        "albedo_sat": 0.559,
+        "ref_sat": 0.6492,
+        "luma_ratio": 1.148,
+        "sat_ratio": 0.861
+      },
+      {
+        "band": 2,
+        "albedo_luma": 0.5292,
+        "ref_luma": 0.5655,
+        "albedo_sat": 0.4422,
+        "ref_sat": 0.4708,
+        "luma_ratio": 0.936,
+        "sat_ratio": 0.939
+      },
+      {
+        "band": 3,
+        "albedo_luma": 0.5323,
+        "ref_luma": 0.4675,
+        "albedo_sat": 0.4284,
+        "ref_sat": 0.5127,
+        "luma_ratio": 1.139,
+        "sat_ratio": 0.836
+      }
+    ],
+    "timings_s": {
+      "import_and_weld": 0.88,
+      "voxel_remesh": 0.28,
+      "orient_scale": 0.02,
+      "decimate": 2.2,
+      "uv_unwrap": 0.01,
+      "colour_bake": 1.64,
+      "silhouette": 0.87,
+      "sheets": 0.41,
+      "export": 0.73,
+      "total": 6.76
+    },
+    "gate_failures": [],
+    "lit_vs_reference": {
+      "ref_luma": 0.417,
+      "lit_luma": 0.31,
+      "luma_ratio": 0.743,
+      "ref_sat": 0.527,
+      "lit_sat": 0.482,
+      "sat_ratio": 0.914
+    }
+  },
+  "hi3dgen/bird": {
+    "type": "animal",
+    "input": "bird.glb",
+    "generator_input_only": true,
+    "triangles": 1940,
+    "triangle_budget": 2000,
+    "materials": 1,
+    "texture": {
+      "width": 512,
+      "height": 512,
+      "max_px": 512
+    },
+    "raw_triangles": 339484,
+    "voxel_remesh_triangles": 146892,
+    "loose_parts": {
+      "raw_after_weld": 7,
+      "floaters_deleted": 6,
+      "after_clean": 1,
+      "floaters_deleted_after_decimate": 0
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0104,
+      "side": 0.0071,
+      "top": 0.0082
+    },
+    "dimensions_m": [
+      0.0552,
+      0.1596,
+      0.1401
+    ],
+    "height_m": 0.1401,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
+    "orientation": {
+      "turn_deg": 0,
+      "decided_by": "side outline (profile, head toward -Y)",
+      "generator": "hi3dgen",
+      "outline_iou_by_turn": {
+        "0": 0.7291,
+        "90": 0.4191,
+        "180": 0.4096,
+        "270": 0.42
+      }
+    },
+    "colour_route": {
+      "camera_toward": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\bird.png",
+      "texels_covered": 117582,
+      "texels_projected": 60867,
+      "texels_projected_full_trust": 21704,
+      "texels_low_frequency": 56715,
+      "mirrored_far_side": false,
+      "mirrored_left_right": true,
+      "mirrored_points": 36763,
+      "region_gates": null,
+      "registration": {
+        "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the reference outline onto the centre of the model outline), 64 rows",
+        "head_band": 0.16,
+        "head_shift_of_width": -0.0146,
+        "head_width_ratio": 0.9,
+        "head_width_ratio_allowed": [
+          0.4,
+          2.0
+        ],
+        "head_painted_from_reference": true,
+        "max_row_shift": 0.0821,
+        "head_to_head": null
+      },
+      "fill": {
+        "min_facing_cos": 0.34,
+        "full_facing_cos": 0.7,
+        "shadow_rel_to_band_median": 0.55,
+        "shadow_bands": 8,
+        "shadow_vertices_ignored": 101,
+        "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "speck_area_frac": 0.0025,
+        "ref_speck_pixels": 41327,
+        "texels_speck_replaced": 1890,
+        "fill_specks_dropped": 80,
+        "seam_feather_height_frac": 0.05,
+        "seam_feather_iterations": 4
+      }
+    },
+    "albedo_vs_reference": [
+      {
+        "band": 0,
+        "albedo_luma": 0.3067,
+        "ref_luma": 0.2824,
+        "albedo_sat": 0.452,
+        "ref_sat": 0.5034,
+        "luma_ratio": 1.086,
+        "sat_ratio": 0.898
+      },
+      {
+        "band": 1,
+        "albedo_luma": 0.4245,
+        "ref_luma": 0.3986,
+        "albedo_sat": 0.133,
+        "ref_sat": 0.199,
+        "luma_ratio": 1.065,
+        "sat_ratio": 0.668
+      },
+      {
+        "band": 2,
+        "albedo_luma": 0.3226,
+        "ref_luma": 0.3598,
+        "albedo_sat": 0.4707,
+        "ref_sat": 0.5195,
+        "luma_ratio": 0.897,
+        "sat_ratio": 0.906
+      },
+      {
+        "band": 3,
+        "albedo_luma": 0.422,
+        "ref_luma": 0.4121,
+        "albedo_sat": 0.4683,
+        "ref_sat": 0.4334,
+        "luma_ratio": 1.024,
+        "sat_ratio": 1.081
+      }
+    ],
+    "timings_s": {
+      "import_and_weld": 1.29,
+      "voxel_remesh": 0.25,
+      "orient_scale": 0.01,
+      "decimate": 1.12,
+      "uv_unwrap": 0.0,
+      "colour_bake": 1.78,
+      "silhouette": 0.88,
+      "sheets": 0.4,
+      "export": 0.73,
+      "total": 6.2
+    },
+    "gate_failures": [],
+    "lit_vs_reference": {
+      "ref_luma": 0.378,
+      "lit_luma": 0.413,
+      "luma_ratio": 1.091,
+      "ref_sat": 0.426,
+      "lit_sat": 0.508,
+      "sat_ratio": 1.194
+    }
+  },
+  "triposg/humanoid": {
+    "type": "humanoid",
+    "input": "humanoid.glb",
+    "generator_input_only": true,
+    "triangles": 7740,
+    "triangle_budget": 8000,
+    "materials": 1,
+    "texture": {
+      "width": 1024,
+      "height": 1024,
+      "max_px": 1024
+    },
+    "raw_triangles": 1041226,
+    "voxel_remesh_triangles": 176628,
+    "loose_parts": {
+      "raw_after_weld": 298,
+      "floaters_deleted": 297,
+      "after_clean": 1,
+      "floaters_deleted_after_decimate": 10
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0214,
+      "side": 0.0106,
+      "top": 0.0132
+    },
+    "dimensions_m": [
+      0.9337,
+      0.4518,
+      1.8025
+    ],
+    "height_m": 1.8025,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
+    "orientation": {
+      "turn_deg": 0.0,
+      "decided_by": "generator convention (triposg)",
+      "generator": "triposg",
+      "outline_iou_by_turn": {}
+    },
+    "colour_route": {
+      "camera_toward": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\humanoid.png",
+      "texels_covered": 244653,
+      "texels_projected": 5450,
+      "texels_projected_full_trust": 0,
+      "texels_low_frequency": 239203,
+      "mirrored_far_side": false,
+      "mirrored_left_right": false,
+      "mirrored_points": 0,
+      "region_gates": null,
+      "registration": {
+        "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the reference outline onto the centre of the model outline), 64 rows",
+        "head_band": 0.16,
+        "head_shift_of_width": -0.0128,
+        "head_width_ratio": 0.912,
+        "head_width_ratio_allowed": [
+          0.4,
+          2.0
+        ],
+        "head_painted_from_reference": true,
+        "max_row_shift": 0.1767,
+        "head_to_head": {
+          "reference_head_x": 0.5025,
+          "model_head_x": 0.5027,
+          "head_shift_applied": -0.0002,
+          "feature_offset_px": [
+            -11.4,
+            -34.9
+          ],
+          "head_width_px": 136.2,
+          "disagreement_head_widths": 0.084
+        }
+      },
+      "fill": {
+        "min_facing_cos": 0.34,
+        "full_facing_cos": 0.7,
+        "shadow_rel_to_band_median": 0.55,
+        "shadow_bands": 8,
+        "shadow_vertices_ignored": 81,
+        "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "speck_area_frac": 0.0025,
+        "ref_speck_pixels": 0,
+        "texels_speck_replaced": 0,
+        "fill_specks_dropped": 0,
+        "seam_feather_height_frac": 0.05,
+        "seam_feather_iterations": 10
+      }
+    },
+    "albedo_vs_reference": [
+      {
+        "band": 0,
+        "albedo_luma": 0.3004,
+        "ref_luma": 0.2383,
+        "albedo_sat": 0.1367,
+        "ref_sat": 0.1688,
+        "luma_ratio": 1.261,
+        "sat_ratio": 0.81
+      },
+      {
+        "band": 1,
+        "albedo_luma": 0.2875,
+        "ref_luma": 0.231,
+        "albedo_sat": 0.1595,
+        "ref_sat": 0.1994,
+        "luma_ratio": 1.245,
+        "sat_ratio": 0.8
+      },
+      {
+        "band": 2,
+        "albedo_luma": 0.3099,
+        "ref_luma": 0.2888,
+        "albedo_sat": 0.1881,
+        "ref_sat": 0.2179,
+        "luma_ratio": 1.073,
+        "sat_ratio": 0.863
+      },
+      {
+        "band": 3,
+        "albedo_luma": 0.3658,
+        "ref_luma": 0.4177,
+        "albedo_sat": 0.1348,
+        "ref_sat": 0.1456,
+        "luma_ratio": 0.876,
+        "sat_ratio": 0.926
+      }
+    ],
+    "timings_s": {
+      "import_and_weld": 2.08,
+      "voxel_remesh": 0.58,
+      "orient_scale": 0.01,
+      "decimate": 1.32,
+      "uv_unwrap": 0.09,
+      "colour_bake": 0.9,
+      "silhouette": 0.92,
+      "sheets": 0.56,
+      "export": 0.88,
+      "total": 6.91
+    },
+    "gate_failures": [],
+    "lit_vs_reference": {
+      "ref_luma": 0.291,
+      "lit_luma": 0.285,
+      "luma_ratio": 0.982,
+      "ref_sat": 0.192,
+      "lit_sat": 0.158,
+      "sat_ratio": 0.819
+    }
+  },
+  "triposg/spider": {
+    "type": "monster",
+    "input": "spider.glb",
+    "generator_input_only": true,
+    "triangles": 7760,
+    "triangle_budget": 8000,
+    "materials": 1,
+    "texture": {
+      "width": 1024,
+      "height": 1024,
+      "max_px": 1024
+    },
+    "raw_triangles": 674350,
+    "voxel_remesh_triangles": 148076,
+    "loose_parts": {
+      "raw_after_weld": 279,
+      "floaters_deleted": 278,
+      "after_clean": 1,
+      "floaters_deleted_after_decimate": 0
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0157,
+      "side": 0.0143,
+      "top": 0.0112
+    },
+    "dimensions_m": [
+      2.5941,
+      2.7211,
+      1.9956
+    ],
+    "height_m": 1.9956,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
+    "orientation": {
+      "turn_deg": 0.0,
+      "decided_by": "generator convention (triposg)",
+      "generator": "triposg",
+      "outline_iou_by_turn": {}
+    },
+    "colour_route": {
+      "camera_toward": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\spider.png",
+      "texels_covered": 219275,
+      "texels_projected": 629,
+      "texels_projected_full_trust": 0,
+      "texels_low_frequency": 218646,
+      "mirrored_far_side": false,
+      "mirrored_left_right": false,
+      "mirrored_points": 0,
+      "region_gates": null,
+      "registration": {
+        "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the reference outline onto the centre of the model outline), 64 rows",
+        "head_band": 0.16,
+        "head_shift_of_width": 0.0133,
+        "head_width_ratio": 0.796,
+        "head_width_ratio_allowed": [
+          0.4,
+          2.0
+        ],
+        "head_painted_from_reference": true,
+        "max_row_shift": 0.0278,
+        "head_to_head": {
+          "reference_head_x": 0.4924,
+          "model_head_x": 0.4921,
+          "head_shift_applied": 0.0003,
+          "feature_offset_px": [
+            9.2,
+            23.2
+          ],
+          "head_width_px": 123.5,
+          "disagreement_head_widths": 0.074
+        }
+      },
+      "fill": {
+        "min_facing_cos": 0.34,
+        "full_facing_cos": 0.7,
+        "shadow_rel_to_band_median": 0.55,
+        "shadow_bands": 8,
+        "shadow_vertices_ignored": 57,
+        "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "speck_area_frac": 0.0025,
+        "ref_speck_pixels": 0,
+        "texels_speck_replaced": 0,
+        "fill_specks_dropped": 0,
+        "seam_feather_height_frac": 0.05,
+        "seam_feather_iterations": 7
+      }
+    },
+    "albedo_vs_reference": [
+      {
+        "band": 0,
+        "albedo_luma": 0.2927,
+        "ref_luma": 0.1684,
+        "albedo_sat": 0.2944,
+        "ref_sat": 0.1624,
+        "luma_ratio": 1.738,
+        "sat_ratio": 1.813
+      },
+      {
+        "band": 1,
+        "albedo_luma": 0.3216,
+        "ref_luma": 0.2187,
+        "albedo_sat": 0.306,
+        "ref_sat": 0.2204,
+        "luma_ratio": 1.471,
+        "sat_ratio": 1.388
+      },
+      {
+        "band": 2,
+        "albedo_luma": 0.3334,
+        "ref_luma": 0.2912,
+        "albedo_sat": 0.3138,
+        "ref_sat": 0.2803,
+        "luma_ratio": 1.145,
+        "sat_ratio": 1.12
+      },
+      {
+        "band": 3,
+        "albedo_luma": 0.3597,
+        "ref_luma": 0.3878,
+        "albedo_sat": 0.3112,
+        "ref_sat": 0.307,
+        "luma_ratio": 0.928,
+        "sat_ratio": 1.014
+      }
+    ],
+    "timings_s": {
+      "import_and_weld": 1.31,
+      "voxel_remesh": 0.36,
+      "orient_scale": 0.01,
+      "decimate": 1.03,
+      "uv_unwrap": 0.02,
+      "colour_bake": 0.9,
+      "silhouette": 0.87,
+      "sheets": 0.46,
+      "export": 0.78,
+      "total": 5.41
+    },
+    "gate_failures": [],
+    "lit_vs_reference": {
+      "ref_luma": 0.314,
+      "lit_luma": 0.309,
+      "luma_ratio": 0.983,
+      "ref_sat": 0.278,
+      "lit_sat": 0.303,
+      "sat_ratio": 1.088
+    }
+  },
+  "triposg/brute": {
+    "type": "monster",
+    "input": "brute.glb",
+    "generator_input_only": true,
+    "triangles": 7760,
+    "triangle_budget": 8000,
+    "materials": 1,
+    "texture": {
+      "width": 1024,
+      "height": 1024,
+      "max_px": 1024
+    },
+    "raw_triangles": 1384846,
+    "voxel_remesh_triangles": 288732,
+    "loose_parts": {
+      "raw_after_weld": 4,
+      "floaters_deleted": 3,
+      "after_clean": 1,
+      "floaters_deleted_after_decimate": 0
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0054,
+      "side": 0.0036,
+      "top": 0.0041
+    },
+    "dimensions_m": [
+      2.0012,
+      1.1586,
+      2.0016
+    ],
+    "height_m": 2.0016,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
+    "orientation": {
+      "turn_deg": 0.0,
+      "decided_by": "generator convention (triposg)",
+      "generator": "triposg",
+      "outline_iou_by_turn": {}
+    },
+    "colour_route": {
+      "camera_toward": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\brute.png",
+      "texels_covered": 410460,
+      "texels_projected": 50206,
+      "texels_projected_full_trust": 1902,
+      "texels_low_frequency": 360254,
+      "mirrored_far_side": false,
+      "mirrored_left_right": false,
+      "mirrored_points": 0,
+      "region_gates": null,
+      "registration": {
+        "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the reference outline onto the centre of the model outline), 64 rows",
+        "head_band": 0.16,
+        "head_shift_of_width": 0.0212,
+        "head_width_ratio": 1.136,
+        "head_width_ratio_allowed": [
+          0.4,
+          2.0
+        ],
+        "head_painted_from_reference": true,
+        "max_row_shift": 0.2782,
+        "head_to_head": {
+          "reference_head_x": 0.4321,
+          "model_head_x": 0.4834,
+          "head_shift_applied": -0.0512,
+          "feature_offset_px": [
+            27.3,
+            -13.1
+          ],
+          "head_width_px": 136.2,
+          "disagreement_head_widths": 0.2
+        }
+      },
+      "fill": {
+        "min_facing_cos": 0.34,
+        "full_facing_cos": 0.7,
+        "shadow_rel_to_band_median": 0.55,
+        "shadow_bands": 8,
+        "shadow_vertices_ignored": 196,
+        "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "speck_area_frac": 0.0025,
+        "ref_speck_pixels": 0,
+        "texels_speck_replaced": 0,
+        "fill_specks_dropped": 0,
+        "seam_feather_height_frac": 0.05,
+        "seam_feather_iterations": 7
+      }
+    },
+    "albedo_vs_reference": [
+      {
+        "band": 0,
+        "albedo_luma": 0.3492,
+        "ref_luma": 0.3163,
+        "albedo_sat": 0.141,
+        "ref_sat": 0.1473,
+        "luma_ratio": 1.104,
+        "sat_ratio": 0.957
+      },
+      {
+        "band": 1,
+        "albedo_luma": 0.2941,
+        "ref_luma": 0.2664,
+        "albedo_sat": 0.1295,
+        "ref_sat": 0.133,
+        "luma_ratio": 1.104,
+        "sat_ratio": 0.974
+      },
+      {
+        "band": 2,
+        "albedo_luma": 0.3592,
+        "ref_luma": 0.3237,
+        "albedo_sat": 0.1488,
+        "ref_sat": 0.1597,
+        "luma_ratio": 1.11,
+        "sat_ratio": 0.932
+      },
+      {
+        "band": 3,
+        "albedo_luma": 0.4903,
+        "ref_luma": 0.4771,
+        "albedo_sat": 0.1526,
+        "ref_sat": 0.1844,
+        "luma_ratio": 1.028,
+        "sat_ratio": 0.828
+      }
+    ],
+    "timings_s": {
+      "import_and_weld": 2.85,
+      "voxel_remesh": 0.73,
+      "orient_scale": 0.01,
+      "decimate": 2.28,
+      "uv_unwrap": 0.03,
+      "colour_bake": 1.16,
+      "silhouette": 0.97,
+      "sheets": 0.65,
+      "export": 0.97,
+      "total": 9.14
+    },
+    "gate_failures": [],
+    "lit_vs_reference": {
+      "ref_luma": 0.358,
+      "lit_luma": 0.341,
+      "luma_ratio": 0.951,
+      "ref_sat": 0.16,
+      "lit_sat": 0.146,
+      "sat_ratio": 0.909
+    }
+  },
+  "triposg/fox": {
+    "type": "animal",
+    "input": "fox.glb",
+    "generator_input_only": true,
+    "triangles": 1940,
+    "triangle_budget": 2000,
+    "materials": 1,
+    "texture": {
+      "width": 512,
+      "height": 512,
+      "max_px": 512
+    },
+    "raw_triangles": 779300,
+    "voxel_remesh_triangles": 162856,
+    "loose_parts": {
+      "raw_after_weld": 2,
+      "floaters_deleted": 0,
+      "after_clean": 2,
+      "floaters_deleted_after_decimate": 0
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.0035,
+      "side": 0.0042,
+      "top": 0.0047
+    },
+    "dimensions_m": [
+      0.2888,
+      0.5487,
+      0.4007
+    ],
+    "height_m": 0.4007,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
+    "orientation": {
+      "turn_deg": 90,
+      "decided_by": "side outline (profile, head toward -Y)",
+      "generator": "triposg",
+      "outline_iou_by_turn": {
+        "0": 0.4552,
+        "90": 0.8189,
+        "180": 0.252,
+        "270": 0.3471
+      }
+    },
+    "colour_route": {
+      "camera_toward": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\fox.png",
+      "texels_covered": 97354,
+      "texels_projected": 39072,
+      "texels_projected_full_trust": 0,
+      "texels_low_frequency": 58282,
+      "mirrored_far_side": false,
+      "mirrored_left_right": true,
+      "mirrored_points": 17659,
+      "region_gates": {
+        "reference": "fox",
+        "passed": true,
+        "gates": [
+          {
+            "gate": "legs_dark_fraction",
+            "value": 0.975,
+            "limit": ">= 0.48",
+            "ok": true
+          },
+          {
+            "gate": "chest_p90_luma_ratio",
+            "value": 0.99,
+            "limit": "0.85 .. 1.25",
+            "ok": true
+          },
+          {
+            "gate": "chest_pale_fraction",
+            "value": 0.419,
+            "limit": ">= 0.16",
+            "ok": true
+          },
+          {
+            "gate": "flank_colour_distance",
+            "value": 0.02,
+            "limit": "<= 0.12",
+            "ok": true
+          },
+          {
+            "gate": "tail_body_colour_distance",
+            "value": 0.139,
+            "limit": "<= 0.15",
+            "ok": true
+          },
+          {
+            "gate": "tail_body_pale_fraction",
+            "value": 0.164,
+            "limit": "<= 0.22",
+            "ok": true
+          },
+          {
+            "gate": "tail_tip_pale_fraction",
+            "value": 0.239,
+            "limit": ">= 0.06",
+            "ok": true
+          }
+        ],
+        "reference_regions": {
+          "chest": {
+            "n": 14116,
+            "rgb": [
+              0.47,
+              0.43,
+              0.444
+            ],
+            "p90_luma": 0.703,
+            "pale": 0.271,
+            "dark": 0.021
+          },
+          "flank": {
+            "n": 44484,
+            "rgb": [
+              0.769,
+              0.452,
+              0.299
+            ],
+            "p90_luma": 0.803,
+            "pale": 0.015,
+            "dark": 0.015
+          },
+          "tail_body": {
+            "n": 20269,
+            "rgb": [
+              0.601,
+              0.349,
+              0.274
+            ],
+            "p90_luma": 0.891,
+            "pale": 0.125,
+            "dark": 0.265
+          },
+          "tail_tip": {
+            "n": 7778,
+            "rgb": [
+              0.628,
+              0.514,
+              0.48
+            ],
+            "p90_luma": 0.988,
+            "pale": 0.395,
+            "dark": 0.22
+          },
+          "legs": {
+            "n": 23626,
+            "rgb": [
+              0.122,
+              0.073,
+              0.078
+            ],
+            "p90_luma": 0.16,
+            "pale": 0.001,
+            "dark": 0.966
+          }
+        },
+        "albedo_regions": {
+          "chest": {
+            "n": 6020,
+            "rgb": [
+              0.591,
+              0.51,
+              0.491
+            ],
+            "p90_luma": 0.696,
+            "pale": 0.419,
+            "dark": 0.0
+          },
+          "flank": {
+            "n": 14078,
+            "rgb": [
+              0.773,
+              0.463,
+              0.314
+            ],
+            "p90_luma": 0.742,
+            "pale": 0.002,
+            "dark": 0.001
+          },
+          "tail_body": {
+            "n": 8320,
+            "rgb": [
+              0.651,
+              0.441,
+              0.366
+            ],
+            "p90_luma": 0.886,
+            "pale": 0.164,
+            "dark": 0.179
+          },
+          "tail_tip": {
+            "n": 3418,
+            "rgb": [
+              0.467,
+              0.373,
+              0.356
+            ],
+            "p90_luma": 0.854,
+            "pale": 0.239,
+            "dark": 0.361
+          },
+          "legs": {
+            "n": 9635,
+            "rgb": [
+              0.16,
+              0.091,
+              0.087
+            ],
+            "p90_luma": 0.172,
+            "pale": 0.0,
+            "dark": 0.975
+          }
+        }
+      },
+      "registration": {
+        "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the reference outline onto the centre of the model outline), 64 rows",
+        "head_band": 0.16,
+        "head_shift_of_width": 0.0033,
+        "head_width_ratio": 0.887,
+        "head_width_ratio_allowed": [
+          0.4,
+          2.0
+        ],
+        "head_painted_from_reference": true,
+        "max_row_shift": 0.0861,
+        "head_to_head": null
+      },
+      "fill": {
+        "min_facing_cos": 0.34,
+        "full_facing_cos": 0.7,
+        "shadow_rel_to_band_median": 0.55,
+        "shadow_bands": 8,
+        "shadow_vertices_ignored": 79,
+        "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "speck_area_frac": 0.0025,
+        "ref_speck_pixels": 14379,
+        "texels_speck_replaced": 1442,
+        "fill_specks_dropped": 30,
+        "seam_feather_height_frac": 0.05,
+        "seam_feather_iterations": 4
+      }
+    },
+    "albedo_vs_reference": [
+      {
+        "band": 0,
+        "albedo_luma": 0.1862,
+        "ref_luma": 0.1841,
+        "albedo_sat": 0.4073,
+        "ref_sat": 0.4034,
+        "luma_ratio": 1.011,
+        "sat_ratio": 1.01
+      },
+      {
+        "band": 1,
+        "albedo_luma": 0.3674,
+        "ref_luma": 0.3336,
+        "albedo_sat": 0.5877,
+        "ref_sat": 0.6492,
+        "luma_ratio": 1.101,
+        "sat_ratio": 0.905
+      },
+      {
+        "band": 2,
+        "albedo_luma": 0.6024,
+        "ref_luma": 0.5655,
+        "albedo_sat": 0.416,
+        "ref_sat": 0.4708,
+        "luma_ratio": 1.065,
+        "sat_ratio": 0.884
+      },
+      {
+        "band": 3,
+        "albedo_luma": 0.5432,
+        "ref_luma": 0.4675,
+        "albedo_sat": 0.4847,
+        "ref_sat": 0.5127,
+        "luma_ratio": 1.162,
+        "sat_ratio": 0.945
+      }
+    ],
+    "timings_s": {
+      "import_and_weld": 1.55,
+      "voxel_remesh": 0.41,
+      "orient_scale": 0.02,
+      "decimate": 1.17,
+      "uv_unwrap": 0.0,
+      "colour_bake": 1.67,
+      "silhouette": 0.86,
+      "sheets": 0.45,
+      "export": 0.76,
+      "total": 6.57
+    },
+    "gate_failures": [],
+    "lit_vs_reference": {
+      "ref_luma": 0.417,
+      "lit_luma": 0.422,
+      "luma_ratio": 1.012,
+      "ref_sat": 0.527,
+      "lit_sat": 0.389,
+      "sat_ratio": 0.739
+    }
+  },
+  "triposg/bird": {
+    "type": "animal",
+    "input": "bird.glb",
+    "generator_input_only": true,
+    "triangles": 1940,
+    "triangle_budget": 2000,
+    "materials": 1,
+    "texture": {
+      "width": 512,
+      "height": 512,
+      "max_px": 512
+    },
+    "raw_triangles": 801272,
+    "voxel_remesh_triangles": 164276,
+    "loose_parts": {
+      "raw_after_weld": 88,
+      "floaters_deleted": 87,
+      "after_clean": 1,
+      "floaters_deleted_after_decimate": 0
+    },
+    "silhouette": {
+      "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
+      "threshold": 0.08,
+      "front": 0.011,
+      "side": 0.0134,
+      "top": 0.0068
+    },
+    "dimensions_m": [
+      0.0666,
+      0.1558,
+      0.1398
+    ],
+    "height_m": 0.1398,
+    "origin": "feet (footprint centre, lowest point at z=0)",
+    "forward": "-Y (glTF +Z, Godot model front, D-021)",
+    "orientation": {
+      "turn_deg": 90,
+      "decided_by": "side outline (profile, head toward -Y)",
+      "generator": "triposg",
+      "outline_iou_by_turn": {
+        "0": 0.4274,
+        "90": 0.7315,
+        "180": 0.4214,
+        "270": 0.4007
+      }
+    },
+    "colour_route": {
+      "camera_toward": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "reference": "C:\\Users\\DANTE\\Documents\\GitHub\\asset-forge\\models\\bakeoff\\refs\\bird.png",
+      "texels_covered": 117554,
+      "texels_projected": 43737,
+      "texels_projected_full_trust": 6487,
+      "texels_low_frequency": 73817,
+      "mirrored_far_side": false,
+      "mirrored_left_right": true,
+      "mirrored_points": 30783,
+      "region_gates": null,
+      "registration": {
+        "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the reference outline onto the centre of the model outline), 64 rows",
+        "head_band": 0.16,
+        "head_shift_of_width": 0.0114,
+        "head_width_ratio": 0.829,
+        "head_width_ratio_allowed": [
+          0.4,
+          2.0
+        ],
+        "head_painted_from_reference": true,
+        "max_row_shift": 0.0502,
+        "head_to_head": null
+      },
+      "fill": {
+        "min_facing_cos": 0.34,
+        "full_facing_cos": 0.7,
+        "shadow_rel_to_band_median": 0.55,
+        "shadow_bands": 8,
+        "shadow_vertices_ignored": 90,
+        "method": "normalised vertex-graph diffusion, interpolated across triangles",
+        "speck_area_frac": 0.0025,
+        "ref_speck_pixels": 41327,
+        "texels_speck_replaced": 3326,
+        "fill_specks_dropped": 84,
+        "seam_feather_height_frac": 0.05,
+        "seam_feather_iterations": 4
+      }
+    },
+    "albedo_vs_reference": [
+      {
+        "band": 0,
+        "albedo_luma": 0.2406,
+        "ref_luma": 0.2824,
+        "albedo_sat": 0.5427,
+        "ref_sat": 0.5034,
+        "luma_ratio": 0.852,
+        "sat_ratio": 1.078
+      },
+      {
+        "band": 1,
+        "albedo_luma": 0.4363,
+        "ref_luma": 0.3986,
+        "albedo_sat": 0.1777,
+        "ref_sat": 0.199,
+        "luma_ratio": 1.095,
+        "sat_ratio": 0.893
+      },
+      {
+        "band": 2,
+        "albedo_luma": 0.3893,
+        "ref_luma": 0.3598,
+        "albedo_sat": 0.4854,
+        "ref_sat": 0.5195,
+        "luma_ratio": 1.082,
+        "sat_ratio": 0.934
+      },
+      {
+        "band": 3,
+        "albedo_luma": 0.4321,
+        "ref_luma": 0.4121,
+        "albedo_sat": 0.4646,
+        "ref_sat": 0.4334,
+        "luma_ratio": 1.049,
+        "sat_ratio": 1.072
+      }
+    ],
+    "timings_s": {
+      "import_and_weld": 1.65,
+      "voxel_remesh": 0.44,
+      "orient_scale": 0.02,
+      "decimate": 1.18,
+      "uv_unwrap": 0.01,
+      "colour_bake": 1.64,
+      "silhouette": 0.87,
+      "sheets": 0.45,
+      "export": 0.77,
+      "total": 6.7
+    },
+    "gate_failures": [],
+    "lit_vs_reference": {
+      "ref_luma": 0.378,
+      "lit_luma": 0.409,
+      "luma_ratio": 1.082,
+      "ref_sat": 0.426,
+      "lit_sat": 0.513,
+      "sat_ratio": 1.204
+    }
+  }
+}
