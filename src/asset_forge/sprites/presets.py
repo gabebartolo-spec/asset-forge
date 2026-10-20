@@ -12,6 +12,9 @@ BACK_IOU_MAX = 0.90  # a back whose outline overlaps the front's (or its mirror)
 
 # Same-creature gate (front vs back); calibrated in the PR notes.
 GAP_OK_FRAC = 0.0035  # an enclosed see-through gap this share of the canvas (32 px at 96) is drawn
+LEG_GAP_ZONE = 0.35  # a see-through gap in this bottom share of the sprite is between the legs
+MAX_HOLE_PX_LEGS = 13  # ... and counts as drawn when it is at least this big
+BACK_SYMMETRY_MIN = 0.55  # a view from behind mirrors onto itself at least this well
 FRONT_SYMMETRY_MIN = 0.55  # a front facing the viewer mirrors onto itself at least this well
 COLOUR_DISTANCE_MAX = 0.65
 ASPECT_RATIO_MAX = 1.6
@@ -34,11 +37,11 @@ PRESETS: dict[str, Preset] = {
     "southern_cross": Preset(
         key="southern_cross",
         label="Southern Cross (Essentials v21.1, Gen 9 Pack v3.3.8)",
-        art_size=96,
+        art_size=80,  # D-023: drawn at 80 px, exported 2x = 160, like the real pack
         max_colours=32,  # no fixed limit in the pack; this cap keeps the art clean
         indexed=False,
         front_scale=2,
-        back_scale=3,
+        back_scale=2,
         layout="southern_cross",
     ),
     "gba": Preset(

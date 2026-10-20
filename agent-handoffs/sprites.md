@@ -1,27 +1,30 @@
-# Sprites handoff, 2026-10-20 (round 2: art-QA fixes)
-## State: final GPU runs, then push
-## Task
-Fix PR #11 (sprite mode A) against the art-QA verdict: shadow, accents, pinholes, one palette per pair,
-speckle, back drawn from front, same-creature gate, speed (pair under 60 s), 3/4 front.
-## What changed (src/asset_forge/sprites/)
-- post.py: enclosed shadow removal (same grey as a proven open shadow); shared_palette / reduce_palette_shared
-  (median cut + 3 reserved accent slots by area x saturation x error); fill_holes 4-connected; clean_speckle
-  (isolated interior pixels join a 4-neighbour; outline/edge never; accent colours of <=4 px kept);
-  prepare()/finish() split so a pair gets ONE palette.
-- qa.py: check_same_creature (colour hist distance <=0.65, aspect x1/1.6..1.6, mass x0.5..2),
-  check_front_faces_viewer (mirror IoU >=0.55; profile 0.38, facing 0.7-0.95), holes 4-connected,
-  enclosed gaps >=40 px allowed as drawn gaps (lead: say if that policy is wrong).
-- draw.py/pipeline.py: draw_batch; back = img2img from a BLURRED front (blur 20, strength 0.9, 20 steps)
-  because plain img2img copies the face; back batch of 3, first passing wins.
-- tests/sprites/test_fixes.py: 14 new tests; 52 sprite tests pass; ruff clean.
-## Evidence
-Real runs in C:\Users\DANTE\AppData\Roaming\Claude\side-session-notes\local_d40f4221-0337-4df7-aee9-69379fac41e2\sprites2\
-## Findings for the lead
-- Local Southern Cross pack (Documents/GitHub/pokemon-southern-cross/game): Graphics/Pokemon/Front|Back
-  confirmed; names UPPERCASE (ABRA.png); Front 160 (654 files) or 192 px (180); ALL Back files 160x160.
-  Our Back export is 288 (96x3): mismatch.
-- Grid detect found=False on the new fronts (pitch 8 holds ~0.71 of edge energy, limit 0.80); the fallback
-  pitch 8 is the true pitch.
-## Rules learnt the hard way
-- Long heredocs with quotes in the Bash tool fail; write scripts with the Write tool.
-- Never `ruff format src` (touches other files); format only src/asset_forge/sprites and tests/sprites.
+# Sprites handoff, 2026-10-20 (round 3: back views by turnaround sheet)
+## State: committed+pushed WIP (gates, sheets, D-023); real runs, spur trim, PR body, CI still to do
+## Task (lead brief)
+1 draw front+back together as one SDXL turnaround sheet, split, post-process with shared palette; measure on lizard/bird/fox
+2 gates that FAIL: (a) no face on the back, (b) pair anatomy match; pair failing both = tell user + re-roll, never export
+3 clean-ups: ground fringe under lizard SC feet, 1-px stray tips at beak/toes
+4 sizes in ONE preset table; D-023 (director): Southern Cross art 80 px, export 2x = 160 for front AND back, UPPERCASE names; GBA unchanged; PR body "D-023 to log"
+Done = pushed, CI green, PR body (Evidence, Not exercised), shots in side-session-notes/local_f6b2f763.../sprites3/
+
+## Done locally (uncommitted)
+- presets.py: SC art_size 80, front_scale 2, back_scale 2 (D-023). pipeline.export_pair: name.upper().
+- pairqa.py (new): face gate (face_features, face_colours, eye pairs, back head matching front face colours) and anatomy gate (limb blobs, ground contacts, stance, foot span).
+- sheet.py (new): split_sheet cuts a sheet into per-creature crops (8 px cells, join 2 cells, min height 0.42).
+- draw.py: SHEET prompt, draw_sheet (1344x768), draw_front, draw_back (inpaint experiment); old img2img back removed.
+- pipeline.py: make_pair now draws sheets (3 per call, 2 calls), picks first front/back pair passing every gate; pair_problems; pair_preview.
+- tests/fixtures/sprites/r2_*.png: the 8 round-2 sprites (known-bad backs) for the gate tests.
+## Findings
+- Sheet 1344x768: SDXL draws rows of 3-10 views (front, 3/4, side, back), not 2. Yield of a gate-passing pair: 1 of 18 sheets (fox/lizard/bird x 6 seeds, run_a). Bird sheets draw tiny figures (<0.42 of height).
+- Inpaint-right-strip variant (front pasted left, back painted right, strength .99): returned BLANK background in 4 of 4 tries (lizard), abandoned.
+- Gate (a) on round-2 bad backs: all 4 fail (lizard SC/GBA by eye pair or face colours, bird SC/GBA by beak/eye colours). Gate (b): lizard SC (limb blobs 1 vs 3), lizard GBA (contacts 3 vs 1, stance) fail; bird pairs pass (b) but fail (a).
+- post.py: _ground_fringe peels 2 layers of dull pixels on the bottom edge (checked on the round-2 lizard SC raw: ragged teal fringe gone under the feet; not yet re-run end to end).
+- Sheet variant V2 (1216x704, negative 'side view, three views, small'): 0 of 18 sheets gave a passing pair; V1 (1344x768): 1 of 18 (fox seed 6). Views per sheet 2-5. Both bounded; stop searching, report.
+- Tests: 65 pass locally (sprites dir); test_pair_gates.py shows gates failing on the 4 round-2 pairs.
+## Left
+- NOT DONE: trim 1-px spurs at beak/toes (post.finish, before add_outline); real end-to-end runs 3 subjects x 2 presets with the final pipeline (cache sheets per subject, run both presets), shots in sprites3/ (1x, 6x grid, pair); pair time; PR body (Evidence, Not exercised, Board and log: D-023 to log); CI green.
+- Open question for lead: yield is ~3-6 percent of sheets, so make_pair mostly fails after 6 sheets (re-roll message works). Decide: accept, or allow more sheets/another method.
+## (old list)
+tests (rework FakeDrawer to draw_sheet), clean-ups (fringe, stray tips), real runs x2 presets x3 subjects, PR body, CI.
+## Rules learnt
+- Write scripts with Write tool; never ruff format outside sprites dirs; GPU jobs through tools/bakeoff/gpu_lock.py run.

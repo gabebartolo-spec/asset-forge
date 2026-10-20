@@ -8,10 +8,11 @@ import numpy as np
 from PIL import Image
 
 from .grid import detect_grid, downsample_on_grid
-from .presets import EDGE_MARGIN_PX, OUTLINE_COLOUR, OUTLINE_LUMA_MAX, Preset
+from .presets import EDGE_MARGIN_PX, LEG_GAP_ZONE, OUTLINE_COLOUR, OUTLINE_LUMA_MAX, Preset
 
 POCKET_MIN_PX = 24  # an enclosed background-coloured area this big is not part of the sprite
 MAX_HOLE_PX = 12  # smaller see-through pockets are filled; bigger ones fail the QA instead
+MAX_HOLE_PX_BODY = 24  # above the legs a pocket this small (arm against the body) is filled too
 SHADOW_MIN_PX = 20
 SHADOW_SAT = 0.12  # a shadow is nearly colourless
 SHADOW_MATCH = 16.0  # RGB distance to a proven shadow colour that counts as the same shadow
@@ -24,6 +25,10 @@ ACCENT_MIN_SAT = 0.35
 ACCENT_MIN_ERR = 45.0  # RGB distance from the base palette that makes a colour an outlier
 ACCENT_MIN_PX = 2
 ACCENT_LONE_PX = 4  # an accent colour with this few pixels is never speckle-cleaned
+FRINGE_ZONE = 0.14  # the bottom share of the sprite where shadow scraps hang
+FRINGE_SAT = 0.30
+FRINGE_LAYERS = 2
+FRINGE_EDGE_SHARE = 0.6  # a bottom edge this dull is a grey creature, not a shadow
 SPECKLE_TARGET = 0.02  # clean until this share of pixels is isolated (the skill limit is 3%)
 SPECKLE_PASSES = 6
 SECOND_BODY_FRAC = 0.25  # a separate piece this big, relative to the biggest, is a second body
@@ -93,6 +98,7 @@ def remove_background(rgb: np.ndarray, tolerance: float = 48.0) -> np.ndarray:
         if k:
             is_bg |= labels == k
     is_bg |= _ground_shadow(rgb, is_bg)
+    is_bg |= _ground_fringe(rgb, is_bg)
     out = np.dstack([rgb, np.where(is_bg, 0, 255).astype(np.uint8)])
     out[is_bg, :3] = 0
     return out
@@ -142,6 +148,32 @@ def _ground_shadow(rgb: np.ndarray, is_bg: np.ndarray) -> np.ndarray:
     return out
 
 
+def _ground_fringe(rgb: np.ndarray, is_bg: np.ndarray) -> np.ndarray:
+    """Shadow scraps left ragged round and between the feet: dull grey-ish pixels on the edge of
+    the bottom rows, peeled two layers deep. Skipped when the whole bottom edge is dull (a grey
+    creature, grey feet): then the dull colour is the creature."""
+    removed = np.zeros_like(is_bg)
+    rows = np.nonzero((~is_bg).any(axis=1))[0]
+    if len(rows) == 0:
+        return removed
+    top, bottom = int(rows.min()), int(rows.max())
+    zone = np.zeros_like(is_bg)
+    zone[bottom - int(FRINGE_ZONE * (bottom - top)) : bottom + 1] = True
+    dull = (_saturation(rgb) < FRINGE_SAT) & (luma(rgb) > 70) & zone
+    gone = is_bg.copy()
+    for layer in range(FRINGE_LAYERS):
+        pad = np.pad(gone, 1, constant_values=False)
+        edge = ~gone & (pad[:-2, 1:-1] | pad[2:, 1:-1] | pad[1:-1, :-2] | pad[1:-1, 2:]) & zone
+        if layer == 0 and (edge & dull).sum() > FRINGE_EDGE_SHARE * max(int(edge.sum()), 1):
+            return removed
+        peel = edge & dull
+        if not peel.any():
+            break
+        gone |= peel
+        removed |= peel
+    return removed
+
+
 def remove_strays(rgba: np.ndarray, max_px: int = 2) -> np.ndarray:
     """Drop opaque pieces of max_px pixels or fewer (8-connected), unless they are all there is."""
     out = rgba.copy()
@@ -174,13 +206,15 @@ def fill_holes(rgba: np.ndarray) -> np.ndarray:
     h, w, _ = out.shape
     labels, n = label(~opaque(out))  # 4-connected: a corner-only gap to the outside is a hole
     edge = _border_labels(labels)
+    box = bbox(out)
     for k in range(1, n + 1):
         if k in edge:
             continue
         region = labels == k
-        if region.sum() > MAX_HOLE_PX:
-            continue
         ys, xs = np.nonzero(region)
+        legs = box is not None and ys.mean() >= box[1] + (1 - LEG_GAP_ZONE) * (box[3] - box[1])
+        if region.sum() > (MAX_HOLE_PX if legs else MAX_HOLE_PX_BODY):
+            continue
         around = []
         for y, x in zip(ys, xs, strict=True):
             for dy, dx in N4:

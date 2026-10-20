@@ -67,11 +67,11 @@ def test_too_many_colours_fails_for_gba():
 
 
 def test_tiny_and_empty_and_wrong_size_fail():
-    tiny = np.zeros((96, 96, 4), np.uint8)
+    tiny = np.zeros((SC.art_size, SC.art_size, 4), np.uint8)
     tiny[40:46, 40:46] = (*OUTLINE_COLOUR, 255)
     assert "too small" in words(check_sprite(tiny, SC))
-    assert "empty" in words(check_sprite(np.zeros((96, 96, 4), np.uint8), SC))
-    assert "needs 96x96" in words(check_sprite(np.zeros((64, 64, 4), np.uint8), SC))
+    assert "empty" in words(check_sprite(np.zeros((SC.art_size, SC.art_size, 4), np.uint8), SC))
+    assert "needs 80x80" in words(check_sprite(np.zeros((64, 64, 4), np.uint8), SC))
 
 
 def test_back_that_copies_the_front_or_its_mirror_is_rejected():
@@ -87,11 +87,12 @@ def test_a_real_back_view_passes_and_reports_its_overlap():
 
 
 def test_pair_from_fake_drawer_exports_southern_cross_layout(tmp_path):
-    res = make_pair("a small fire lizard creature", FakeDrawer(noise=6), "southern_cross", seed=5)
+    res = make_pair("a small fire lizard creature", FakeDrawer(), "southern_cross", seed=5)
     files = export_pair(res, "FireLizard", tmp_path)
     front, back = (Image.open(f) for f in files)
-    assert front.size == (192, 192) and back.size == (288, 288)
+    assert front.size == (160, 160) and back.size == (160, 160)  # D-023
     assert files[0].parent.name == "Front" and files[1].parent.name == "Back"
+    assert files[0].name == "FIRELIZARD.png" and files[1].name == "FIRELIZARD.png"
     assert front.mode == "RGBA" and front.getpixel((0, 0))[3] == 0
 
 
@@ -110,8 +111,8 @@ def test_lazy_back_that_copies_the_front_is_never_exported(tmp_path):
     drawer = FakeDrawer(back_like_front=True)
     with pytest.raises(SpriteFailed) as e:
         make_pair("a small fire lizard creature", drawer, "southern_cross", seed=1)
-    assert e.value.view == "back" and "same outline" in str(e.value)
-    assert [v for v, _ in drawer.calls].count("back") == 6  # retried on new seeds, then gave up
+    assert e.value.view == "pair" and "Re-roll" in str(e.value) and "same outline" in str(e.value)
+    assert len(drawer.calls) == 6  # two draw calls of three sheets, then it gave up
     assert list(tmp_path.iterdir()) == []
 
 
@@ -124,15 +125,15 @@ def test_export_refuses_a_pair_that_fails_qa(tmp_path):
 
 
 def test_same_seed_same_pixels():
-    a = make_pair("x", FakeDrawer(noise=6), "southern_cross", seed=3)
-    b = make_pair("x", FakeDrawer(noise=6), "southern_cross", seed=3)
+    a = make_pair("x", FakeDrawer(), "southern_cross", seed=3)
+    b = make_pair("x", FakeDrawer(), "southern_cross", seed=3)
     assert np.array_equal(a.front, b.front) and np.array_equal(a.back, b.back)
 
 
 def test_a_second_body_fails():
     from asset_forge.sprites.post import add_outline
 
-    s = np.zeros((96, 96, 4), np.uint8)
+    s = np.zeros((SC.art_size, SC.art_size, 4), np.uint8)
     s[8:30, 8:30] = (200, 90, 40, 255)
     s[60:84, 60:84] = (200, 90, 40, 255)  # two equal bodies far apart
     assert "more than one separate body" in words(check_sprite(add_outline(s), SC))

@@ -127,7 +127,7 @@ def test_process_accepts_any_pil_mode():
     rgba_img = raw_generated().convert("RGBA")
     assert isinstance(rgba_img, Image.Image)
     sprite, _ = process(rgba_img, SC)
-    assert sprite.shape == (96, 96, 4)
+    assert sprite.shape == (SC.art_size, SC.art_size, 4)
 
 
 def test_large_enclosed_background_pocket_is_removed_but_small_holes_filled():

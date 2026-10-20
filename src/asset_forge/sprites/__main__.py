@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 from .draw import SdxlDrawer
-from .pipeline import SpriteFailed, export_pair, grid_preview, make_pair, to_image
+from .pipeline import SpriteFailed, export_pair, grid_preview, make_pair, pair_preview, to_image
 from .presets import DEFAULT_PRESET, PRESETS
 
 
@@ -39,6 +39,8 @@ def main(argv: list[str] | None = None) -> int:
         for view, arr in (("front", res.front), ("back", res.back)):
             to_image(arr).save(a.shots / f"{a.preset}_{view}_1x.png")
             grid_preview(arr, 6).save(a.shots / f"{a.preset}_{view}_6x_grid.png")
+    if a.shots:
+        pair_preview(res.front, res.back, 6).save(a.shots / f"{a.preset}_pair_6x.png")
     report = {
         "files": [str(f) for f in files],
         "seeds": res.seeds,

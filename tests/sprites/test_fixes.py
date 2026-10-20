@@ -6,7 +6,7 @@ import pytest
 from asset_forge.sprites import SpriteFailed, check_sprite, export_pair, make_pair
 from asset_forge.sprites.presets import OUTLINE_COLOUR, get_preset
 
-from .fixtures import BODY, FakeDrawer, good_sprite, native_creature, raw_generated
+from .fixtures import BODY, FakeDrawer, good_sprite, native_creature
 
 SC = get_preset("southern_cross")
 TEAL = (20, 200, 190)
@@ -64,7 +64,7 @@ def test_corner_touching_pinhole_is_filled():
 
 
 def test_check_counts_a_corner_touching_gap_as_a_hole():
-    s = np.zeros((96, 96, 4), np.uint8)
+    s = np.zeros((SC.art_size, SC.art_size, 4), np.uint8)
     s[10:80, 10:80] = (200, 90, 40, 255)
     s[10:16, 40] = 0  # a notch from the top edge ...
     s[16, 41] = 0  # ... and a pixel touching it only at a corner
@@ -129,26 +129,6 @@ def test_same_creature_check():
     assert check_same_creature(front, tiny)[0]
 
 
-def test_back_is_drawn_from_the_front_in_one_batch():
-    d = FakeDrawer(noise=4)
-    make_pair("a small fire lizard creature", d, "southern_cross", seed=2)
-    back_inits = [i for (v, _), i in zip(d.calls, d.inits, strict=True) if v == "back"]
-    assert back_inits and all(i is not None for i in back_inits)
-    assert max(d.batches) >= 2
-
-
-def test_first_passing_candidate_of_the_batch_is_kept():
-    class Mixed(FakeDrawer):
-        def draw(self, subject, view, seed, init=None):
-            img = super().draw(subject, view, seed, init)
-            if view == "back" and seed == 1001:  # first candidate: a copy of the front
-                return raw_generated("front", noise=self.noise)
-            return img
-
-    res = make_pair("x", Mixed(), "southern_cross", seed=1)
-    assert res.seeds["back"] != 1001 and res.metrics["back"]["candidates_tried"] >= 2
-
-
 def test_export_refuses_a_back_of_another_creature(tmp_path):
     res = make_pair("x", FakeDrawer(), "southern_cross", seed=1)
     res.back = res.back.copy()
@@ -164,18 +144,6 @@ def test_a_side_view_front_is_rejected_and_a_facing_one_passes():
     assert check_front_faces_viewer(good_sprite(SC, "front"))[0] == []
     problems, m = check_front_faces_viewer(good_sprite(SC, "side"))
     assert "side view" in words(problems) and m["front_symmetry"] < 0.55
-
-
-def test_the_front_is_redrawn_until_it_faces_the_viewer():
-    class Profile(FakeDrawer):
-        def draw(self, subject, view, seed, init=None):
-            img = super().draw(subject, view, seed, init)
-            if view == "front" and seed == 1:  # first draw: a profile
-                return raw_generated("side", noise=self.noise)
-            return img
-
-    res = make_pair("x", Profile(), "southern_cross", seed=1)
-    assert res.seeds["front"] != 1 and res.metrics["front"]["candidates_tried"] >= 2
 
 
 def test_a_big_drawn_gap_is_allowed_but_a_mid_size_hole_is_not():
@@ -197,3 +165,26 @@ def test_a_tall_contact_shadow_round_the_feet_is_removed():
     rgba = remove_background(img)
     assert rgba[118, 66, 3] == 0 and rgba[102, 22, 3] == 0
     assert rgba[70, 60, 3] == 255
+
+
+def test_front_and_back_come_from_one_sheet_and_a_lazy_sheet_is_skipped():
+    class Lazy(FakeDrawer):
+        def sheet(self, seed):
+            self.views = ("front", "front") if seed == 1 else ("front", "back")
+            return super().sheet(seed)
+
+    d = Lazy()
+    res = make_pair("a small fire lizard creature", d, "southern_cross", seed=1)
+    assert res.seeds["sheet"] == 2 and res.metrics["sheets_tried"] == 2
+    assert d.calls[:3] == [1, 2, 3]  # one call drew three sheets, each with both views
+
+
+def test_split_sheet_cuts_one_image_per_creature():
+    from asset_forge.sprites.sheet import split_sheet
+
+    views = split_sheet(FakeDrawer().sheet(1))
+    assert len(views) == 2 and all(v.height > 400 for v in views)
+
+
+def test_sc_preset_is_80_px_exported_2x_for_both_views():
+    assert (SC.art_size, SC.front_scale, SC.back_scale) == (80, 2, 2)  # D-023

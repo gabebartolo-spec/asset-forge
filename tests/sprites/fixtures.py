@@ -17,6 +17,7 @@ from asset_forge.sprites.presets import Preset
 BODY = (200, 90, 40)
 BELLY = (240, 180, 90)
 SPOT = (160, 50, 30)
+EYE = (10, 140, 150)  # teal eyes: the face gate's tell
 
 
 def _ellipse(h, w, cy, cx, ry, rx):
@@ -31,10 +32,10 @@ def native_creature(view: str = "front", n: int = 128) -> np.ndarray:
         img[_ellipse(n, n, 74, 64, 22, 28)] = BODY
         img[_ellipse(n, n, 80, 64, 12, 18)] = BELLY
         img[_ellipse(n, n, 46, 64, 15, 17)] = BODY
-        for x in (40, 50, 72, 82):
-            img[92:108, x : x + 7] = BODY
-        img[42:46, 56:60] = SPOT
-        img[42:46, 68:72] = SPOT
+        for x in (34, 50, 72, 88):
+            img[92:108, x : x + 6] = BODY
+        img[42:46, 56:60] = EYE
+        img[42:46, 68:72] = EYE
     elif view == "side":  # a profile: wide body, head to the right, four legs
         img[_ellipse(n, n, 70, 60, 22, 36)] = BODY
         img[_ellipse(n, n, 76, 60, 10, 24)] = BELLY
@@ -42,13 +43,12 @@ def native_creature(view: str = "front", n: int = 128) -> np.ndarray:
         for x in (36, 48, 72, 84):
             img[88:108, x : x + 7] = BODY
         img[48:52, 104:108] = SPOT
-    else:  # rounder shape seen from behind: two ears, a spot down the back, a tail below
-        img[_ellipse(n, n, 64, 64, 28, 34)] = BODY
-        img[_ellipse(n, n, 68, 64, 18, 10)] = SPOT
-        img[_ellipse(n, n, 76, 64, 8, 20)] = BELLY
-        img[24:42, 44:52] = BODY
-        img[24:42, 76:84] = BODY
-        img[88:102, 62:68] = BELLY
+    else:  # from behind: a broader body and head, a stripe down the back, the same four legs
+        img[_ellipse(n, n, 74, 64, 22, 36)] = BODY
+        img[_ellipse(n, n, 80, 64, 12, 6)] = SPOT  # a stripe down the back, below the head
+        img[_ellipse(n, n, 46, 64, 15, 21)] = BODY
+        for x in (34, 50, 72, 88):
+            img[92:108, x : x + 6] = BODY
     return img
 
 
@@ -73,20 +73,22 @@ def good_sprite(preset: Preset, view: str = "front") -> np.ndarray:
 
 
 class FakeDrawer:
-    """Returns fixture images instead of running SDXL. `back_like_front` fakes a lazy model."""
+    """Returns a fixture turnaround sheet instead of running SDXL: the front on the left and the
+    back on the right of one wide canvas. `back_like_front` fakes a model that draws the front
+    twice; `sheet_views` picks what the sheet holds."""
 
-    def __init__(self, back_like_front: bool = False, noise: int = 0):
-        self.calls: list[tuple[str, int]] = []
-        self.inits: list[object] = []  # init image of each draw (None = from text)
-        self.batches: list[int] = []
+    def __init__(self, back_like_front: bool = False, noise: int = 0, views=None):
+        self.calls: list[int] = []
         self.back_like_front, self.noise = back_like_front, noise
+        self.views = views or ("front", "front" if back_like_front else "back")
 
-    def draw_batch(self, subject, view, seeds, init=None) -> list[Image.Image]:
-        self.batches.append(len(seeds))
-        return [self.draw(subject, view, s, init) for s in seeds]
+    def draw_sheet(self, subject, seeds) -> list[Image.Image]:
+        return [self.sheet(s) for s in seeds]
 
-    def draw(self, subject: str, view: str, seed: int, init=None) -> Image.Image:
-        self.calls.append((view, seed))
-        self.inits.append(init)
-        shown = "front" if (view == "front" or self.back_like_front) else "back"
-        return raw_generated(shown, noise=self.noise)
+    def sheet(self, seed: int) -> Image.Image:
+        self.calls.append(seed)
+        canvas = Image.new("RGB", (1344, 768), (255, 255, 255))
+        for k, view in enumerate(self.views):
+            raw = raw_generated(view, pitch=5, noise=self.noise, seed=seed)
+            canvas.paste(raw, (20 + k * 680, 64))
+        return canvas
