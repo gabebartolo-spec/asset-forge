@@ -76,8 +76,11 @@ def plain(problems: list[str]) -> list[str]:
 def summary(report: dict, asset_type: str) -> dict:
     tex = report.get("texture") or {}
     problems = verdict(report, asset_type)
+    shown = plain(problems)
+    # `broken` counts what the screen lists: the bullets plus the red triangle row.
+    broken = len(shown) + (1 if any("riangle" in p for p in problems) else 0)
     return {
-        "passed": not problems, "problems": plain(problems), "broken": len(problems),
+        "passed": not problems, "problems": shown, "broken": broken,
         "all_problems": problems,
         "triangles": report.get("triangles"), "triangle_budget": report.get("triangle_budget"),
         "raw_triangles": report.get("raw_triangles"),

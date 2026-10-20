@@ -150,3 +150,17 @@ def test_batch_stops_at_clean_and_reports_a_failed_gate(settings, fake_registry)
         assert card["reached"] == "generate" and card["thumb"]
         assert "skeleton" not in c.get(f"/api/assets/{card['id']}").json()["steps"]
     app.state.queue.shutdown()
+
+
+def test_headline_count_equals_what_the_screen_lists(settings, fake_registry):
+    """Two bad outlines show as one bullet and over-budget triangles as one red row, so the
+    headline must say 2 limits, not 3."""
+    rep = {**GOOD_REPORT, "triangles": 9000,
+           "silhouette": {"threshold": 0.08, "front": 0.2, "side": 0.2}}
+    app, c = make_client(settings, fake_registry, cleaner=fake_cleaner(rep))
+    with c:
+        aid = made(c)
+        r = finish(c, c.post(f"/api/assets/{aid}/clean").json()["id"])["result"]
+        assert len(r["problems"]) == 1  # one outline bullet; the triangle row is separate
+        assert r["broken"] == len(r["problems"]) + 1 == 2
+    app.state.queue.shutdown()
