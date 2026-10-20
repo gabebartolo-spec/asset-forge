@@ -277,6 +277,34 @@ def count_leg_columns(v: np.ndarray) -> int:
     return sum(1 for n in sizes if n >= 0.12 * len(P))
 
 
+def _hock(Ls: np.ndarray, a_ank: float, b: float, z_ank: float, z_stop: float, length: float,
+          H: float):
+    """The hock of a hind leg: follow the leg's own column up from the ankle, slice by slice,
+    keeping only the vertices next to the last centre (so the other leg, the tail and the belly
+    stay out), and take the slice whose centre lies furthest back (towards the tail). None when
+    the leg does not bend back (a straight leg keeps the proportional joint)."""
+    win = 0.04 * length
+    leg = Ls[np.abs(Ls[:, 1] - b) < 2 * win]
+    centre, best, z_last = np.array([a_ank, b]), None, z_ank
+    for z in np.arange(z_ank, z_stop, 0.015 * H):
+        sl = leg[np.abs(leg[:, 2] - z) < 0.015 * H]
+        # the leg may lean up to 45 degrees, so the search widens with the climb since the
+        # last slice that held enough of it (sparse low-poly legs skip slices)
+        sl = sl[np.hypot(sl[:, 0] - centre[0], sl[:, 1] - centre[1])
+                < 0.5 * win + (z - z_last)]
+        if len(sl) < 2:
+            continue
+        centre = np.array([float(np.median(sl[:, 0])), float(np.median(sl[:, 1]))])
+        z_last = z
+        if best is None or centre[0] < best[0]:
+            best = np.array([centre[0], centre[1], z])
+        elif centre[0] > best[0] + 0.02 * length:  # turning forward to the knee: past the hock
+            break
+    if best is None or best[0] > a_ank - 0.02 * length or best[2] < z_ank + 0.03 * H:
+        return None
+    return best
+
+
 def fit_four_legged(v: np.ndarray) -> Joints:
     v = np.asarray(v, float)
     H = float(v[:, 2].max())
@@ -343,7 +371,13 @@ def fit_four_legged(v: np.ndarray) -> Joints:
         plen = max(a_front - a_back, 0.02 * length)
         a_ank = a_front - 0.75 * plen
         Jl[f"{part}{side}UpperLeg"] = np.array([top_a, b0 + 0.8 * (b - b0), z_top])
-        Jl[f"{part}{side}LowerLeg"] = np.array([a_ank + shift, b, 0.5 * (z_top + z_ank)])
+        lower = np.array([a_ank + shift, b, 0.5 * (z_top + z_ank)])
+        if part == "Hind":  # the hind leg bends back at the hock: put the joint there
+            hock = _hock(L[(L[:, 1] - b0) * (1 if side == "Left" else -1) > 0], a_ank, b, z_ank,
+                         0.6 * z_sp, length, H)
+            if hock is not None:
+                lower = hock
+        Jl[f"{part}{side}LowerLeg"] = lower
         Jl[f"{part}{side}Foot"] = np.array([a_ank, b, z_ank])
         Jl[f"{part}{side}FootTip"] = np.array([a_front, b, z + 0.01 * H])
         Jl[f"{part}{side}Heel"] = np.array([a_front - plen, b, z])

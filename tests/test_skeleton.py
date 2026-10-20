@@ -214,6 +214,40 @@ def test_four_legged_paw_runs_from_behind_the_ankle_to_the_toe_front():
             assert tip[2] < ankle[2]
 
 
+def _segment(rng, p0, p1, size=0.025, n=80):
+    t = rng.random((n, 1))
+    p0, p1 = np.asarray(p0), np.asarray(p1)
+    return p0 + t * (p1 - p0) + (rng.random((n, 3)) - 0.5) * size
+
+
+def bent_leg_fox(rng):
+    """A fox whose hind legs bend back at the hock (y = 0.19, z = 0.10), like the generated
+    foxes: paw forward, cannon bone up and back to the hock, shin forward up to the body."""
+    parts = [_cloud(rng, (0, 0, 0.28), (0.12, 0.40, 0.16), 900),
+             _cloud(rng, (0, -0.24, 0.33), (0.08, 0.12, 0.10)),
+             _cloud(rng, (0, 0.36, 0.22), (0.05, 0.28, 0.05))]
+    for x in (0.045, -0.045):
+        parts.append(_cloud(rng, (x, -0.14, 0.11), (0.03, 0.03, 0.2), 120))
+        parts.append(_cloud(rng, (x, -0.18, 0.008), (0.03, 0.10, 0.016), 120))
+        parts.append(_cloud(rng, (x, 0.10, 0.008), (0.03, 0.10, 0.016), 120))
+        parts.append(_segment(rng, (x, 0.13, 0.02), (x, 0.19, 0.10)))
+        parts.append(_segment(rng, (x, 0.19, 0.10), (x, 0.12, 0.21)))
+    v = np.vstack(parts)
+    v[:, 2] -= v[:, 2].min()
+    return v
+
+
+def test_four_legged_hind_knee_joint_sits_in_the_hock():
+    """The hind leg's middle joint goes where the leg bends back (the hock), inside the leg;
+    the old fit put it ahead of the leg, in the air."""
+    v = bent_leg_fox(np.random.default_rng(5))
+    J = fit.fit(v, "four_legged")
+    for side in ("Left", "Right"):
+        hock = J[f"Hind{side}LowerLeg"]
+        assert hock[1] == pytest.approx(0.19, abs=0.02)
+        assert hock[2] == pytest.approx(0.10, abs=0.02)
+
+
 def test_bird_ankle_sits_over_the_leg_and_the_toe_tip_at_the_toes():
     J = fit.fit(stick_bird(np.random.default_rng(3)), "bird")
     for side in ("Left", "Right"):
