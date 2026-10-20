@@ -1,50 +1,52 @@
 # Asset Forge lead handoff (2026-10-20, session 8)
-## State: working. Five lane sessions + one rule sweep running; lead waits on their notes.
-Lead session registered for 500k (~/.claude/context-guard-leads/<CLI session id>); successor must
-register itself at boot.
+## State: working. Run2 done (2 of 10 export); critics + fix lanes start on the director's next message.
+Lead registered for 500k (~/.claude/context-guard-leads/<CLI session id>); a successor registers itself.
+Start sessions only on a director turn (the app refuses starts on peer/automated turns).
 
-## Session goal (director /goal 2026-10-20): "functional build prototype with at least 80% critic pass rate"
-Measure: tools/e2e/run_e2e.py on claude/prototype (main + clean-step-methodB-local + step2-page +
-animation + ref-drawer + monster-rig), 5 bake-off prompts x 2 generators. Fresh critic SESSIONS,
-one verdict per item (briefs: notes local_7fdc3e78.../critic_briefs_e2e.md): realism per clean
-five-view sheet (10), motion per animated rig clip set (6), screen per step page (4). Pass = 16 of 20,
-every non-monster export Godot-green. Output: notes folder e2e/run<N>/.
+## Session goal (director /goal): "functional build prototype with at least 80% critic pass rate"
+Measure: run_e2e.py on claude/prototype, 5 bake-off prompts x 2 generators; fresh critic sessions:
+realism per clean sheet (10), motion per clip set (6), screen per step page (4); pass 16/20 and every
+non-monster export Godot-green. Run2 (notes local_7fdc3e78.../e2e/run2/manifest.md, prototype
+eadbfe4): only hi3dgen_bird + pageshots humanoid exported. Bar not measurable yet.
+
+## Run2 blockers (each needs a fix lane)
+1. Clean in the APP fails both humanoids on top outline (0.084, 0.129 > 0.08) though the R1 script
+   run passed outline 10/10: find what the app path does differently (params, views, scale).
+2. Foxes: clean.py exits "animal head direction is ambiguous ... pass --turn DEG"; the app passes no
+   --turn and shows a generic error (log hi3dgen_fox_clean_blender.log). Auto-resolve or ask in plain words.
+3. Step 1 limb check fails every monster and fox (false positives; from monster-rig).
+4. triposg_bird walk foot slide 0.7 cm > 0.5 cm.
+5. Monsters: animate refused (6+ legs is a later slice; not a defect for this measure).
+6. App throws away Blender logs: errors must name the cause in plain words (D-014).
 
 ## Director said (2026-10-20)
-- D-027 Clean "Keep improving first"; D-028 #20 clips "Fix first" (logged, #24 merged).
-- D-029 no subagents; helpers are fresh sessions filed in sidebar group "Asset Forge"
-  (cg-c0fac8a5-7dfb-46ec-a0fd-658fe73e9182). Start them yourself ("stop making me approve things").
-- "change lead context limit to 500k" and "increase to 300k (450k hard cutoff) for all helpers":
-  hook + RULEBOOK line 99 + ~/.claude/CLAUDE.md done; sweep of other files = rule-ctx-sweep.
-- "hurry the fk up": fill every lane at once, no idle slots.
+- D-027 Clean "Keep improving first"; D-028 #20 "Fix first"; D-029 no subagents, sidebar group
+  "Asset Forge" (cg-c0fac8a5-7dfb-46ec-a0fd-658fe73e9182); start helpers yourself.
+- Context: helpers 300k/450k, leads 500k/600k (hook + RULEBOOK).
+- "why is there only 1 gpu queue? open as many as you can" -> #28 VRAM-budget lock merged; RULEBOOK.
+- "its your job to lead ... if theyre stuck, unstick them": stall watcher ($TEMP/stall.py <dirs>;
+  watch the dirs helpers really write to), restart stuck helpers unasked, no long digging.
+- "archive helpers no longer in use": archive as soon as a helper's PR merges or it reports done.
 
-## Merged this session
-#23 (CLAUDE.md no-subagents line), #24 (board s8: D-028, D-029, agents table).
+## PRs
+- #9 clean, ready 3561d2c, 8/10 colour (fails: hi3dgen humanoid greaves_back 0.127/0.12, triposg
+  fox chest_p90 0.838/0.85; next idea: calibrate each view on texels the picture also sees).
+  Sheets docs/audits/clean/*.jpg. Needs fresh realism critic, then merge.
+- #20 animation green 3c32535 (round 4, paw-tip fix). GIFs copied to notes local_68d3bafb.../previews_v4
+  (36). Needs fresh motion critic, then director clips.
+- #27 monster rig green e9b0c4f (lead merged main; #28 settle order kept). Round-2 evidence in
+  asset-forge-wt/mr_evidence/round2 (af-monster at 300k, finishing). Needs fresh screen critic.
+- Merged s8: #23 #24 #25 #26 #28 #29.
 
-## Lanes (sessions; each reports via turn-end note)
-- af-clean local_9e53e68c: item 5, method B to 8/10, pushes into claude/clean-step, PR #9 ready.
-  Then: fresh realism-critic session on the 10 sheets -> merge #9 -> open step2-page PR.
-- af-anim local_5de871d0: item 10, re-rig on #22 joints, 9 unit fails, previews_v4, PR #20.
-  Then: fresh motion-critic session -> director clips (send GIFs from a session folder).
-- af-refdraw local_8ba42145: SDXL text-only reference drawer; PR only if < 3 open.
-- af-monster local_863debb1: item 13 monster skeleton + limb editor; no PR yet (cap).
-- af-proto local_bbbdbf10: re-merge lanes into claude/prototype, five-view file-route gap, e2e run2.
-- rule-ctx-sweep local_38465d31: context-limit wording sweep + forge-handoff skill PR.
-Old s7 builders (anim-b4, ref-drawer, proto) may still push to their branches; new lanes reset onto them.
+## Live sessions
+af-monster local_863debb1 (300k, finishing evidence), af-proto local_bbbdbf10 (run2 done; idle).
+af-clean and af-anim archived by the director.
 
-## Next steps
-1. On each note: verify files exist; start a fresh critic session; filter findings.
-2. Merge order: #9 -> step2-page PR -> #20 (after director yes on v4) -> ref-drawer -> monster-rig.
-   Max 3 open PRs. Board PR after merges.
-3. When run2 is in: start realism/motion/screen critic sessions (own scratch subfolders); score.
-4. Mocap side-by-side (notes mocap_cmp/) only after v4 passes; D-005 change is his call.
-
-## Worktrees
-asset-forge-wt: animation, clean-step, monster-rig, ref-drawer (old s7 lanes; remove as each
-lane merges), context-trim (not ours). skeleton-fit removed (merged #22).
+## Next (on the director's next message, same turn)
+Start: realism critic (#9 sheets), motion critic (#20 GIFs), screen critic (#27 round2 when pushed),
+clean-app fix lane (blockers 1, 2, 6), limb-check fix lane (3), anim slide fix (4). Then run3.
 
 ## Gotchas
-- Generators disagree on which camera the reference faces; check facing per prompt.
-- Critics share the scratchpad: give each its own subfolder. No HF token; gated weights out.
-- Background `sleep` loops may exit early here; check PR state directly after a watcher ends.
-- Playbook: nothing new.
+- Main checkout .venv lacks fastapi; use asset-forge-wt/monster-rig/.venv with PYTHONPATH=src.
+- Headless chromium renders WebGL on CPU (56% CPU): launch with --use-angle=d3d11 --enable-gpu.
+- Playbook: nothing new yet.
