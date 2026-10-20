@@ -1,6 +1,9 @@
 # Handoff: animation (round 4: "Fix first" on #22's joints), updated 2026-10-20
-State: working. Code committed on claude/animation (local, this worktree); push once after
-the Blender run and previews. PR #20 ready (not draft). Do not merge (the lead merges).
+State: running a check (bwb5ff2ms: -m blender + previews_v4, log out/run_v4b.log).
+Pushed b80830c (lead asked, so af-proto can re-merge); local 0d077f6 not pushed yet.
+PR #20 ready (not draft). Do not merge (the lead merges). Lead (director 2026-10-20): GPU
+lock only for GPU jobs; re-rig, -m blender and Workbench previews run without it
+(previews use --lock out/own.lock).
 Worktree: C:/Users/DANTE/Documents/GitHub/asset-forge/.claude/worktrees/magical-booth-c546dd
 (no .venv: run C:/Users/DANTE/Documents/GitHub/asset-forge-wt/animation/.venv/Scripts/python.exe
 with PYTHONPATH=src; never edit that old worktree). config.local.toml copied in (gitignored).
@@ -39,12 +42,23 @@ push once. No critics (the lead starts a fresh motion critic). Report 6 lines ma
   (test_app_queue gpu-lock wait and 2 test_library: timing flakes, they also fail on the old
   src under load, untouched files). ruff clean.
 - Real rigs (skeleton_out_fit joints, pure numpy): slide <= 1.6% of leg (limit 2%) on all six.
+- Fresh worktree had LFS pointers for test fixtures: ran git lfs pull (first -m blender run
+  failed on that, not on code).
+- -m blender then: blockfox hind paw tip "slid" 0.3 cm at touchdown (tip came in 1% L up,
+  still moving). Fix 0d077f6: swing curl sin^1.5 (flat on landing) and swing_turn keeps the
+  tip >= 3/4 of the lift. Real rigs fox walk now 0.1% (was 1.5%). Unit 103 passed, ruff clean.
+- Re-rig of six on merged fit: out/rigs_v4, all RIG OK, 4 influences. First previews run
+  (before 0d077f6): all six OK, export OK, RIG_CHECK_OK, LOOP_CHECK_OK; re-rendering now.
 
 ## Next steps
-1. Read out/run_v4.log: RIG lines (6 OK), BLENDER_TESTS (all passed), PREVIEWS rc 0 and
+1. Read out/run_v4b.log: BLENDER_TESTS (all passed), PREVIEWS rc 0 and
    six "OK" rig lines with export OK.
 2. View own GIF frames at 2x (crops): figure size constant, faint lies on the floor, bird hop
    feet together, walk tall.
-3. PR #20 body: add "Motion-fix round 4" after round 3 (scratch round3.md text, placeholders
-   filled), Not exercised; gh pr edit 20 --body-file. Push once; check CI green at head.
+3. PR #20 body (%TEMP%/afsp/pr_body.md is the live copy): round 3 was never added; insert
+   round 3 (old scratch round3.md, paths -> out/previews_v4) and round 4 after round 2; drop
+   stale Not exercised lines (foot fit, fox 18 deg yaw now fixed by #22). gh pr edit 20
+   --body-file. Push; check CI green at head.
+   Finding for the lead's learnings (workers don't write them): tracking the paw/toe tip
+   instead of the ankle caught toes clipping through the floor mid-swing (test failed first).
 4. Report to the lead (local_1a944552 relays): sha, GIF folder, test counts.
