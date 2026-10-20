@@ -4,6 +4,19 @@ Cap: 400 lines; oldest roll to `docs/archive/`. One decision per entry, newest f
 that is not here does not exist. Format: date · id · who decided · the decision · why · what it
 changes. Only the lead edits this file, from the "Board and log" section of merged PRs.
 
+## 2026-10-20 · D-025 · Director · Work on several phases at once
+His words: "get to work / work on multiple phases at once, get more efficient". Changes: Phase 4
+Animation (first slice: 2 legs, 4 legs, bird) and Phase 6 Library and batch start now beside the
+Phase 2 and Phase 5 finishes. Limits kept: one GPU job at a time (models/gpu.lock), at most 3 open
+PRs (Library waits on its branch for a slot), critic gates unchanged. Phases 7 and 8 still wait for
+a working build.
+
+## 2026-10-20 · D-024 · Lead · Skeleton started early; light humanoid rig
+Director "Start now" on Skeleton before PR #9 merged, so Step 3 was built on copied cleaned
+models (PR #15). Humanoid = the 23 required SkeletonProfileHumanoid bones only, mitt hands (light
+to run); bird = neck/tail template with 2 legs and wing bones, chosen by counting legs on the
+ground; at most 4 bone influences per vertex. The Step 2 -> Step 3 hand-over follows PR #9.
+
 ## 2026-10-20 · D-022 · Director · Go faster: later phases run in parallel
 His words, on a 13-21 agent-hour estimate: "thats absurd. do it faster", then "faster!". Asked
 which phases start; answer "Two now, Skeleton next". Changes: Phase 5 Sprites mode A and Phase 9
