@@ -36,8 +36,10 @@ SHEET_EXPOSURE = 1.1
 
 def parse():
     a = sys.argv[sys.argv.index("--") + 1:]
-    o = {"glb": Path(a[0]), "out": Path(a[1]), "type": "humanoid", "template": None,
-         "chain": Path(a[a.index("--chain") + 1]) if "--chain" in a else None,
+    # resolved here: Blender's render paths do not follow a relative "../out" like Python does
+    o = {"glb": Path(a[0]).resolve(), "out": Path(a[1]).resolve(), "type": "humanoid",
+         "template": None,
+         "chain": Path(a[a.index("--chain") + 1]).resolve() if "--chain" in a else None,
          "sheets": "--no-sheets" not in a, "fallback": "--force-fallback" in a}
     if "--type" in a:
         o["type"] = a[a.index("--type") + 1]

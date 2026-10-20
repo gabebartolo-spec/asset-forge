@@ -82,7 +82,7 @@ def rig(clean_glb: Path, out_dir: Path, asset_type: str, blender_exe: str,
     needs `chain`: the limb chains the user confirmed (see skeleton/monster.py)."""
     clean_glb, out_dir = Path(clean_glb), Path(out_dir)
     if asset_type == "monster" and (chain is None or not Path(chain).is_file()):
-        raise RigFailed("Check the limb markers and press Confirm limbs first.")
+        raise RigFailed("Check the limb markers, then press Build skeleton.")
     if not clean_glb.is_file():
         raise RigFailed("There is no cleaned model yet. Run Clean up first.")
     if not blender_exe or not Path(blender_exe).is_file():
