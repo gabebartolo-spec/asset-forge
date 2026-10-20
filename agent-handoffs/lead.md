@@ -7,19 +7,22 @@
   then do it" (D-026).
 
 ## Live (verify with gh pr list / ListAgents; in-process agents die with this session)
-- main: #15, #16, #11, #17, #19 merged this session. Open PRs: #9 only (ours).
-- PR #9 clean: clean-b6 (opus) running method B = MV-Adapter ig2mv SDXL (Apache-2.0; weights in
-  models/hf/hub). C (part-wise) = 3/10. Stop rule: neither >= 8/10 -> report, director decision.
-  Also asked: gate messages in plain words. Lighting removal out of scope (lead).
-- anim-b3 (opus): claude/animation; cadence fix (100-120 steps/min, real gait data), API,
-  Step 4 page, GIFs, draft PR. Clips -> fresh motion-critic.
-- claude/step2-page 1d474f3: done + critic round fixed, NO PR until #9 merges. Open it then and
-  fix two things first: "It broke 2 limits" lists 1 bullet (count the row too or reword); flaky
-  KeyError 'timings' in test_clean_api/test_library (race: settle, not rerun).
-- monster-rig (opus): claude/monster-rig, no PR (cap); Step 1 limb gate = option A (Re-roll main,
-  "Use it anyway" quiet; extra legs stay in the mesh). scipy allowed (licence row).
-- Waiting: sprite backs by multi-view (if B wins), sprite mode B (needs a worktree slot).
-- Not ours: asset-forge-wt/context-trim (another session). Lead worktree: .claude/worktrees/lead-s6.
+- main: #15, #16, #11, #17, #19 merged this session.
+- D-027 TO LOG (director 2026-10-20): Clean colour "Keep improving first" (asked: ship 6/10
+  multi-view, keep improving, or shape only; board clean_choice.png in lead scratchpad).
+- PR #9 clean (head effb435: plain-words gate messages). Best method = B (MV-Adapter, fp8, 9.3 GB,
+  ~60 s/model batched) + per-view Lab grid colour match: 6/10, local branch
+  claude/clean-step-methodB-local a57382f (NOT pushed). Fails: hi3dgen humanoid greaves_back
+  0.122/0.12; hi3dgen fox chest + front lower legs; hi3dgen bird beak (picture-to-mesh
+  registration); triposg fox chest + 2-part mesh. Clean session started from this (see sessions).
+- PR #20 animation: READY (350dcf2), motion critic r2 13/14; needs DIRECTOR LOOK at clips
+  (previews_v3 in side-session-notes/32c9f533.../animation/) before merge. Known: triposg fox
+  walk hind legs fold (Step 3 forward fit ~18 deg yaw); rigid forefoot (foot-joint card).
+- claude/step2-page 1d474f3: done, PR after #9; fix "It broke 2 limits" count first. The jobqueue
+  race fix lives on claude/monster-rig (GpuQueue._settle) and PR #20 also touched jobqueue.py:
+  merge carefully.
+- monster-b2 (subagent, opus): claude/monster-rig, page editor + Step 1 warning + sheets; no PR.
+- Proposed card: Step 3 foot joint fix (task_043885cd). Also log: Step 3 fox yaw ~18 deg.
 
 ## Next steps
 1. On each report: check evidence, spawn the right fresh critic, filter findings.
