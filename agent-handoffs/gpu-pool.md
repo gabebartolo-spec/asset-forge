@@ -1,7 +1,7 @@
 # Handoff: gpu-pool (builder)
 
 Date: 2026-10-20. State: done; PR #28 open and ready, CI running, Auto-fix on (lead merges). Branch `claude/gpu-pool`
-(8237abf; lead follow-up: Clean hook + positional fix in the next commit),
+(head 2853e66: budget lock + lead's Clean follow-up; PR body updated),
 worktree `.claude/worktrees/confident-allen-f3502b`.
 
 ## Task (lead brief, director 2026-10-20: "why is there only 1 gpu queue? open as many as you can")
