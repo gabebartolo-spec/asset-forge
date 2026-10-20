@@ -385,5 +385,5 @@ def test_rig_says_what_to_click_for_each_missing_piece(tmp_path, clean_glb):
         skeleton.rig(tmp_path / "none.glb", tmp_path / "o", "humanoid", exe)
     with pytest.raises(skeleton.RigFailed, match="config.local.toml"):
         skeleton.rig(glb, tmp_path / "o", "humanoid", "")
-    with pytest.raises(skeleton.RigFailed, match="Monsters"):
+    with pytest.raises(skeleton.RigFailed, match="limb markers"):  # a monster needs its chains
         skeleton.rig(glb, tmp_path / "o", "monster", exe)

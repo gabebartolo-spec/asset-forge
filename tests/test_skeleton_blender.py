@@ -95,3 +95,44 @@ def test_godot_imports_the_animal_rig_with_no_errors(fox):
     for name in ("rigged.glb", "test_pose.glb"):
         r = check_rig(fox.out_dir / name, GODOT)
         assert r.ok, r.problems
+
+
+@pytest.fixture(scope="module")
+def spider(tmp_path_factory):
+    """The TripoSG spider (8 legs) rigged from its proposed limb chains. The out folder is given
+    as a relative path, as the app's callers may: Blender must still write the sheet there."""
+    import os
+
+    import numpy as np
+    from glb_factory import write_mesh_glb
+
+    from asset_forge.skeleton.glb import read_mesh
+    from asset_forge.skeleton.limbs import propose
+
+    tmp = tmp_path_factory.mktemp("spider")
+    d = np.load(FIX / "monsters" / "triposg_spider.npz")
+    glb = write_mesh_glb(tmp / "clean.glb", d["v"], d["f"].reshape(-1, 3))
+    chain = tmp / "chain.json"
+    chain.write_text(json.dumps(propose(*read_mesh(glb)).public()))
+    out = Path(os.path.relpath(tmp / "out"))
+    return skeleton.rig(glb, out, "monster", BLENDER, chain=chain), tmp / "out"
+
+
+@needs_blender
+def test_monster_rig_has_a_bone_chain_per_limb_and_obeys_the_limits(spider):
+    res, out = spider
+    assert res.template == "monster" and res.bones == 1 + 3 + 8 * 3
+    assert res.max_influences <= 4 and len(res.limbs) == 8
+    assert {lb["kind"] for lb in res.limbs} == {"leg"}
+    assert {lb["side"] for lb in res.limbs} == {"L", "R"}
+    assert skeleton.check_rig_glb(out / "rigged.glb") == []
+    assert (out / "test_pose.glb").is_file() and (out / "pose_front_clay.png").is_file()
+
+
+@needs_blender
+@needs_godot
+def test_godot_imports_the_monster_rig_and_its_pose(spider):
+    _, out = spider
+    for name in ("rigged.glb", "test_pose.glb"):
+        r = check_rig(out / name)
+        assert r.ok, r.problems
