@@ -33,9 +33,18 @@ changed it since, take #9's version.
 - Real clicks (playwright, Edge, 1366x768 and 1920x1080, mocked clean result on a block model, no page errors):
   scratchpad s2/shots/{1366,1920}_{2a_before_press,2b_busy,2c_pass_after,2d_pass_before,2e_fail,2f_after_redo,
   3_handover}.png. Pass: Next enabled -> click -> Step 3 panel. Fail: Next disabled, pill 3 click ignored, verdict
-  names "9,400 against a limit of 8,000" and "side outline 17%"; Redo -> pass -> Next enabled.
+  shows the triangle fact once (red row "9,400 of 8,000 allowed, down from 310,000") and the bullet "The cleaned shape drifted too far from your original."; Redo -> pass -> Next enabled.
   (dir: C:/Users/DANTE/AppData/Local/Temp/claude/C--Users-DANTE-Documents-GitHub-asset-forge--claude-worktrees-
   asset-forge-status-0d338f/32c9f533-fe4e-47ae-b55b-70ec62248734/scratchpad/s2/shots)
+Screen-fix round 2 (lead's critic list): fail state has no duplicate triangle bullet; one line says Press
+Redo to try again; outline wording has no numbers; pass row says "down from"; Step 3 pill has no "soon"
+pill (it is built); Step 3 shows the cleaned model in its own colour (textured clean.glb, also in the rig
+view); --dim lifted to #b0b8c6. Contrast measured on the 1366 fail shot (pillow): disabled Next 8.2,
+Compare label 8.2, Drag hint 8.7, footer text 8.2, all above 4.5 (Next and soon pill were already 8.2
+and 8.8 before; the critic's numbers did not reproduce). API result gains `broken` (count) and
+`all_problems` (full gate text, used by the batch message); `problems` is the screen list.
+Unit 190 passed in a fresh venv, ruff clean; test_clean_api / test_library timings assert flaked once
+(KeyError 'timings', passed on rerun; likely pre-existing race).
 ### Not exercised
 Real Blender/clean.py through the app (no GPU; mocked); screen-critic and first-use walk-through; a real
 textured clean.glb (the mock is a flat orange colour); batch in the browser; real gate wording is #9's

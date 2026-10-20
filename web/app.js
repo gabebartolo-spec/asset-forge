@@ -78,7 +78,7 @@ function render() {
   const cleanOk = !!(state.clean && state.clean.passed);
   pill3.classList.toggle("clickable", cleanOk && state.step !== 3);
   pill3.onclick = cleanOk && state.step !== 3 ? () => goStep3() : null;
-  $("pill3-soon").classList.toggle("hidden", cleanOk);
+  $("pill3-soon").classList.add("hidden"); // step 3 exists now: unreachable looks like any other plain pill
   const pill2 = $("pill2");
   const back2 = state.done && state.step === 3;
   pill2.classList.toggle("clickable", back2);
@@ -121,7 +121,7 @@ function render() {
     next.textContent = state.busy ? "Working..." : c ? "Next: Skeleton" : "Clean up";
     next.disabled = state.busy || (!!c && !c.passed); // a model that broke a limit cannot go on
     redo.disabled = state.busy;
-    if (c && !c.passed && !state.busy) hint.textContent = "Next is locked until the model fits every limit. Press Redo to try again.";
+    if (c && !c.passed && !state.busy) hint.textContent = "Press Redo to try again.";
     $("clean-intro").classList.toggle("hidden", !!c);
     $("clean-result").classList.toggle("hidden", !c);
     document.querySelectorAll("#clean-view button").forEach((b) =>
@@ -353,7 +353,7 @@ function showVerdict() {
   const bad = c.problems || [];
   v.className = "verdict " + (c.passed ? "ok" : "bad");
   v.textContent = c.passed ? "It fits every limit. It is ready for a skeleton."
-    : `It broke ${bad.length === 1 ? "a limit" : bad.length + " limits"}, so it cannot go on yet:`;
+    : `It broke ${c.broken > 1 ? c.broken + " limits" : "a limit"}${bad.length ? ":" : "."}`;
   ul.replaceChildren(...bad.map((t) => Object.assign(document.createElement("li"), { textContent: t })));
   ul.classList.toggle("hidden", !bad.length);
   facts.replaceChildren();
@@ -364,7 +364,7 @@ function showVerdict() {
   };
   if (c.triangles != null) {
     row("Triangles", `${num(c.triangles)} of ${num(c.triangle_budget)} allowed`
-      + (c.raw_triangles ? ` (was ${num(c.raw_triangles)})` : ""), c.triangles > c.triangle_budget);
+      + (c.raw_triangles ? `, down from ${num(c.raw_triangles)}` : ""), c.triangles > c.triangle_budget);
   }
   if (c.texture && c.texture.width) row("Colour picture", `${c.texture.width} x ${c.texture.height} pixels`);
   if (c.height_m) row("Height", `${Math.round(c.height_m * 100) / 100} m`);
@@ -446,7 +446,7 @@ async function goStep3() {
   try {
     if (state.rig) await showRig(false);
     else {
-      await viewer.load(fileUrl("clean", "clean.glb"));
+      await viewer.load(fileUrl("clean", "clean.glb"), { textured: true });
       showMsg("");
     }
   } catch {
@@ -459,7 +459,7 @@ async function goStep3() {
 async function showRig(keepView) {
   const name = state.pose ? "test_pose.glb" : "rigged.glb";
   await viewer.load(fileUrl("skeleton", name, state.rig.total_s), {
-    keepView, pose: state.pose, showBones: state.bones });
+    keepView, pose: state.pose, showBones: state.bones, textured: true });
   showMsg("");
 }
 

@@ -59,11 +59,26 @@ def verdict(report: dict, asset_type: str) -> list[str]:
     return check(report, asset_type) + colour_problems(report)
 
 
+def plain(problems: list[str]) -> list[str]:
+    """The list the page shows: the triangle count has its own red row, and the outline wording
+    carries no percentages or engine words."""
+    out = []
+    for p in problems:
+        if "riangle" in p:
+            continue
+        if "outline" in p:
+            p = "The cleaned shape drifted too far from your original."
+        if p not in out:
+            out.append(p)
+    return out
+
+
 def summary(report: dict, asset_type: str) -> dict:
     tex = report.get("texture") or {}
     problems = verdict(report, asset_type)
     return {
-        "passed": not problems, "problems": problems,
+        "passed": not problems, "problems": plain(problems), "broken": len(problems),
+        "all_problems": problems,
         "triangles": report.get("triangles"), "triangle_budget": report.get("triangle_budget"),
         "raw_triangles": report.get("raw_triangles"),
         "texture": {"width": tex.get("width"), "height": tex.get("height")},

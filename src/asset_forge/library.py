@@ -112,7 +112,7 @@ def register_library(app: FastAPI, store: Store, queue: GpuQueue, registry: Regi
                 cleaned = clean_now(aid, lambda m: job.set_message(tag + m))
                 if not cleaned["passed"]:  # the made model stays; the card shows where it stopped
                     raise CleanFailed("Made, but the clean-up broke a limit: "
-                                      + " ".join(cleaned["problems"]))
+                                      + " ".join(cleaned["all_problems"]))
                 return {**res, "clean": cleaned, "timings": {
                     "draw": drew["draw_s"], "generate": res["total_s"],
                     "clean": cleaned["total_s"]}}

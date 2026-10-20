@@ -75,9 +75,9 @@ def test_clean_passes_and_serves_the_cleaned_model(client, log):
 
 
 @pytest.mark.parametrize("patch,word", [
-    ({"triangles": 9000}, "9,000"),
+    ({"triangles": 9000}, None),  # the page's red Triangles row names it, not a bullet
     ({"texture": {"width": 2048, "height": 2048}}, "2048x2048"),
-    ({"silhouette": {"threshold": 0.08, "side": 0.2}}, "side outline"),
+    ({"silhouette": {"threshold": 0.08, "side": 0.2}}, "drifted too far"),
 ])
 def test_a_broken_limit_is_named_and_blocks_the_skeleton(settings, fake_registry, patch, word):
     app, c = make_client(settings, fake_registry,
@@ -87,7 +87,12 @@ def test_a_broken_limit_is_named_and_blocks_the_skeleton(settings, fake_registry
         j = finish(c, c.post(f"/api/assets/{aid}/clean").json()["id"])
         r = j["result"]
         assert j["state"] == "done" and r["passed"] is False
-        assert len(r["problems"]) == 1 and word in r["problems"][0]
+        assert r["broken"] == 1
+        if word:
+            (text,) = r["problems"]
+            assert word in text and "%" not in text
+        else:
+            assert r["problems"] == [] and r["triangles"] > r["triangle_budget"]
         assert c.get(f"/api/assets/{aid}").json()["reached"] == "generate"
         s = c.post(f"/api/assets/{aid}/skeleton")  # no Next past a failed gate
         assert s.status_code == 409 and "Clean up" in s.json()["detail"]

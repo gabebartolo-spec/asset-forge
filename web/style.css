@@ -1,4 +1,4 @@
-:root { --bg:#14161a; --panel:#1d2026; --line:#2c313a; --text:#e8eaee; --dim:#9aa3b2;
+:root { --bg:#14161a; --panel:#1d2026; --line:#2c313a; --text:#e8eaee; --dim:#b0b8c6;
   --accent:#2f6fe0; --accent-d:#2a5fc0; --ok:#4fbf7a; --bad:#ff6b6b; }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
