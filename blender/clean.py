@@ -532,11 +532,13 @@ def fill_colour(c, s, edges, deg):
     return diffuse(out, edges, deg, 3)
 
 
-# Measured colour gates for animals (Step 2 fidelity check). Regions are boxes in the reference
-# outline's own normalised coordinates (u from the left, v from the TOP of the bounding box);
-# the same boxes are read on the reference picture and on the saved albedo, through the same
-# registration, over every texel (so the front of the chest counts, not only the picture's side).
-# Only references named here are checked.
+# Measured colour gates (Step 2 fidelity check). Regions are boxes in the reference outline's own
+# normalised coordinates (u from the left, v from the TOP of the bounding box), optionally limited
+# to one side of the model: "back" (texels facing away from the reference camera), "far" (an
+# animal's far flank, the mirrored side), "near", "under" (facing down). The same boxes are read on
+# the reference picture (always its visible side) and on the saved albedo through the same
+# registration. Only references named here are checked; the gates were written from the round-4
+# critic's fix list (PR #9): hidden sides must carry the part's colour, not a neighbour's.
 REGION_GATES = {
     "fox": {
         "chest": (0.08, 0.28, 0.38, 0.58),
@@ -544,46 +546,138 @@ REGION_GATES = {
         "tail_body": (0.80, 0.97, 0.30, 0.70),
         "tail_tip": (0.90, 1.00, 0.72, 1.00),
         "legs": (0.00, 0.90, 0.78, 1.00),
+        "front_lower_legs": (0.17, 0.36, 0.62, 1.00),
+        "hind_lower_legs": (0.55, 0.86, 0.72, 1.00),
+    },
+    "brute": {
+        "shorts": (0.32, 0.58, 0.42, 0.55),
+        "shorts_back": (0.32, 0.58, 0.42, 0.55, "back"),
+    },
+    "humanoid": {
+        "torso": (0.36, 0.64, 0.20, 0.40),
+        "torso_back": (0.36, 0.64, 0.20, 0.40, "back"),
+        "greaves": (0.30, 0.72, 0.72, 0.88),
+        "greaves_back": (0.30, 0.72, 0.72, 0.88, "back"),
+        "boots": (0.28, 0.85, 0.92, 1.00),
+        "boots_back": (0.28, 0.85, 0.92, 1.00, "back"),
+    },
+    "bird": {
+        "beak": (0.00, 0.11, 0.07, 0.13),
     },
 }
 DARK_LUMA = 0.20    # a dark (black sock) pixel
 PALE_LUMA_MIN, PALE_SAT_MAX = 0.55, 0.22   # a white/pale pixel
+WHITE_LUMA = 0.75   # a white streak texel (brighter than polished steel's mid-tones)
+SIDE_COS = 0.3      # |facing| or |normal z| beyond which a texel is on a side
+HEAD_END = 0.2      # animals: head-end fraction of the body length (neck and shoulder zone)
+FAR_PALE_GAP = 0.10  # far neck pale fraction allowed above the near neck's
 
 
 def region_stats(rgb):
+    if not len(rgb):
+        return {"n": 0, "rgb": np.full(3, np.nan), "p90_luma": float("nan"), "pale": float("nan"),
+                "dark": float("nan"), "white": float("nan"), "std_luma": float("nan")}
     mx, mn = rgb.max(axis=1), rgb.min(axis=1)
     sa = (mx - mn) / np.maximum(mx, 1e-6)
     lu = luma(rgb)
     return {"n": int(len(rgb)), "rgb": rgb.mean(axis=0), "p90_luma": float(np.quantile(lu, 0.9)),
             "pale": float(((lu > PALE_LUMA_MIN) & (sa < PALE_SAT_MAX)).mean()),
-            "dark": float((lu < DARK_LUMA).mean())}
+            "dark": float((lu < DARK_LUMA).mean()), "white": float((lu > WHITE_LUMA).mean()),
+            "std_luma": float(lu.std())}
 
 
-def region_gate_checks(ref_s, tex_s):
-    """(name, measured, limit text, ok) per gate; ref_s/tex_s are region_stats by region."""
-    d = lambda k: float(np.linalg.norm(tex_s[k]["rgb"] - ref_s[k]["rgb"]))  # noqa: E731
+def _dist(a, b):
+    return float(np.linalg.norm(a["rgb"] - b["rgb"]))
+
+
+def _warm(s):
+    return float(s["rgb"][0] - s["rgb"][2])
+
+
+def region_gate_checks(ref_s, tex_s, name="fox", model=None):
+    """(name, measured, limit text, ok) per gate; ref_s/tex_s are region_stats by region; model
+    holds the model-space measures (animals). A region with no texels fails (NaN compares false)."""
+    r, t = ref_s, tex_s
+    if name == "brute":  # shorts all the way round, not skin at the back (reads naked)
+        d = _dist(t["shorts_back"], r["shorts"])
+        return [("shorts_back_colour_distance", d, "<= 0.10", d <= 0.10)]
+    if name == "humanoid":
+        out = []
+        for k, lim in (("torso_back", 0.15), ("greaves_back", 0.12), ("boots_back", 0.12)):
+            d = _dist(t[k], r[k.replace("_back", "")])
+            out.append((f"{k}_colour_distance", d, f"<= {lim}", d <= lim))
+        # the back is not one flat colour: the torso keeps at least 0.4 of the picture's contrast
+        q = t["torso_back"]["std_luma"] / max(r["torso"]["std_luma"], 1e-6)
+        out.append(("torso_back_contrast_ratio", q, ">= 0.40", q >= 0.40))
+        # brown boots stay browner than the steel greaves at the back (not one dull taupe)
+        gap_r = _warm(r["boots"]) - _warm(r["greaves"])
+        gap_t = _warm(t["boots_back"]) - _warm(t["greaves_back"])
+        out.append(("boots_minus_greaves_warmth_back", gap_t, f">= {0.5 * gap_r:.3f}",
+                    gap_t >= 0.5 * gap_r))
+        w = _warm(t["greaves_back"])
+        out.append(("greaves_back_warmth", w, f"<= {_warm(r['greaves']) + 0.02:.3f}",
+                    w <= _warm(r["greaves"]) + 0.02))
+        return out
+    if name == "bird":
+        return [("beak_dark_fraction", t["beak"]["dark"], f">= {0.5 * r['beak']['dark']:.2f}",
+                 t["beak"]["dark"] >= 0.5 * r["beak"]["dark"])]
+    d = lambda k: _dist(t[k], r[k])  # noqa: E731
     out = [
-        ("legs_dark_fraction", tex_s["legs"]["dark"], f">= {0.5 * ref_s['legs']['dark']:.2f}",
-         tex_s["legs"]["dark"] >= 0.5 * ref_s["legs"]["dark"]),
-        ("chest_p90_luma_ratio", tex_s["chest"]["p90_luma"] / max(ref_s["chest"]["p90_luma"], 1e-6),
+        ("legs_dark_fraction", t["legs"]["dark"], f">= {0.5 * r['legs']['dark']:.2f}",
+         t["legs"]["dark"] >= 0.5 * r["legs"]["dark"]),
+        ("chest_p90_luma_ratio", t["chest"]["p90_luma"] / max(r["chest"]["p90_luma"], 1e-6),
          "0.85 .. 1.25",
-         0.85 <= tex_s["chest"]["p90_luma"] / max(ref_s["chest"]["p90_luma"], 1e-6) <= 1.25),
-        ("chest_pale_fraction", tex_s["chest"]["pale"], f">= {0.6 * ref_s['chest']['pale']:.2f}",
-         tex_s["chest"]["pale"] >= 0.6 * ref_s["chest"]["pale"]),
+         0.85 <= t["chest"]["p90_luma"] / max(r["chest"]["p90_luma"], 1e-6) <= 1.25),
+        ("chest_pale_fraction", t["chest"]["pale"], f">= {0.6 * r['chest']['pale']:.2f}",
+         t["chest"]["pale"] >= 0.6 * r["chest"]["pale"]),
         ("flank_colour_distance", d("flank"), "<= 0.12", d("flank") <= 0.12),
         ("tail_body_colour_distance", d("tail_body"), "<= 0.15", d("tail_body") <= 0.15),
-        ("tail_body_pale_fraction", tex_s["tail_body"]["pale"],
-         f"<= {ref_s['tail_body']['pale'] + 0.10:.2f}",
-         tex_s["tail_body"]["pale"] <= ref_s["tail_body"]["pale"] + 0.10),
+        ("tail_body_pale_fraction", t["tail_body"]["pale"],
+         f"<= {r['tail_body']['pale'] + 0.10:.2f}",
+         t["tail_body"]["pale"] <= r["tail_body"]["pale"] + 0.10),
         # presence only: the box also holds some tail body of a model whose tail is shorter
-        ("tail_tip_pale_fraction", tex_s["tail_tip"]["pale"],
-         f">= {0.15 * ref_s['tail_tip']['pale']:.2f}",
-         tex_s["tail_tip"]["pale"] >= 0.15 * ref_s["tail_tip"]["pale"]),
+        ("tail_tip_pale_fraction", t["tail_tip"]["pale"],
+         f">= {0.15 * r['tail_tip']['pale']:.2f}",
+         t["tail_tip"]["pale"] >= 0.15 * r["tail_tip"]["pale"]),
     ]
+    for k in ("front_lower_legs", "hind_lower_legs"):  # black from the elbow / hock down
+        out.append((f"{k}_dark_fraction", t[k]["dark"], f">= {0.9 * r[k]['dark']:.2f}",
+                    t[k]["dark"] >= 0.9 * r[k]["dark"]))
+    if model is not None:
+        # the far flank's neck is not whiter than the near one (a mirrored cheek smear)
+        gap = model["far_minus_near_neck_pale"]
+        out.append(("far_minus_near_neck_pale", gap, f"<= {FAR_PALE_GAP}", gap <= FAR_PALE_GAP))
+        # the tail's end-on faces (toward the back) carry the tail, not a white streak
+        out.append(("tail_end_on_pale_fraction", model["tail_end_on_pale"],
+                    f"<= {r['tail_body']['pale'] + 0.05:.2f}",
+                    model["tail_end_on_pale"] <= r["tail_body"]["pale"] + 0.05))
     return out
 
 
-def region_gates(name, ref, reg, right, p, colour):
+def model_side_measures(p, colour, normal, cx, tail, height):
+    """Animals, in model space (head toward -Y, D-021): how much paler the far flank's neck and
+    shoulder (head-end fifth of the length, upper half of the height) is than the near flank's
+    (a mirrored cheek or ruff smeared onto the far side); pale fraction of tail texels whose faces
+    point along the body (end-on to the side camera)."""
+    pale = (luma(colour) > PALE_LUMA_MIN) & (sat(colour) < PALE_SAT_MAX)
+    yf = (p[:, 1] - p[:, 1].min()) / max(np.ptp(p[:, 1]), 1e-9)
+    zf = (p[:, 2] - p[:, 2].min()) / max(height, 1e-9)
+    zone = (yf < HEAD_END) & (zf >= 0.5)
+    far = zone & (p[:, 0] < cx)
+    near = zone & (p[:, 0] >= cx)
+    gap = (float(pale[far].mean()) if far.any() else 0.0) - (
+        float(pale[near].mean()) if near.any() else 0.0)
+    end_on = tail & (np.abs(normal[:, 1]) > 0.6)
+    return {"far_minus_near_neck_pale": gap, "neck_far_texels": int(far.sum()),
+            "neck_near_texels": int(near.sum()),
+            "tail_end_on_pale": float(pale[end_on].mean()) if end_on.any() else 0.0,
+            "tail_end_on_texels": int(end_on.sum())}
+
+
+def region_gates(name, ref, reg, right, p, colour, facing=None, normal=None, far=None,
+                 model=None):
+    """facing: texel normal . camera direction; normal: texel normals; far: bool, far flank;
+    model: model_side_measures (animals)."""
     boxes = REGION_GATES.get(name)
     if not boxes:
         return None
@@ -593,19 +687,31 @@ def region_gates(name, ref, reg, right, p, colour):
     ru, rv = (xx - reg.rx0) / max(rw1, 1), 1 - (yy - reg.ry0) / max(rh1, 1)
     px, py = reg.to_ref(p @ right, p[:, 2])
     tu, tv = (px - reg.rx0) / max(rw1, 1), 1 - (py - reg.ry0) / max(rh1, 1)
+    n = len(p)
+    every = np.ones(n, bool)
+    side_sel = {
+        "all": every,
+        "back": (facing < -SIDE_COS) if facing is not None else every,
+        "under": (normal[:, 2] < -SIDE_COS) if normal is not None else every,
+        "far": far if far is not None else ~every,
+        "near": ~far if far is not None else every,
+    }
     ref_s, tex_s = {}, {}
-    for k, (u0, u1, v0, v1) in boxes.items():
+    for k, box in boxes.items():
+        u0, u1, v0, v1 = box[:4]
+        side = box[4] if len(box) > 4 else "all"
         ref_s[k] = region_stats(ref[rm & (ru >= u0) & (ru < u1) & (rv >= v0) & (rv < v1)][:, :3])
-        sel = (tu >= u0) & (tu < u1) & (tv >= v0) & (tv < v1)
+        sel = (tu >= u0) & (tu < u1) & (tv >= v0) & (tv < v1) & side_sel[side]
         tex_s[k] = region_stats(colour[sel])
-    checks = region_gate_checks(ref_s, tex_s)
+    checks = region_gate_checks(ref_s, tex_s, name, model)
     fmt = lambda s: {k: ([round(float(x), 3) for x in v] if k == "rgb" else round(v, 3))  # noqa
                      for k, v in s.items()}
     return {"reference": name, "passed": all(c[3] for c in checks),
             "gates": [{"gate": c[0], "value": round(float(c[1]), 3), "limit": c[2],
                        "ok": bool(c[3])} for c in checks],
             "reference_regions": {k: fmt(v) for k, v in ref_s.items()},
-            "albedo_regions": {k: fmt(v) for k, v in tex_s.items()}}
+            "albedo_regions": {k: fmt(v) for k, v in tex_s.items()},
+            "model_measures": {k: round(float(v), 4) for k, v in (model or {}).items()}}
 
 
 def bleed(img, mask, px):
@@ -862,7 +968,10 @@ def bake_colour(obj, ref, d0, size, ref_name=None):
             pc_used = np.where(drop[:, None], fill_t[kk], pc_used)
         colour[kk] = alpha_t[kk, None] * pc_used + (1 - alpha_t[kk, None]) * fill_t[kk]
     alpha_used = np.where(known, alpha_t, 0.0)
-    gates = region_gates(ref_name, ref, reg, right, p, colour)
+    model_m = (model_side_measures(p, colour, n, cx, in_tail(p), height)
+               if mirror and ref_name in REGION_GATES else None)
+    gates = region_gates(ref_name, ref, reg, right, p, colour, facing=wt, normal=n,
+                         far=(p[:, 0] < cx) if mirror else None, model=model_m)
     painted = int((alpha_used > 0.5).sum())
 
     img = np.zeros((size, size, 4), np.float32)
@@ -1177,6 +1286,9 @@ def main():
         "loose_parts": {"raw_after_weld": parts_before, "floaters_deleted": floaters,
                         "after_clean": parts_mid - floaters2 if parts_mid else 1,
                         "floaters_deleted_after_decimate": floaters2},
+        # one model is one skin: a second loose part (a tail cut off by the remesh) fails
+        "single_part": {"parts": parts_mid - floaters2 if parts_mid else 1,
+                        "ok": (parts_mid - floaters2 if parts_mid else 1) == 1},
         "silhouette": {
             "measure": "1 - IoU of the filled outline (256 px, fixed world frame) of clean vs raw",
             "threshold": SIL_THRESHOLD, **diff},
