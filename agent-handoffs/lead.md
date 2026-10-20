@@ -1,5 +1,5 @@
 # Asset Forge lead handoff (2026-10-20, session 7)
-## State: working (clean-b8, anim-b4, skel-fit, mocap-cmp, proto running)
+## State: working (clean-b8, anim-b4, skel-fit, mocap-cmp, proto, ref-drawer running)
 
 ## Session goal (director /goal 2026-10-20): "functional build prototype with at least 80% critic pass rate"
 Measure (lead's call): run tools/e2e/run_e2e.py on claude/prototype (main + #9 + step2-page + #20
@@ -33,6 +33,13 @@ shares it; lead edits only lead.md; board-4 handoff commits are its base).
   safe on origin a131c49). Foot ball joint + triposg fox 18 deg yaw; out models/skeleton_out_fit/.
   Pushes, no PR (cap). mocap-cmp (opus): scratch-only side-by-side procedural vs CC0/CMU mocap for
   the person (notes mocap_cmp/); evidence for a D-005 question, nothing ships.
+- proto: claude/prototype 1dacaad = #9 + step2-page + #20 (conflicts in agent-handoffs/prototype.md);
+  runner tools/e2e/run_e2e.py; app on 127.0.0.1:7871 (proto's PID); run1 uses bakeoff ref pictures
+  because text-to-3D drawing was never wired (UnavailableDrawer). Gap: five-view sheets in
+  clean/before|after are not served by the file route (design 5.7) -> fix in step2-page PR.
+- ref-drawer (sonnet): claude/ref-drawer (worktree ref-drawer): SDXL base reference drawer for
+  text-only input. Pushes, no PR. asset-forge-wt now 5 ours + context-trim: remove step worktrees
+  as their PRs merge.
 - Director 2026-10-20: "spawn another helper, stop making me ask, be productive": fill free slots
   unasked.
 - monster-b2 lives in the OLD lead session (claude/monster-rig, head d66d38b); old lead forwards.
