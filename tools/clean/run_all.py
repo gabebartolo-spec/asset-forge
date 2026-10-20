@@ -1,6 +1,9 @@
 """Run the Clean step (blender/clean.py) on the bake-off meshes and build before/after sheets.
 
     python tools/clean/run_all.py [candidate ...]     (default: hi3dgen triposg)
+    python tools/clean/run_all.py --from DIR [candidate ...]   sheets from DIR/<cand>/<prompt>
+
+The command is the app's own (asset_forge.steps.clean_command: method B, multiview colour).
 
 Needs Pillow. Output: models/clean_out/<candidate>/<prompt>/ (clean.glb, report.json, renders),
 docs/audits/clean/<candidate>_<prompt>.jpg sheets and docs/audits/clean/table.md + summary.json.
@@ -50,9 +53,11 @@ def run(cand: str, prompt: str) -> Path:
     out = MODELS / "clean_out" / cand / prompt
     raw = MODELS / "bakeoff" / "out" / cand / f"{prompt}.glb"
     ref = MODELS / "bakeoff" / "refs" / f"{prompt}.png"
+    sys.path.insert(0, str(ROOT / "src"))
+    from asset_forge.steps import clean_command
     cmd = [sys.executable, str(ROOT / "tools/bakeoff/gpu_lock.py"), "run", "clean", "--",
-           blender_exe(), "-b", "--factory-startup", "-P", str(ROOT / "blender/clean.py"), "--",
-           str(raw), str(out), "--type", TYPES[prompt], "--ref", str(ref), "--generator", cand]
+           *clean_command(blender_exe(), ROOT, raw, out, TYPES[prompt], ref, generator=cand,
+                          models_dir=MODELS)]
     if HEIGHTS[prompt]:
         cmd += ["--height", str(HEIGHTS[prompt])]
     done = subprocess.run(cmd, capture_output=True, text=True)
@@ -118,7 +123,13 @@ def sheet(cand: str, prompt: str, out: Path, dest: Path):
 
 
 def main():
-    cands = sys.argv[1:] or ["hi3dgen", "triposg"]
+    argv = sys.argv[1:]
+    src = None
+    if "--from" in argv:
+        i = argv.index("--from")
+        src = Path(argv[i + 1])
+        del argv[i:i + 2]
+    cands = argv or ["hi3dgen", "triposg"]
     docs = ROOT / "docs" / "audits" / "clean"
     docs.mkdir(parents=True, exist_ok=True)
     summary, lines = {}, []
@@ -129,7 +140,7 @@ def main():
     from asset_forge.gates import check
     for cand in cands:
         for prompt in TYPES:
-            out = run(cand, prompt)
+            out = src / cand / prompt if src else run(cand, prompt)
             sheet(cand, prompt, out, docs / f"{cand}_{prompt}.jpg")
             r = json.loads((out / "report.json").read_text())
             broken = check(r, TYPES[prompt])
