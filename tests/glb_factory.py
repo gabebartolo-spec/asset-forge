@@ -47,3 +47,27 @@ def write_broken_glb(path: Path) -> Path:
     jlen = struct.unpack_from("<I", data, 12)[0]
     gltf = json.loads(data[20:20 + jlen])
     return _pack(path, gltf, data[20 + jlen + 8:][:40])
+
+
+def write_mesh_glb(path: Path, v_zup, faces) -> Path:
+    """A one-mesh .glb from Z-up points (Blender's frame), written Y-up like Blender's export."""
+    pos = [(float(x), float(z), float(-y)) for x, y, z in v_zup]
+    idx = [int(i) for t in faces for i in t]
+    pbin = b"".join(struct.pack("<3f", *p) for p in pos)
+    ibin = struct.pack(f"<{len(idx)}I", *idx)
+    lo = [min(p[k] for p in pos) for k in range(3)]
+    hi = [max(p[k] for p in pos) for k in range(3)]
+    gltf = {
+        "asset": {"version": "2.0"},
+        "scene": 0, "scenes": [{"nodes": [0]}], "nodes": [{"mesh": 0, "name": "Model"}],
+        "meshes": [{"primitives": [{"attributes": {"POSITION": 0}, "indices": 1}]}],
+        "buffers": [{"byteLength": len(pbin) + len(ibin)}],
+        "bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": len(pbin), "target": 34962},
+                        {"buffer": 0, "byteOffset": len(pbin), "byteLength": len(ibin),
+                         "target": 34963}],
+        "accessors": [
+            {"bufferView": 0, "componentType": 5126, "count": len(pos), "type": "VEC3",
+             "min": lo, "max": hi},
+            {"bufferView": 1, "componentType": 5125, "count": len(idx), "type": "SCALAR"}],
+    }
+    return _pack(path, gltf, pbin + ibin)

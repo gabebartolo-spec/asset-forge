@@ -11,6 +11,7 @@ can look like an extra leg, so a count there would raise false alarms.
 from __future__ import annotations
 
 import re
+import struct
 from pathlib import Path
 
 NUMBERS = {"no": 0, "zero": 0, "one": 1, "single": 1, "two": 2, "three": 3, "four": 4,
@@ -88,7 +89,7 @@ def check_mesh(mesh: Path, words: str | None, asset_type: str) -> dict | None:
     try:
         v, f = read_mesh(Path(mesh))
         counts = count_limbs(v, f)
-    except (OSError, ValueError, KeyError, IndexError, MemoryError):
+    except (OSError, ValueError, KeyError, IndexError, MemoryError, struct.error):
         if not expected:
             return None
         return {"ok": False, "counts": {}, "expected": {k: v[0] for k, v in expected.items()},

@@ -7,7 +7,8 @@
 Fits the fixed template to the mesh (a monster: builds the bones from its confirmed chains),
 binds it (Blender automatic weights, falling back to distance weights when they fail), limits
 every vertex to 4 bones, strikes a test pose and writes OUT_DIR/rigged.glb, rigged.blend,
-test_pose.glb, skeleton.json and (unless --no-sheets) the test-pose sheet as OUT_DIR/pose_<view>_<clay|colour>.png.
+test_pose.glb, skeleton.json and (unless --no-sheets) the test-pose sheet as
+OUT_DIR/pose_<view>_<clay|colour>.png.
 """
 
 import json
