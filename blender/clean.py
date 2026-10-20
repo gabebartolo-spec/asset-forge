@@ -554,6 +554,9 @@ MV_DEPTH_TOL = 0.006  # z-test: texel within this distance (model frame units) o
 MV_ERODE = 2          # px dropped at each view's silhouette (the edge pixels blend the background)
 MV_FULL_WEIGHT = 0.3  # summed view weight from which the views replace the fill completely
 MV_GAIN = (0.5, 2.0)  # allowed per-channel contrast change when matching the views to the picture
+MV_MATCH_GRID = (6, 12)  # cells (across, down) of the picture's outline box, colour match
+MV_MATCH_PRIOR = 200     # samples worth of the whole-view statistics mixed into each cell
+MV_MATCH_FACING = 0.05   # view weight (facing ** MV_POWER) from which a texel counts
 MV_PICTURE = True     # the picture paints what its camera directly sees; the views the rest
 
 
@@ -653,15 +656,16 @@ def mv_load_views(view_dir):
     return np.stack(out)
 
 
-def mv_sample(views, dep, frame, P, Nn):
-    """Colour of surface points P (model frame, normals Nn) from the views that see them: z-test
-    against each view's depth, weight facing ** MV_POWER, silhouettes eroded. Returns (rgb, w)."""
+def mv_sample_views(views, dep, frame, P, Nn):
+    """Colour of surface points P (model frame, normals Nn) in each view that sees them: z-test
+    against the view's depth, weight facing ** MV_POWER, silhouettes eroded. Returns
+    (rgb (K,n,3), w (K,n)); w = 0 where the view does not see the point."""
     R, c, s = frame
     q = s * (P - c) @ R.T
     nq = Nn @ R.T
     size = views.shape[1]
-    acc = np.zeros((len(P), 3))
-    wsum = np.zeros(len(P))
+    cols = np.zeros((len(views), len(P), 3))
+    ws = np.zeros((len(views), len(P)))
     for k, cam in enumerate(mv_cameras()):
         fg = np.isfinite(dep[k])
         for _ in range(MV_ERODE):
@@ -677,10 +681,104 @@ def mv_sample(views, dep, frame, P, Nn):
         facing = np.clip(-(nq @ cam[1]), 0, 1)
         ok = fg[iy, ix] & (np.abs(z - np.where(fg[iy, ix], dep[k][iy, ix], np.inf))
                            <= MV_DEPTH_TOL)
-        w = np.where(ok, facing ** MV_POWER, 0.0)
-        acc += views[k][iy, ix] * w[:, None]
-        wsum += w
-    return acc / np.maximum(wsum[:, None], 1e-12), wsum
+        ws[k] = np.where(ok, facing ** MV_POWER, 0.0)
+        cols[k] = views[k][iy, ix]
+    return cols, ws
+
+
+def mv_blend(cols, ws):
+    """Weighted blend of the per-view colours. Returns (rgb, summed weight)."""
+    wsum = ws.sum(axis=0)
+    return (cols * ws[..., None]).sum(axis=0) / np.maximum(wsum[:, None], 1e-12), wsum
+
+
+_XYZ = np.array([[0.4124, 0.3576, 0.1805], [0.2126, 0.7152, 0.0722], [0.0193, 0.1192, 0.9505]])
+_WHITE = np.array([0.95047, 1.0, 1.08883])
+
+
+def srgb_to_lab(c):
+    c = np.clip(c, 0, 1)
+    lin = np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+    xyz = lin @ _XYZ.T / _WHITE
+    f = np.where(xyz > 0.008856, np.cbrt(xyz), 7.787 * xyz + 16 / 116)
+    return np.stack([116 * f[..., 1] - 16, 500 * (f[..., 0] - f[..., 1]),
+                     200 * (f[..., 1] - f[..., 2])], axis=-1)
+
+
+def lab_to_srgb(lab):
+    fy = (lab[..., 0] + 16) / 116
+    f = np.stack([fy + lab[..., 1] / 500, fy, fy - lab[..., 2] / 200], axis=-1)
+    xyz = np.where(f > 0.206893, f ** 3, (f - 16 / 116) / 7.787) * _WHITE
+    lin = np.clip(xyz @ np.linalg.inv(_XYZ).T, 0, 1)
+    return np.where(lin <= 0.0031308, lin * 12.92, 1.055 * lin ** (1 / 2.4) - 0.055)
+
+
+def _mean_var(x, n0=0, prior=None):
+    if prior is None or n0 == 0:
+        return x.mean(axis=0), x.var(axis=0)
+    m0, v0 = prior
+    n = len(x)
+    m = (x.sum(axis=0) + n0 * m0) / (n + n0)
+    v = (((x - m) ** 2).sum(axis=0) + n0 * (v0 + (m0 - m) ** 2)) / (n + n0)
+    return m, v
+
+
+def mv_match(cols, ws, uv, pic, pic_uv, grid=MV_MATCH_GRID):
+    """Per-view colour matching. The generator lights each view its own way (a back view brighter
+    or washed out), so each view is matched to the picture on its own: in each cell of a grid over
+    the picture's outline box (uv 0..1 through the same registration the gates use; one cell holds
+    the same body part front and back, near and far flank) the view's Lab mean and spread move onto
+    the picture's pixels' mean and spread in that cell, measured on the texels the view sees.
+    A cell with few samples leans on the whole-view statistics (MV_MATCH_PRIOR).
+    Returns (gain, offset) Lab fields (K, gu, gv, 3) and the texels counted per view."""
+    gu, gv = grid
+
+    def cells(u):
+        return (np.clip((u[0] * gu).astype(int), 0, gu - 1),
+                np.clip((u[1] * gv).astype(int), 0, gv - 1))
+
+    iu, iv = cells(uv)
+    lab_p = srgb_to_lab(pic)
+    pu, pv = cells(pic_uv)
+    prior_p = _mean_var(lab_p)
+    K = len(cols)
+    gain = np.ones((K, gu, gv, 3))
+    offs = np.zeros((K, gu, gv, 3))
+    counts = []
+    for k in range(K):
+        sel = ws[k] > MV_MATCH_FACING
+        counts.append(int(sel.sum()))
+        if sel.sum() < 20 or len(lab_p) < 20:
+            continue
+        lab_v = srgb_to_lab(cols[k][sel])
+        prior_v = _mean_var(lab_v)
+        cu, cv = iu[sel], iv[sel]
+        for a in range(gu):
+            for b in range(gv):
+                m_v, v_v = _mean_var(lab_v[(cu == a) & (cv == b)], MV_MATCH_PRIOR, prior_v)
+                m_p, v_p = _mean_var(lab_p[(pu == a) & (pv == b)], MV_MATCH_PRIOR, prior_p)
+                g = np.clip(np.sqrt(v_p / np.maximum(v_v, 1e-6)), *MV_GAIN)
+                gain[k, a, b], offs[k, a, b] = g, m_p - g * m_v
+    return gain, offs, counts
+
+
+def mv_apply(match, cols, uv):
+    """Matched per-view colours: the cell fields bilinearly interpolated at each point."""
+    gain, offs = match[:2]
+    gu, gv = gain.shape[1:3]
+    x = np.clip(uv[0] * gu - 0.5, 0, gu - 1)
+    y = np.clip(uv[1] * gv - 0.5, 0, gv - 1)
+    x0, y0 = np.minimum(x.astype(int), gu - 2), np.minimum(y.astype(int), gv - 2)
+    fx, fy = (x - x0)[:, None], (y - y0)[:, None]
+
+    def at(F):
+        return ((F[x0, y0] * (1 - fx) + F[x0 + 1, y0] * fx) * (1 - fy)
+                + (F[x0, y0 + 1] * (1 - fx) + F[x0 + 1, y0 + 1] * fx) * fy)
+
+    out = np.empty_like(cols)
+    for k in range(len(cols)):
+        out[k] = lab_to_srgb(srgb_to_lab(cols[k]) * at(gain[k]) + at(offs[k]))
+    return out
 
 
 def mv_generate(obj_co, vi, vn, d0, ref_path, work_dir, mv):
@@ -1113,18 +1211,28 @@ def bake_colour(obj, ref, d0, size, ref_name=None, mv=None, ref_path=None, work_
     mv_info = None
     if mv is not None:
         views, mv_dep, mv_fr, mv_info = mv_generate(co, vi, vn, d0, ref_path, work_dir, mv)
-        mv_vc, mv_vw = mv_sample(views, mv_dep, mv_fr, co, vn)
-        # The generator lights and exposes its views its own way: match them to the picture
-        # (per channel mean and spread) on the vertices both the picture and a view see.
-        both = (s_fill > 0) & (mv_vw > 0)
-        gain, offs = np.ones(3), np.zeros(3)
-        if both.sum() >= 50:
-            gain = np.clip(vcol[both].std(axis=0) / np.maximum(mv_vc[both].std(axis=0), 1e-6),
-                           *MV_GAIN)
-            offs = vcol[both].mean(axis=0) - gain * mv_vc[both].mean(axis=0)
-        mv_vc = np.clip(mv_vc * gain + offs, 0, 1)
-        mv_info["calibration"] = {"vertices": int(both.sum()), "gain": gain.round(3).tolist(),
-                                  "offset": offs.round(3).tolist()}
+        rw1, rh1 = max(reg.rx1 - 1 - reg.rx0, 1), max(reg.ry1 - 1 - reg.ry0, 1)
+
+        def plane_uv(Pp):  # the gates' frame: u from the outline's left, v from its top
+            px, py = reg.to_ref(Pp @ right, Pp[:, 2])
+            return ((px - reg.rx0) / rw1, (py - reg.ry0) / rh1)
+
+        rm = ref_mask(ref)
+        yy, xx = np.nonzero(rm)
+        sn = np.einsum("mk,mkc->mc", bw, vn[vi[tt]])
+        sn /= np.maximum(np.linalg.norm(sn, axis=1, keepdims=True), 1e-12)
+        tc_k, tw_k = mv_sample_views(views, mv_dep, mv_fr, p, sn)
+        # The generator lights and exposes each view its own way: match every view to the
+        # picture cell by cell (mv_match) before the views are blended.
+        match = mv_match(tc_k, tw_k, plane_uv(p), ref[yy, xx, :3].astype(np.float64),
+                         ((xx - reg.rx0) / rw1, (yy - reg.ry0) / rh1))
+        vc_k, vw_k = mv_sample_views(views, mv_dep, mv_fr, co, vn)
+        mv_vc, mv_vw = mv_blend(mv_apply(match, vc_k, plane_uv(co)), vw_k)
+        mv_info["calibration"] = {
+            "method": "per view, per image-plane cell: Lab mean and spread onto the picture's",
+            "grid": list(MV_MATCH_GRID), "view_texels": match[2],
+            "mean_L_gain": match[0][..., 0].mean(axis=(1, 2)).round(3).tolist(),
+            "mean_L_offset": match[1][..., 0].mean(axis=(1, 2)).round(2).tolist()}
         src = s_fill > 0  # the picture's own sunlit sources first, the views everywhere else
         fill_v = fill_colour(np.where(src[:, None], vcol, mv_vc),
                              np.where(src, s_fill, np.clip(mv_vw / MV_FULL_WEIGHT, 0, 1)),
@@ -1151,10 +1259,8 @@ def bake_colour(obj, ref, d0, size, ref_name=None, mv=None, ref_path=None, work_
     fill_t = np.einsum("mk,mkc->mc", bw, fill_v[vi[tt]])
     alpha_t = np.einsum("mk,mk->m", bw, a_vert[vi[tt]])
     if mv is not None:
-        sn = np.einsum("mk,mkc->mc", bw, vn[vi[tt]])
-        sn /= np.maximum(np.linalg.norm(sn, axis=1, keepdims=True), 1e-12)
-        mv_tc, mv_tw = mv_sample(views, mv_dep, mv_fr, p, sn)
-        mv_tc = np.clip(mv_tc * gain + offs, 0, 1)
+        mv_tc, mv_tw = mv_blend(mv_apply(match, tc_k, plane_uv(p)), tw_k)
+        del tc_k, tw_k
         k_mv = np.clip(mv_tw / MV_FULL_WEIGHT, 0, 1)[:, None]
         fill_t = fill_t * (1 - k_mv) + mv_tc * k_mv
         mv_info["texels_from_views"] = int((mv_tw > 0).sum())

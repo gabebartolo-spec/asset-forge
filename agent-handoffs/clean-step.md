@@ -1,37 +1,28 @@
-# Handoff: clean-step (PR #9, builder clean-b6, round 5 method B), 2026-10-20
-Task (lead brief): run method B (MV-Adapter ig2mv SDXL) on all 10 bake-off models against the
-gates of 9a2ec52 (round 4: 2/10; method C best 3/10). If B beats C, build it into clean.py; if
-neither reaches 8/10, stop and report numbers (no further tuning). Do not mark ready.
-Lead decisions: de-lighting the picture OUT of scope (triposg breastplate streak = picture's own
-highlight -> Not exercised). Zero123++ / Era3D banned. If B wins: LICENCES rows for MV-Adapter,
-SDXL base, fp16-fix VAE. Extra: gate messages in src/asset_forge/gates reworded plain (DONE,
-uncommitted; tests/test_gates_budgets.py passes with PYTHONPATH=src).
+# Handoff: clean-step (PR #9, builder clean-b7, method B + per-view colour matching), 2026-10-20
+Task (lead brief): one bounded try. Match each MV-Adapter view to the picture's colour statistics
+before projecting, measure all 10 against the 9a2ec52 gates, measure/cut the +88 s. Stop rule:
+>= 8/10 -> build in, LICENCES rows, sheets, PR #9 body; < 8/10 -> push nothing, keep branch local.
 
-## State (uncommitted in worktree)
-- blender/clean.py: MV block (mv_frame, mv_cameras, mv_pixel, mv_control numpy z-buffer raster,
-  mv_write_control, mv_load_views, mv_sample z-test + facing^4, mv_generate subprocess). bake_colour
-  takes mv=; under MV the mirror is off (use_mirror), fill sources = picture's sunlit vertices
-  else view colours, texel base = views blended over fill by summed weight / MV_FULL_WEIGHT;
-  MV_PICTURE=True keeps the picture on directly-seen texels (variant False = views everywhere).
-  Args: --mv-python EXE --mv-src DIR --hf-home DIR, or --mv-views DIR (reuse generated views).
-- src/asset_forge/multiview.py: runs in models/envs/sdxl (python -I, by path), cpu offload,
-  writes view_k.png + multiview.json (seconds, VRAM peak).
-- Weights: models/hf/hub mv-adapter snapshot 6de4033, VAE 207b116, SDXL base present.
+## RESULT: 6/10 (< 8) -> nothing pushed. Branch claude/clean-step-methodB-local stays local.
+Run M2 (scratch b7/runs/M2/summary.json, views reused from b5/runs/B3 so seed-7 views identical):
+PASS hi3dgen spider, brute; triposg humanoid, spider, brute, bird.
+FAIL hi3dgen humanoid greaves_back 0.122 (<= 0.12); hi3dgen fox chest p90 0.81 + chest pale
+0.087 + front lower legs dark 0.718; hi3dgen bird beak dark 0.0 (registration, not colour);
+triposg fox chest p90 0.838 + single_part (mesh fault, cap).
+M1 (first form: vertex samples, 4x8 cells) gave 3/10: too few vertices per cell (~15).
 
-## Measure
-scratch b5/measure.py CLEAN TAG [jobs] -- --mv-python M/envs/sdxl/Scripts/python.exe
-  --mv-src M/src/mv_adapter --hf-home M/hf   (M = main repo models/). Runs under gpu_lock.
-Runs: B1 fp16 full GPU = 15 GB peak, spilled, 1409 s (unusable). Fixes in multiview.py: text
-encoders encode then leave the GPU; UNet stored fp8 (layerwise casting); duplicate reference cache
-dropped by a pre-hook; views decoded one by one -> peak 7.56 GB, 76 s per model (fp8 views look
-the same as fp16, compared front/back). Picture is 2% of texels on triposg humanoid anyway.
-B2v: global per-channel calibration of views to picture added (MV_GAIN). Humanoid still fails
-greaves/boots back: the generator lights the back brighter (view 2 greaves luma 0.55 vs front 0.23).
-B3 = all 10 models, current code (scratch runs/B3).
+## Method as built (uncommitted->committed on the local branch, see git log)
+blender/clean.py: mv_sample_views (per-view colour + weight), mv_blend, srgb_to_lab/lab_to_srgb,
+mv_match (per view, per cell of a 6x12 grid over the picture's outline box in the gates'
+registration frame: Lab mean/spread of the view's texels -> picture pixels' mean/spread, cell
+shrunk to whole-view stats with prior 200 samples, gain clip MV_GAIN), mv_apply (bilinear field).
+Replaces the old global per-channel gain/offset.
+src/asset_forge/multiview.py: run_batch(jobs) + --batch JOBS.json: loads the generator once.
+
+## Seconds (B3 humanoid): subprocess 89.7 s = ~13 s python/torch import + 16.8 s weight load +
+59.4 s denoise (50 steps) + decode; control maps 2 s; bake itself ~4 s.
+Batch run of 3 models: scratch b7/batch.log (see result there).
 
 ## Known caps
-- triposg fox fails single_part (mesh has 2 parts): no colour method fixes it -> max 9/10.
-
-## Method C (clean-b5): best 3/10 (scratch b5/clean_C.py, part-wise wrap of horizontal slabs).
-Round-4 fails (9a2ec52 gates): brute shorts back x2, humanoid torso/greaves/boots back, fox lower
-legs + far neck + tail end-on, bird beak (registration), triposg fox single_part.
+- triposg fox single_part (2 parts) -> max 9/10 for any colour method.
+- hi3dgen bird beak: picture beak does not land on the model's beak (texel beak orange 0.77).

@@ -79,6 +79,11 @@ def _drop_reference_copy(module, args, kwargs):
 
 
 def run(control, ref_png, out_dir, mv_src, seed=SEED, steps=STEPS):
+    return run_batch([(control, ref_png, out_dir)], mv_src, seed, steps)[0]
+
+
+def run_batch(jobs, mv_src, seed=SEED, steps=STEPS):
+    """jobs: [(control, ref_png, out_dir)]; the generator loads once for the whole batch."""
     sys.path.insert(0, str(mv_src))
     import numpy as np
     import torch
@@ -127,55 +132,66 @@ def run(control, ref_png, out_dir, mv_src, seed=SEED, steps=STEPS):
     pipe.vae.enable_slicing()
     t_load = time.perf_counter() - t0
 
-    d = np.load(control)
-    ctrl = np.concatenate([d["pos"], d["normal"]], axis=-1)  # (6, H, W, 6)
-    ctrl = torch.from_numpy(ctrl).permute(0, 3, 1, 2).to("cuda", dtype)
-    ref = Image.fromarray(prepare_reference(np.asarray(Image.open(ref_png).convert("RGBA"))))
-    t1 = time.perf_counter()
-    latents = pipe(
-        prompt=None, prompt_embeds=pe, negative_prompt_embeds=npe, pooled_prompt_embeds=ppe,
-        negative_pooled_prompt_embeds=nppe, height=SIZE, width=SIZE, num_inference_steps=steps,
-        guidance_scale=GUIDANCE,
-        num_images_per_prompt=6, control_image=ctrl, control_conditioning_scale=1.0,
-        reference_image=ref, reference_conditioning_scale=1.0,
-        cross_attention_kwargs={"scale": 1.0},
-        generator=torch.Generator(device="cuda").manual_seed(seed), output_type="latent",
-    ).images
-    # decode one view at a time after the denoiser's caches are freed (peak stays under 12 GB)
-    torch.cuda.empty_cache()
-    images = []
-    with torch.no_grad():
-        for lat in latents:
-            x = pipe.vae.decode(lat[None] / pipe.vae.config.scaling_factor).sample[0]
-            x = (x / 2 + 0.5).clamp(0, 1).permute(1, 2, 0).float().cpu().numpy()
-            images.append(Image.fromarray((x * 255).round().astype(np.uint8)))
-    t_gen = time.perf_counter() - t1
-    out_dir.mkdir(parents=True, exist_ok=True)
-    for k, im in enumerate(images):
-        im.save(out_dir / f"view_{k}.png")
-    ref.save(out_dir / "reference_768.png")
-    info = {"seconds_load": round(t_load, 1), "seconds_generate": round(t_gen, 1),
-            "seconds_total": round(time.perf_counter() - t0, 1),
-            "vram_peak_gb": round(torch.cuda.max_memory_allocated() / 2**30, 2),
-            "vram_reserved_peak_gb": round(torch.cuda.max_memory_reserved() / 2**30, 2),
-            "vram_weights_gb": round(vram_weights, 2), "vram_cap_gb": VRAM_CAP_GB,
-            "seed": seed, "steps": steps, "guidance": GUIDANCE, "size": SIZE,
-            "adapter": f"{ADAPTER}/{ADAPTER_FILE}", "base": BASE, "vae": VAE}
-    (out_dir / "multiview.json").write_text(json.dumps(info, indent=1))
-    print("MULTIVIEW", json.dumps(info))
-    return info
+    infos = []
+    for control, ref_png, out_dir in jobs:
+        out_dir = Path(out_dir)
+        torch.cuda.reset_peak_memory_stats()
+        d = np.load(control)
+        ctrl = np.concatenate([d["pos"], d["normal"]], axis=-1)  # (6, H, W, 6)
+        ctrl = torch.from_numpy(ctrl).permute(0, 3, 1, 2).to("cuda", dtype)
+        ref = Image.fromarray(prepare_reference(np.asarray(Image.open(ref_png).convert("RGBA"))))
+        t1 = time.perf_counter()
+        latents = pipe(
+            prompt=None, prompt_embeds=pe, negative_prompt_embeds=npe, pooled_prompt_embeds=ppe,
+            negative_pooled_prompt_embeds=nppe, height=SIZE, width=SIZE, num_inference_steps=steps,
+            guidance_scale=GUIDANCE,
+            num_images_per_prompt=6, control_image=ctrl, control_conditioning_scale=1.0,
+            reference_image=ref, reference_conditioning_scale=1.0,
+            cross_attention_kwargs={"scale": 1.0},
+            generator=torch.Generator(device="cuda").manual_seed(seed), output_type="latent",
+        ).images
+        # decode one view at a time after the denoiser's caches are freed (peak stays under 12 GB)
+        torch.cuda.empty_cache()
+        images = []
+        with torch.no_grad():
+            for lat in latents:
+                x = pipe.vae.decode(lat[None] / pipe.vae.config.scaling_factor).sample[0]
+                x = (x / 2 + 0.5).clamp(0, 1).permute(1, 2, 0).float().cpu().numpy()
+                images.append(Image.fromarray((x * 255).round().astype(np.uint8)))
+        t_gen = time.perf_counter() - t1
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for k, im in enumerate(images):
+            im.save(out_dir / f"view_{k}.png")
+        ref.save(out_dir / "reference_768.png")
+        info = {"seconds_load": round(t_load, 1), "seconds_generate": round(t_gen, 1),
+                "seconds_total": round(time.perf_counter() - (t0 if not infos else t1), 1),
+                "vram_peak_gb": round(torch.cuda.max_memory_allocated() / 2**30, 2),
+                "vram_reserved_peak_gb": round(torch.cuda.max_memory_reserved() / 2**30, 2),
+                "vram_weights_gb": round(vram_weights, 2), "vram_cap_gb": VRAM_CAP_GB,
+                "seed": seed, "steps": steps, "guidance": GUIDANCE, "size": SIZE,
+                "adapter": f"{ADAPTER}/{ADAPTER_FILE}", "base": BASE, "vae": VAE}
+        (out_dir / "multiview.json").write_text(json.dumps(info, indent=1))
+        print("MULTIVIEW", json.dumps(info))
+        info["batch_index"] = len(infos)
+        info["seconds_load"] = round(t_load, 1) if not infos else 0.0
+        infos.append(info)
+    return infos
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("control", type=Path)
-    ap.add_argument("ref", type=Path)
-    ap.add_argument("out", type=Path)
+    ap.add_argument("control", type=Path, nargs="?")
+    ap.add_argument("ref", type=Path, nargs="?")
+    ap.add_argument("out", type=Path, nargs="?")
+    ap.add_argument("--batch", type=Path, help="JSON list of [control, ref, out]: one load")
     ap.add_argument("--mv-src", type=Path, required=True)
     ap.add_argument("--seed", type=int, default=SEED)
     ap.add_argument("--steps", type=int, default=STEPS)
     a = ap.parse_args(argv)
-    run(a.control, a.ref, a.out, a.mv_src, a.seed, a.steps)
+    if a.batch:
+        run_batch(json.loads(a.batch.read_text()), a.mv_src, a.seed, a.steps)
+    else:
+        run(a.control, a.ref, a.out, a.mv_src, a.seed, a.steps)
 
 
 if __name__ == "__main__":
