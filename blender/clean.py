@@ -262,6 +262,202 @@ def pick_yaw(verts, ref, kind, generator):
     return max(table, key=table.get), table, "side outline (profile, head toward -Y)"
 
 
+# ---------------------------------------------------------------- solid rebuild
+
+# Some generators (Hi3DGen) return a thin hollow shell: voxel remesh keeps it hollow, so about half
+# of the triangle budget and texture goes on an inside wall nobody sees. Others (TripoSG fox) leave
+# a limb a few mm off the body: two parts. Both are fixed on a coarse voxel copy of the remeshed
+# surface: the hollow is filled and a detached part is bridged to the body, then the filler is fused
+# in by a second voxel remesh (the outer surface is untouched).
+SOLID_N = 128            # voxels along the longest side
+SOLID_SEAL = 3           # voxels: an opening up to twice this wide is sealed to find the hollow
+SOLID_MIN_CAVITY = 0.03  # hollow volume (share of the filled solid) from which it is filled
+SOLID_MIN_PART = 0.002   # parts smaller than this share of the solid are left to drop_floaters
+SOLID_MAX_GAP = 12       # voxels: a part further than this from the body is not bridged
+
+
+def _dil(m, k=1):
+    for _ in range(k):
+        d = m.copy()
+        d[1:] |= m[:-1]
+        d[:-1] |= m[1:]
+        d[:, 1:] |= m[:, :-1]
+        d[:, :-1] |= m[:, 1:]
+        d[:, :, 1:] |= m[:, :, :-1]
+        d[:, :, :-1] |= m[:, :, 1:]
+        m = d
+    return m
+
+
+def _ero(m, k=1):
+    return ~_dil(~m, k)
+
+
+def _flood(seed, free, steps=None):
+    """Voxels of `free` connected to `seed` (6-neighbour), or within `steps` moves of it."""
+    r = seed & free
+    k = 0
+    while steps is None or k < steps:
+        n = _dil(r) & free
+        k += 1
+        if steps is None and k % 8 == 0 and n.sum() == r.sum():
+            return n
+        r = n
+    return r
+
+
+def voxel_solid(obj, n=SOLID_N):
+    """Inside of obj's closed surface on a voxel grid (ray parity along x, y and z, majority vote).
+    Returns (solid (nx,ny,nz) bool, origin, voxel size); a 2-voxel empty border is added."""
+    bvh = bvhtree.BVHTree.FromObject(obj, bpy.context.evaluated_depsgraph_get())
+    co = verts_np(obj).astype(np.float64)
+    lo, hi = co.min(axis=0), co.max(axis=0)
+    h = float(max(hi - lo)) / n
+    pad = 2 + SOLID_SEAL + SOLID_MAX_GAP
+    org = lo - pad * h
+    shape = tuple(int(np.ceil((hi[a] - lo[a]) / h)) + 2 * pad for a in range(3))
+    votes = np.zeros(shape, np.uint8)
+    span = float(max(hi - lo)) * 4
+    for ax in range(3):
+        a1, a2 = [a for a in range(3) if a != ax]
+        cen = [org[a] + (np.arange(shape[a]) + 0.5) * h for a in range(3)]
+        d = Vector(tuple(1.0 if a == ax else 0.0 for a in range(3)))
+        for i in range(shape[a1]):
+            for j in range(shape[a2]):
+                p = [0.0, 0.0, 0.0]
+                p[a1], p[a2], p[ax] = cen[a1][i], cen[a2][j], org[ax] - h
+                o = Vector(p)
+                hits = []
+                while True:
+                    loc, _n, _i, dist = bvh.ray_cast(o, d, span)
+                    if loc is None:
+                        break
+                    t = loc[ax]
+                    if not hits or t - hits[-1] > 1e-7 * span:
+                        hits.append(t)
+                    o = loc + d * (1e-6 * span)
+                if len(hits) < 2:
+                    continue
+                k = np.searchsorted(np.array(hits), cen[ax], side="right")
+                inside = (k % 2) == 1
+                idx = [slice(None)] * 3
+                idx[a1], idx[a2] = i, j
+                votes[tuple(idx)] += inside.astype(np.uint8)
+    return votes >= 2, org, h
+
+
+def _label_big(solid, min_share=SOLID_MIN_PART, most=8):
+    """Connected parts of `solid` of at least min_share of it, biggest first (bool grids)."""
+    left = solid.copy()
+    total = max(int(solid.sum()), 1)
+    parts = []
+    while left.sum() >= min_share * total and len(parts) < most:
+        seed = np.zeros_like(left)
+        seed[tuple(np.argwhere(left)[0])] = True
+        comp = _flood(seed, left)
+        if comp.sum() >= min_share * total:
+            parts.append(comp)
+        left &= ~comp
+    parts.sort(key=lambda c: -int(c.sum()))
+    return parts
+
+
+def solid_filler(solid):
+    """Voxels to add: the sealed hollow (kept one voxel inside the walls) and bridges from each
+    detached part to the body at their closest approach. Returns (filler, info)."""
+    info = {}
+    border = np.zeros_like(solid)
+    border[[0, -1]] = border[:, [0, -1]] = border[:, :, [0, -1]] = True
+    sealed = _ero(_dil(solid, SOLID_SEAL), SOLID_SEAL) | solid
+    outside = _flood(_flood(border, ~sealed), ~solid, SOLID_SEAL + 1)
+    hollow = ~solid & ~outside
+    filled = solid | hollow
+    cav = float(hollow.sum() / max(filled.sum(), 1))
+    info["hollow_share"] = round(cav, 4)
+    filler = np.zeros_like(solid)
+    if cav >= SOLID_MIN_CAVITY:
+        filler |= _dil(hollow, 1) & ~_dil(outside, 1)
+    else:
+        filled = solid
+    parts = _label_big(filled)
+    info["parts_voxels"] = [int(p.sum()) for p in parts]
+    bridges = []
+    if len(parts) > 1:
+        body = parts[0]
+        for part in parts[1:]:
+            grown_p, grown_b = part, body
+            for k in range(1, SOLID_MAX_GAP + 1):
+                grown_p, grown_b = _dil(grown_p), _dil(grown_b)
+                if (grown_p & grown_b).any():
+                    bridge = grown_p & grown_b
+                    filler |= bridge & ~filled
+                    bridges.append(2 * k)
+                    body = body | part | bridge
+                    break
+    info["bridges_gap_voxels"] = bridges
+    info["filler_voxels"] = int(filler.sum())
+    return filler, info
+
+
+def voxel_box_mesh(mask, org, h, name="filler"):
+    """Closed mesh of the voxel blocks in `mask` (outward quads on every exposed face)."""
+    nx, ny, nz = mask.shape
+    m = np.pad(mask, 1)
+    quads = []
+    for ax in range(3):
+        a = np.diff(m.astype(np.int8), axis=ax)
+        for sgn in (1, -1):  # 1: empty->solid (face looks toward -ax), -1: solid->empty (+ax)
+            idx = np.argwhere(a == sgn)
+            if not len(idx):
+                continue
+            base = idx.astype(np.int64)
+            base[:, ax] += 1                       # corner plane along ax (in padded coords)
+            base -= 1                              # back to unpadded corner coords
+            base[:, ax] = idx[:, ax]
+            u, v = [b for b in range(3) if b != ax]
+            c0 = base.copy()
+            c1 = base.copy()
+            c1[:, u] += 1
+            c2 = c1.copy()
+            c2[:, v] += 1
+            c3 = base.copy()
+            c3[:, v] += 1
+            q = np.stack([c0, c1, c2, c3], axis=1)
+            if (sgn == -1) != (ax != 1):  # u x v is +ax except for ax = y: flip to face outward
+                q = q[:, ::-1]
+            quads.append(q)
+    q = np.concatenate(quads)
+    flat = q.reshape(-1, 3)
+    key = (flat[:, 0] * (ny + 3) + flat[:, 1]) * (nz + 3) + flat[:, 2]
+    uniq, inv = np.unique(key, return_inverse=True)
+    corners = np.zeros((len(uniq), 3))
+    corners[inv] = flat
+    verts = org + corners * h
+    faces = inv.reshape(-1, 4)
+    me = bpy.data.meshes.new(name)
+    me.from_pydata(verts.tolist(), [], faces.tolist())
+    me.update()
+    ob = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(ob)
+    return ob
+
+
+def make_solid(work, voxel_size):
+    """Fill a hollow shell, bridge detached parts (block comment above). Returns (obj, info)."""
+    t0 = time.perf_counter()
+    solid, org, h = voxel_solid(work)
+    filler, info = solid_filler(solid)
+    info["voxel_size"] = round(h, 6)
+    if filler.any():
+        ob = voxel_box_mesh(filler, org, h)
+        work = join([work, ob])
+        select_only(work)
+        work.data.remesh_voxel_size = voxel_size
+        bpy.ops.object.voxel_remesh()
+    info["seconds"] = round(time.perf_counter() - t0, 2)
+    return work, info
+
+
 # ---------------------------------------------------------------- silhouettes
 
 def render_silhouettes(objs_by_name, centre, scale, work_dir):
@@ -351,6 +547,15 @@ MIRROR_SNAP = 0.02   # mirrored source must land within this x height of the sur
 SPECK_FULL = (0.5, 0.7)    # facing cos from which the cap lifts completely
 HEAD_DARK = 0.04          # picture: darkest fraction of the head box taken as the face features
 MIRROR_DIRS = ((1.0, 0.0, 0.0),)  # camera directions that are side views (animals)
+# Outline warp (animals, side view): the picture's outline is fitted onto the model's outline seen
+# from the reference camera by a smooth 2D displacement (non-rigid ICP on the two contours), not by
+# per-row sideways shifts only: a bird whose beak sits lower on the model, or a fox whose legs
+# stand further forward, then has the picture's beak and legs land on the model's.
+WARP_GRID = 128          # mask resolution of both outlines (bounding-box normalised)
+WARP_NODES = 16          # control nodes per side of the displacement grid (bilinear)
+WARP_ITERS = 30
+WARP_SMOOTH = (30.0, 1.0)  # smoothness weight, annealed from the first to the second value
+WARP_CLOUD = 60000       # surface points used for the model's outline
 
 
 def luma(c):
@@ -391,6 +596,102 @@ def row_extents(sn, vn, rows):
     return lo, hi
 
 
+def _grow(m, k=1):
+    for _ in range(k):
+        d = m.copy()
+        d[1:] |= m[:-1]
+        d[:-1] |= m[1:]
+        d[:, 1:] |= m[:, :-1]
+        d[:, :-1] |= m[:, 1:]
+        m = d
+    return m
+
+
+def _shrink(m, k=1):
+    return ~_grow(~m, k)
+
+
+def warp_mask(uv, n=WARP_GRID):
+    """Filled outline of points uv (n,2) in [0,1]^2 (v up): splat, close."""
+    g = np.zeros((n, n), bool)
+    iy = np.clip((uv[:, 1] * n).astype(int), 0, n - 1)
+    ix = np.clip((uv[:, 0] * n).astype(int), 0, n - 1)
+    g[iy, ix] = True
+    return _shrink(_grow(g, 2), 2)
+
+
+def warp_contour(m):
+    ys, xs = np.nonzero(m & ~_shrink(m, 1))
+    return np.stack([(xs + 0.5) / m.shape[1], (ys + 0.5) / m.shape[0]], axis=1)
+
+
+def warp_weights(x, c=WARP_NODES):
+    """Bilinear weights of points x (n,2) in [0,1]^2 on a c x c node grid: (idx (n,4), w (n,4))."""
+    t = np.clip(x, 0, 1) * (c - 1)
+    i0 = np.minimum(t.astype(int), c - 2)
+    f = t - i0
+    ix, iy, fx, fy = i0[:, 0], i0[:, 1], f[:, 0], f[:, 1]
+    idx = np.stack([iy * c + ix, iy * c + ix + 1, (iy + 1) * c + ix, (iy + 1) * c + ix + 1], 1)
+    return idx, np.stack([(1 - fx) * (1 - fy), fx * (1 - fy), (1 - fx) * fy, fx * fy], 1)
+
+
+def warp_apply(D, x):
+    idx, w = warp_weights(x, int(round(np.sqrt(len(D)))))
+    return x + (D[idx] * w[..., None]).sum(axis=1)
+
+
+def _nearest(a, b):
+    out = np.empty(len(a), int)
+    for i in range(0, len(a), 1024):
+        out[i:i + 1024] = ((a[i:i + 1024, None, :] - b[None]) ** 2).sum(-1).argmin(1)
+    return out
+
+
+def fit_outline_warp(model_uv, pic_mask):
+    """Smooth displacement D (nodes^2, 2): picture uv = warp_apply(D, model uv), both in their own
+    bounding-box frames. Each round matches every model contour point to its nearest picture contour
+    point and every picture contour point to its nearest warped model contour point, then solves the
+    least-squares node displacements with a smoothness term that starts stiff (a near-global move)
+    and relaxes (local fits: a beak, a leg). Returns (D, outline IoU before, after)."""
+    c = WARP_NODES
+    n = pic_mask.shape[0]
+    mm = warp_mask(model_uv, n)
+    mc, pc = warp_contour(mm), warp_contour(pic_mask)
+    # nearest picture contour point for every grid cell (the forward match is a lookup)
+    gy, gx = np.mgrid[0:n, 0:n]
+    cells = np.stack([(gx.ravel() + 0.5) / n, (gy.ravel() + 0.5) / n], axis=1)
+    near_pc = _nearest(cells, pc).reshape(n, n)
+    idx, w = warp_weights(mc, c)
+    A = np.zeros((len(mc), c * c))
+    np.put_along_axis(A, idx, w, axis=1)
+    lap = []
+    for y in range(c):
+        for x in range(c):
+            for dx, dy in ((1, 0), (0, 1)):
+                if x + dx < c and y + dy < c:
+                    r = np.zeros(c * c)
+                    r[y * c + x], r[(y + dy) * c + x + dx] = -1.0, 1.0
+                    lap.append(r)
+    lap = np.array(lap)
+    LtL = lap.T @ lap / len(lap)
+    AtA_f = A.T @ A / len(mc)
+    D = np.zeros((c * c, 2))
+    for it in range(WARP_ITERS):
+        lam = WARP_SMOOTH[0] * (WARP_SMOOTH[1] / WARP_SMOOTH[0]) ** (it / max(WARP_ITERS - 1, 1))
+        wm = mc + A @ D
+        g = np.clip((wm * n).astype(int), 0, n - 1)
+        tf = pc[near_pc[g[:, 1], g[:, 0]]] - mc
+        j = _nearest(pc, wm)
+        Ab, tb = A[j], pc - mc[j]
+        M = AtA_f + Ab.T @ Ab / len(pc) + lam * LtL + 1e-3 * np.eye(c * c)
+        rhs = A.T @ tf / len(mc) + Ab.T @ tb / len(pc)
+        D = np.linalg.solve(M, rhs)
+    after = warp_mask(warp_apply(D, model_uv), n)
+    i0 = float((mm & pic_mask).sum() / max((mm | pic_mask).sum(), 1))
+    i1 = float((after & pic_mask).sum() / max((after | pic_mask).sum(), 1))
+    return D, i0, i1
+
+
 class Registration:
     """Fit the reference's alpha outline to the model's outline seen from the reference camera.
     Both outlines are normalised to their own bounding box (scale per axis), then each height row
@@ -398,12 +699,23 @@ class Registration:
     (a smoothed shear), so a head that the generator centred but the picture drew left of centre
     still lands on the geometric head."""
 
-    def __init__(self, P_all, right, ref, depth_dir=None):
+    def __init__(self, P_all, right, ref, depth_dir=None, cloud=None):
+        """cloud: dense surface points (the texel positions); given, the outline is fitted by the
+        2D warp (fit_outline_warp) instead of the per-row shift."""
         s, z = P_all @ right, P_all[:, 2]
         self.s0, self.sw = s.min(), max(np.ptp(s), 1e-9)
         self.z0, self.zh = z.min(), max(np.ptp(z), 1e-9)
         ys, xs = np.where(ref_mask(ref))
         self.rx0, self.rx1, self.ry0, self.ry1 = xs.min(), xs.max() + 1, ys.min(), ys.max() + 1
+        self.warp, self.warp_iou = None, None
+        if cloud is not None:
+            cl = cloud[:: max(1, len(cloud) // WARP_CLOUD)]
+            uv = np.stack([(cl @ right - self.s0) / self.sw, (cl[:, 2] - self.z0) / self.zh], 1)
+            g = (np.arange(WARP_GRID) + 0.5) / WARP_GRID
+            gx = np.rint(self.rx0 + g * (self.rx1 - 1 - self.rx0)).astype(int)
+            gy = np.rint(self.ry0 + g * (self.ry1 - 1 - self.ry0)).astype(int)
+            self.warp, i0, i1 = fit_outline_warp(uv, ref_mask(ref)[np.ix_(gy, gx)])
+            self.warp_iou = (round(i0, 4), round(i1, 4))
         rw, rh = self.rx1 - 1 - self.rx0, self.ry1 - 1 - self.ry0
         mlo, mhi = row_extents((s - self.s0) / self.sw, (z - self.z0) / self.zh, REG_ROWS)
         rlo, rhi = row_extents((xs - self.rx0) / max(rw, 1), (ys - self.ry0) / max(rh, 1),
@@ -487,7 +799,11 @@ class Registration:
     def to_ref(self, sv, z):
         """(s along camera right, z) of source points -> reference pixel coordinates."""
         vn = np.clip((z - self.z0) / self.zh, 0, 1)
-        xn = (sv - self.s0) / self.sw + np.interp(vn, self.rows_v, self.shift)
+        if self.warp is not None:
+            w = warp_apply(self.warp, np.stack([(sv - self.s0) / self.sw, vn], axis=1))
+            xn, vn = w[:, 0], w[:, 1]
+        else:
+            xn = (sv - self.s0) / self.sw + np.interp(vn, self.rows_v, self.shift)
         px = self.rx0 + xn * (self.rx1 - 1 - self.rx0)
         py = self.ry0 + vn * (self.ry1 - 1 - self.ry0)
         return px, py
@@ -1106,7 +1422,7 @@ def bake_colour(obj, ref, d0, size, ref_name=None, mv=None, ref_path=None, work_
     right /= np.linalg.norm(right)
     mirror = tuple(round(x, 3) for x in d0) in MIRROR_DIRS
     use_mirror = mirror and mv is None
-    reg = Registration(co, right, ref, None if mirror else d0)
+    reg = Registration(co, right, ref, None if mirror else d0, cloud=p if mirror else None)
     height = max(np.ptp(co[:, 2]), 1e-9)
     mask = ref_mask(ref, erode=3)
     ref_s_img = ref.astype(np.float64)
@@ -1333,6 +1649,7 @@ def bake_colour(obj, ref, d0, size, ref_name=None, mv=None, ref_path=None, work_
             "head_width_ratio_allowed": list(HEAD_WIDTH_RATIO),
             "head_painted_from_reference": head_ok,
             "max_row_shift": round(float(np.abs(reg.shift).max()), 4),
+            "outline_warp_iou_before_after": reg.warp_iou,
             "head_to_head": reg.head_cues,
         },
         "fill": {
@@ -1516,6 +1833,8 @@ def main():
     select_only(work)
     work.data.remesh_voxel_size = max(work.dimensions) / o["voxel_div"]
     bpy.ops.object.voxel_remesh()
+    work, solid_info = make_solid(work, work.data.remesh_voxel_size)
+    report["solid"] = solid_info
     remesh_tris = tri_count(work)
     lap("voxel_remesh", t0)
 
