@@ -38,8 +38,10 @@ non-monster model exports with the Godot check green. Output: notes folder e2e/r
   shots 49eec7e). App on 127.0.0.1:7871 (proto's PID). Run1 (bake-off ref pictures) -> notes
   e2e/run1/. Conflicts recorded in agent-handoffs/prototype.md. Gap: five-view sheets in
   clean/before|after not served by the file route (design 5.7) -> fix in step2-page PR.
-- mocap-cmp (opus): scratch only, notes mocap_cmp/: procedural vs CC0/CMU mocap side by side for
-  the person (licences: notes mocap_licences_2026-10-20.md). Evidence for a D-005 question.
+- mocap-cmp DONE: notes mocap_cmp/side_by_side_{walk,attack,faint}.gif (A = OLD v3 procedural, B =
+  CMU mocap retargeted onto triposg human; licence.txt quotes CMU terms; Quaternius needs an itch
+  button, skipped). B walk/fall read more human; CMU punch weaker than our swipe; slide 1.1-2.9 cm.
+  Before asking the director: redo A with previews_v4 and a fresh motion-critic on both.
 - monster-b2 lives in the OLD lead session (claude/monster-rig); old lead forwards.
 - claude/step2-page a131c49 pushed (count fix + _settle); its worktree was removed. PR after #9.
 - context-trim worktree (claude/context-trim, uncommitted CLAUDE.md + settings) is not ours.
