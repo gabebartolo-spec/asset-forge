@@ -300,6 +300,9 @@ def main():
         "bone_list": [{"name": b.name, "parent": b.parent,
                        "tail": [round(float(x), 5) for x in joints[b.tail]]} for b in bones],
         "limbs": limbs,
+        "foot_pivots": {} if limbs is not None else {
+            k: [round(float(x), 5) for x in p]
+            for k, p in fitter.foot_pivots(v, template).items()},
         "forward": "-Y (glTF +Z)", "seconds": round(time.perf_counter() - t0, 1),
     }
     (out / "skeleton.json").write_text(json.dumps(rep, indent=1))

@@ -13,9 +13,9 @@ D-025). Phase 1 done 2026-10-20 (D-019).
 | Agent | State | Item | Branch / PR | Since |
 |-------|-------|------|-------------|-------|
 | Lead | working | board; critics; merges | this PR | 2026-10-20 |
-| clean-b5 | working | item 5 (colour method change: multi-view vs part-wise) | #9 | 2026-10-20 |
-| anim-b2 | working | item 10 (Animation first slice) | claude/animation | 2026-10-20 |
-| step2-page | working | item 12 (Step 2 page + hand-over) | claude/step2-page | 2026-10-20 |
+| clean-b8 | working | item 5 (method B causes: registration, single part; bar 8/10; D-027) | #9 | 2026-10-20 |
+| anim-b2 | awaiting director | item 10 (clips look) | #20 | 2026-10-20 |
+| step2-fix | working | item 12 (verdict count fix + queue race fix; PR after #9) | claude/step2-page | 2026-10-20 |
 | monster-rig | working | item 13 (monster skeleton + limb count) | claude/monster-rig | 2026-10-20 |
 
 States: working · running a check · awaiting director · blocked · available.
@@ -32,8 +32,8 @@ States: working · running a check · awaiting director · blocked · available.
 ### Phase 2 — Generate and Clean (assigned 2026-10-20: "Yes, split it in two", "spawn 1 more")
 4. DONE 2026-10-20. App shell + Step 1 Generate + generator menu (PR #8); text-only input and
    "Expand my idea" in the page (PR #14).
-5. Step 2 Clean + gates (PR #9). Round 4 critic: 1 of 10 pass (sides and backs guessed from one
-   front picture). Method change: multi-view views vs part-wise wrap, measured on all 10.
+5. Step 2 Clean + gates (PR #9). Method B (multi-view + per-view colour match): 6/10. D-027:
+   keep improving first; fix causes (registration, single part), bar 8/10, then realism critic.
 6. DONE 2026-10-20. Export gate + headless Godot import check (PR #7).
 12. Step 2 page + hand-over to Step 3, built now with Clean mocked; merges after #9 (D-026).
 
