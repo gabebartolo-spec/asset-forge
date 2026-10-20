@@ -49,7 +49,8 @@ def np4(m) -> np.ndarray:
     return np.array([list(r) for r in m])
 
 
-def mesh_min_z(obj) -> float:
+def mesh_z(obj) -> np.ndarray:
+    """World height of every vertex of the skinned (evaluated) mesh."""
     dg = bpy.context.evaluated_depsgraph_get()
     ev = obj.evaluated_get(dg)
     me = ev.to_mesh()
@@ -58,7 +59,25 @@ def mesh_min_z(obj) -> float:
     me.vertices.foreach_get("co", a)
     ev.to_mesh_clear()
     pts = a.reshape(n, 3) @ np4(obj.matrix_world)[:3, :3].T + np4(obj.matrix_world)[:3, 3]
-    return float(pts[:, 2].min())
+    return pts[:, 2]
+
+
+def mesh_min_z(obj) -> float:
+    return float(mesh_z(obj).min())
+
+
+TORSO = ("Hips", "Spine", "Chest", "UpperChest")
+
+
+def torso_mask(obj) -> np.ndarray:
+    """Vertices skinned mostly to the trunk bones (TORSO)."""
+    names = {g.index: g.name for g in obj.vertex_groups}
+    out = np.zeros(len(obj.data.vertices), dtype=bool)
+    for v in obj.data.vertices:
+        if v.groups:
+            g = max(v.groups, key=lambda e: e.weight)
+            out[v.index] = names.get(g.group) in TORSO
+    return out
 
 
 def mesh_box(obj):
@@ -130,8 +149,16 @@ def ground_faint(clip, keyer, act, model):
         for n in D:
             D[n] = T @ D[n]
     keyer.key(act, clip.deltas, only=[root])
+    # how it lies at the end: the lowest vertex is on the floor; the trunk's lowest vertex
+    # should be too (a body propped on its knees or hands is crouched, not lying)
+    scene.frame_set(clip.frames - 1)
+    z = mesh_z(model)
+    mask = torso_mask(model)
+    gap = float(z[mask].min() - z.min()) if mask.any() else float("nan")
     return {"lowest_before_mm": round(min(mins) * 1000, 1),
-            "lift_max_mm": round(float(up.max()) * 1000, 1)}
+            "lift_max_mm": round(float(up.max()) * 1000, 1),
+            "end_lowest_mm": round(float(z.min()) * 1000, 1),
+            "end_torso_gap_mm": round(gap * 1000, 1)}
 
 
 def push_to_nla(arm, actions):
@@ -280,7 +307,7 @@ def main():
         "legs": [lg.name for lg in body.legs],
         "clips": [{"name": c.name, "frames": c.frames, "seconds": round(c.seconds, 3),
                    "loop": c.loop, "speed_m_s": round(c.speed, 4),
-                   "froude": round(c.froude, 3),
+                   "froude": round(c.froude, 3), "cadence_capped": c.capped,
                    "strides_per_s": round(1 / c.gait.seconds, 3) if c.gait else None,
                    "feet_out_of_reach_frames": c.short, "land_frame": c.land_frame}
                   for c in clips],

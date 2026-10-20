@@ -26,6 +26,7 @@ class Gait:
     stroke: float            # metres a planted foot travels under the body
     lift: float              # metres a swinging foot rises
     phases: dict[str, float]
+    early: tuple[str, ...] = ()  # legs whose foot lifts early in the swing (a tuck, not a drag)
 
     @property
     def seconds(self) -> float:
@@ -49,6 +50,10 @@ class Gait:
         h00, h10 = 2 * s**3 - 3 * s**2 + 1, s**3 - 2 * s**2 + s
         h01, h11 = -2 * s**3 + 3 * s**2, s**3 - s**2
         x = h00 * -half + h10 * m + h01 * half + h11 * m
+        if leg in self.early:  # highest 30% of the way through, then down to land
+            p = 0.3
+            w = s / p if s < p else 1.0 + (s - p) / (1.0 - p)
+            return x, self.lift * np.sin(0.5 * np.pi * w), False, s
         return x, self.lift * np.sin(np.pi * s), False, s
 
     def roll(self, leg: str, frame: float, start: float = 0.55, settle: float = 0.4) -> float:

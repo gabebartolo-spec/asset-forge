@@ -75,3 +75,12 @@ def test_without_the_sidecar_godot_imports_the_loops_as_play_once(man, tmp_path)
     loops = {n: LOOP_LINEAR if n in LOOPING else LOOP_NONE for n in CLIP_NAMES}
     res = check_import(glb, loops, exe=GODOT)
     assert not res.ok and any("walk" in p for p in res.problems), res.problems
+
+
+@needs_blender
+def test_the_person_ends_the_faint_lying_on_the_floor(man):
+    rep = json.loads((man.out_dir / "clips.json").read_text(encoding="utf-8"))
+    g = rep["grounding"]["faint"]
+    assert abs(g["end_lowest_mm"]) <= 1.0                       # on the floor, not in or above it
+    # the trunk touches the floor too: lying, not propped up on knees or hands
+    assert g["end_torso_gap_mm"] <= 0.05 * rep["height_m"] * 1000, g

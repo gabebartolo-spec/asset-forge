@@ -4,6 +4,9 @@ foot slide) with known-bad files. The Blender run itself is in test_animate_blen
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import numpy as np
 import pytest
 from anim_factory import GAIT, LEG, clips_json, foot_track, write_anim_glb
@@ -20,7 +23,9 @@ from asset_forge.animate.check import (
 from asset_forge.animate.clips import (
     CLIP_NAMES,
     FROUDE,
+    HIND_SHIN_MAX_DEG,
     LOOPING,
+    MAX_STRIDES_PER_S,
     G,
     animator,
     froude_speed,
@@ -30,6 +35,7 @@ from asset_forge.animate.clips import (
 from asset_forge.animate.gait import foot_slide
 from asset_forge.skeleton import fit
 
+TRIPOSG_FOX = Path(__file__).parent / "fixtures" / "triposg_fox_skeleton.json"
 STICKS = {"humanoid": stick_human, "four_legged": stick_fox, "bird": stick_bird}
 
 
@@ -173,13 +179,18 @@ def test_knees_bend_the_way_the_template_says(made):
 
 # ------------------------------------------------------------------ gait speed: Froude number
 
-def test_walk_and_run_move_at_their_froude_number(made):
+def test_walk_and_run_move_at_their_froude_number_unless_capped(made):
     b, clips = made
     for name in ("walk", "run"):
-        c = clips[name]
-        assert c.speed == pytest.approx(froude_speed(FROUDE[name][b.template], b.leg_len))
-        assert c.speed**2 / (G * b.leg_len) == pytest.approx(FROUDE[name][b.template])
-        assert c.froude == pytest.approx(FROUDE[name][b.template])
+        c, g = clips[name], clips[name].gait
+        v = froude_speed(FROUDE[name][b.template], b.leg_len)
+        assert c.speed == pytest.approx(g.stroke / (g.duty * g.seconds))  # planted feet hold
+        assert c.froude == pytest.approx(c.speed**2 / (G * b.leg_len))
+        assert 1 / g.seconds <= MAX_STRIDES_PER_S[name] + 1e-9, name
+        if not c.capped:                                   # exactly the Froude speed
+            assert c.speed == pytest.approx(v), name
+        else:                                              # slower, never faster
+            assert c.speed < v, name
 
 
 def test_froude_numbers_are_walk_a_quarter_and_run_between_one_and_two_and_a_half():
@@ -195,7 +206,9 @@ def test_froude_speed_and_stride_formulas():
 
 @pytest.mark.parametrize("template", list(STICKS))
 def test_a_small_body_steps_fast_instead_of_shuffling(template):
-    big, small = body(template), body(template, 0.5)
+    # the Froude law itself, on bodies big enough to stay under the readability cap
+    k = 1.0 if template == "humanoid" else 16.0
+    big, small = body(template, k), body(template, k / 2)
     for name in ("walk", "run"):
         a = getattr(animator(big), name)()
         b = getattr(animator(small), name)()
@@ -210,9 +223,61 @@ def test_cadence_follows_the_stride_rule(made):
         fr = FROUDE[name][b.template]
         rule = froude_speed(fr, b.leg_len) / animator(b).stride(name)
         strides_per_s = 1 / clips[name].gait.seconds
+        if rule > MAX_STRIDES_PER_S[name]:   # a small animal: held at the readability cap
+            assert 0.9 * MAX_STRIDES_PER_S[name] <= strides_per_s <= MAX_STRIDES_PER_S[name]
+            continue
         # Animals and birds by Alexander (1976), people by their gait data (HUMAN_STRIDE): a
         # clip may step up to a quarter faster (a short reach) and a little slower (whole frames)
         assert rule * 0.85 <= strides_per_s <= rule * 1.25, (name, strides_per_s, rule)
+
+
+def test_the_readability_cap_is_two_strides_a_second_walking_and_three_running():
+    # lead decision 2026-10-20: a fox trot at 4.3 strides/s and a bird run at 6 strobe at game
+    # scale; the stride stays within the leg's reach, so the capped gait simply moves slower
+    assert MAX_STRIDES_PER_S == {"walk": 2.0, "run": 3.0}
+
+
+@pytest.mark.parametrize("template", ["four_legged", "bird"])
+def test_small_animals_step_no_faster_than_the_cap(template):
+    b = body(template)   # fox and robin sized: their Froude cadence is well over the cap
+    a = animator(b)
+    for name in ("walk", "run"):
+        c = getattr(a, name)()
+        rule = froude_speed(FROUDE[name][template], b.leg_len) / a.stride(name)
+        assert rule > MAX_STRIDES_PER_S[name], (name, rule)
+        assert c.capped and c.gait.seconds >= 1 / MAX_STRIDES_PER_S[name] - 1e-9, name
+        assert c.speed < froude_speed(FROUDE[name][template], b.leg_len)
+        assert c.short == {}
+
+
+def _hind_lean_near_ground(b, clip) -> float:
+    """Most a hind lower leg (stifle to paw) leans from vertical while its paw is within half
+    the swing lift of the ground: low and flat is a leg dragging along the ground."""
+    worst = 0.0
+    for D in clip.deltas:
+        P = b.joint_positions(D)
+        for lg in b.legs:
+            if lg.group != "Hind" or P[lg.foot][2] - lg.ground_z >= 0.5 * clip.gait.lift:
+                continue
+            u = P[lg.foot] - P[lg.lower]
+            worst = max(worst, float(np.degrees(np.arccos(-u[2] / np.linalg.norm(u)))))
+    return worst
+
+
+@pytest.mark.parametrize("rig", ["stick", "triposg_fox"])
+def test_a_hind_leg_never_lies_flat_along_the_ground(rig):
+    # the triposg fox's hind lower leg lay flat behind it (near the ground: walk 52, run 61
+    # degrees) because the stroke reached far behind the hip with the stifle forward
+    if rig == "stick":
+        b = body("four_legged")
+    else:
+        b = Body.from_skeleton_report(json.loads(TRIPOSG_FOX.read_text(encoding="utf-8")))
+    a = animator(b)
+    assert HIND_SHIN_MAX_DEG == 45.0
+    for name in ("walk", "run"):
+        c = getattr(a, name)()
+        assert _hind_lean_near_ground(b, c) <= HIND_SHIN_MAX_DEG + 1e-6, name
+        assert c.short == {}
 
 
 def test_a_run_stride_has_enough_keys_to_see_the_steps(made):
@@ -259,3 +324,64 @@ def test_a_person_runs_at_a_real_cadence():
     b = body("humanoid")
     run = animator(b).run()
     assert 150 <= _steps_per_min(run) <= 180, _steps_per_min(run)
+
+
+# ------------------------------------------------------------------ the person's one-shots
+
+def _track(b, clip, joint) -> np.ndarray:
+    return np.array([b.joint_positions(D)[joint] for D in clip.deltas])
+
+
+def test_the_attack_is_a_swipe_across_the_body_not_a_reach():
+    b = body("humanoid")
+    a = animator(b).attack()
+    hand = _track(b, a, "RightHand.tail")
+    shoulder = _track(b, a, "RightUpperArm")
+    hips = _track(b, a, "Hips")
+    wind = int(np.argmax(hand[:, 1] - shoulder[:, 1]))    # the hand furthest back
+    # wound up: the hand behind the shoulder and well above it
+    assert hand[wind, 1] > shoulder[wind, 1] and hand[wind, 2] > shoulder[wind, 2] + 0.05 * b.height
+    # then it sweeps across: from the right of the body (x < 0) to the left of the middle
+    after = hand[wind:]
+    assert hand[wind, 0] < 0 and after[:, 0].max() > 0.05 * b.height
+    # fast: the strike's top speed is at least three times the wind-up's
+    v = np.linalg.norm(np.diff(hand, axis=0), axis=1) * a.fps
+    assert v[wind:].max() >= 3 * v[:wind].max(), (v[wind:].max(), v[:wind].max())
+    # the hips lunge forward into it (forward is -Y) and come back
+    assert (hips[0, 1] - hips[:, 1].min()) >= 0.1 * b.leg_len
+    np.testing.assert_allclose(hips[-1], hips[0], atol=1e-6)
+
+
+def test_a_hit_knocks_the_torso_and_head_back_then_settles():
+    b = body("humanoid")
+    h = animator(b).hit()
+    head = _track(b, h, "Head")
+    chest = _track(b, h, "UpperChest")
+    back = head[:, 1] - head[0, 1]                         # + is backwards
+    peak = int(np.argmax(back))
+    assert back[peak] >= 0.08 * b.height, back[peak]
+    # the torso itself tips back, not only the head
+    lean0 = head[0] - chest[0]
+    leanp = head[peak] - chest[peak]
+    tilt = np.degrees(np.arctan2(leanp[1], leanp[2]) - np.arctan2(lean0[1], lean0[2]))
+    assert tilt >= 15.0, tilt
+    assert peak < len(head) // 2                           # quick to recoil, slower to settle
+    np.testing.assert_allclose(head[-1], head[0], atol=1e-6)
+
+
+def test_the_faint_ends_lying_flat_with_straight_legs():
+    b = body("humanoid")
+    f = animator(b).faint()
+    P = b.joint_positions(f.deltas[-1])
+    lo = min(p[2] for p in P.values())
+    trunk = np.array([P[n] for n in ("Hips", "Spine", "Chest", "UpperChest", "Neck")])
+    # the trunk lies low and level, not propped up on knees or hands
+    assert trunk[:, 2].max() - lo <= 0.1 * b.height, trunk[:, 2].max() - lo
+    assert np.ptp(trunk[:, 2]) <= 0.05 * b.height
+    # stretched out at full length along the ground
+    ys = np.array([P[n][1] for n in ("Head.tail", "LeftToes.tail", "RightToes.tail")])
+    assert np.ptp(ys) >= 0.85 * b.height, np.ptp(ys)
+    for lg in b.legs:                                      # legs straight, knees not bent up
+        u, v = P[lg.lower] - P[lg.upper], P[lg.foot] - P[lg.lower]
+        bend = np.degrees(np.arccos(u @ v / np.linalg.norm(u) / np.linalg.norm(v)))
+        assert bend <= 15.0, (lg.name, bend)
