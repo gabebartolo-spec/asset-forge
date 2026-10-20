@@ -141,10 +141,14 @@ class GpuQueue:
 def _plain(e: Exception) -> str:
     """Our own errors are already plain words; anything else gets a generic line (the detail
     is in the console and the generator log)."""
+    from .animate import AnimFailed
     from .draw import DrawError
+    from .export import ExportRefused
     from .generators import GeneratorError
     from .skeleton import RigFailed
 
-    if isinstance(e, GeneratorError | DrawError | InterruptedError | RigFailed):
+    if isinstance(e, GeneratorError | DrawError | InterruptedError | RigFailed | AnimFailed):
         return str(e)
+    if isinstance(e, ExportRefused):
+        return "This model cannot be exported yet: " + " ".join(e.reasons)
     return "Something went wrong. Press Redo to try again."
