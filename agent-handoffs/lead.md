@@ -26,7 +26,7 @@
 ## Restart kit
 Briefs are in this session's transcript; respawn from each lane's handoff file above with the
 team-kit template (~/.claude/skills/game-studio-lead/references/team-kit.md). GPU: models/gpu.lock.
-Worktrees in asset-forge-wt: clean-step, sprites, animation, library (4 = cap).
+Worktrees in asset-forge-wt: clean-step, animation, step2-page, monster-rig (4 = cap). Next lane: sprite mode B.
 
 ## Gotchas
 - Generators disagree on which camera the reference faces; check facing per prompt.
