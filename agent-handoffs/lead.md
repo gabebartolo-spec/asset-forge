@@ -18,10 +18,10 @@ Fixture tests/fixtures/multi_fox_ref.png. Suite 262 pass. Not exercised: live SD
 
 ## Merged s8
 #23 #24 #25 #26 #28 #29 #9 (clean 8/10, lead-reviewed sheets) #27 (monster rig, lead-reviewed round-2 screens).
-Open: #20 animation green 3c32535 (needs motion check; GIFs in notes local_68d3bafb.../previews_v4), #30.
+#30 merged (one-subject redraw). Open: #20 animation green 3c32535 (needs motion check; GIFs in notes local_68d3bafb.../previews_v4), #31 docs (roadmap phases 10-12, D-030/31/32, design scope + hard-surface budgets; a watcher merges it on green).
 
 ## Next
-1. #30 green -> merge (--match-head-commit). 2. Re-run e2e run3 on main + #20 + #30 (runner on
+1. (#30 merged; confirm #31 merged.) 2. Re-run e2e run3 on main + #20 + #30 (runner on
 claude/prototype, tools/e2e; app on a free port; chromium with --use-angle=d3d11 --enable-gpu).
 3. Director asked (2026-10-20): "our forge also needs the ability to remove backgrounds/cut the subject out":
 build BiRefNet cutout (MIT; GitHub code + HF weights in its own env, no trust_remote_code; step "Cut out
@@ -30,7 +30,8 @@ the subject" with before/after + Cut again; one_subject gate after; LICENCES.md 
 in the bake-off; wireframe toggle + real-height field; optional side/back reference slots; KTX2 only if Godot
 import check shows a gain. Skip TRELLIS.2 (nvdiffrast banned, 24 GB), LLM/CSG modelling, tree cards.
 5. #20: motion check of the 36 clips (as lead), then director clips. Bird walk slide 0.7>0.5 cm still open.
-6. Board PR: D-030 (VRAM lock, in #28), BiRefNet assignment, merged list.
+6. Director 2026-10-20 (D-032): scope = every 3D asset (gear, props, vehicles, buildings) + Godot-direct modelling kept: ROADMAP Phase 12 (types, hard-surface bake-off, "Build in code" via Claude MCP, rebuild-from-generated, building kits). Not assigned yet: starts only when STATUS lists it. STATUS item 14 (cut-out) is assigned.
+7. Board PR after #20/cut-out merges: agents table is stale (all sessions archived).
 
 ## Director said (2026-10-20)
 D-027 clean keep improving; D-028 clips fix first; D-029 no subagents, helpers = sessions in group
