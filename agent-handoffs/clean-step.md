@@ -5,11 +5,14 @@ update PR #9 body (Evidence, Not exercised, Board and log), mark ready. Method B
 (steps.clean_command). Do NOT run critics; the lead starts a fresh realism critic.
 Report to the lead in <= 6 lines: sha, score, sheet folder path.
 
-## State: running a check (R1, all 10 with fresh MV views), nothing pushed yet
+## State: running a check (R1 TripoSG x5 in parallel), nothing pushed yet
 Worktree .claude/worktrees/reverent-liskov-c185ff, branch claude/intelligent-vaughan-d9a6e6
-(contains origin/claude/clean-step effb435 + methodB-local e34508d). Commit 17e7800 + this handoff.
-Uncommitted: tools/clean/run_all.py (uses steps.clean_command; `--from DIR` builds the doc
-sheets from an existing run without rerunning).
+(contains origin/claude/clean-step effb435 + methodB-local e34508d). Commits 17e7800, a75cd87,
+then the --gpu-lock commit with this handoff.
+Director 2026-10-20 (via lead): gpu.lock only for VRAM-heavy work; CPU Blender runs unlocked in
+parallel. clean.py `--gpu-lock DIR` holds the lock only around the multiview generator.
+clean_command does NOT pass it yet (jobqueue wraps the whole job; the lead's VRAM-budget lock PR
+changes that).
 
 ## Done this session (17e7800)
 - blender/clean.py solid rebuild: `escape_count` (26 directions, one 2D-slice sweep each, 0.1-0.9 s,
@@ -30,11 +33,13 @@ sheets from an existing run without rerunning).
 - Unit: 113 passed; ruff clean.
 
 ## Running jobs
-R1: scratch measure.py (owner clean-b10), output runs/R1/<cand>/<prompt> + R1.log, summary.json.
+R1 results: scratch runs/R1/<cand>/<prompt>; hi3dgen in R1.log, TripoSG in R1_t_<prompt>.log
+(scratch measure2.py = measure.py without the outer lock; started 17:32, ~5-8 min each).
 Scratch: C:/Users/DANTE/AppData/Local/Temp/claude/C--Users-DANTE-Documents-GitHub-asset-forge--claude-worktrees-reverent-liskov-c185ff/a11a6bd7-8e35-448a-8b13-6cc12dc53b2b/scratchpad
-~5 min/model. So far: hi3dgen humanoid FAIL greaves_back_colour_distance 0.127 (<= 0.12): back
-greaves albedo mean 0.28 vs picture 0.20 (MV back view paints bright steel; mv_match cells
-6x12 + prior 200 + bilinear blend leave it light). Front greaves 0.24.
+hi3dgen: spider, brute, fox, bird PASS; humanoid FAIL greaves_back_colour_distance 0.127 (<= 0.12):
+back greaves albedo mean 0.28 vs picture 0.20; crop greaves_crop.png: same steel, but polished
+and brighter than the picture's dark steel (the MV views light steel brighter; mv_match cells
+6x12 + prior 200 + bilinear leave it light). Front greaves 0.24.
 
 ## Environment gotchas
 - Set FORGE_MODELS_DIR=C:/Users/DANTE/Documents/GitHub/asset-forge/models (gpu_lock path guess

@@ -41,6 +41,7 @@ What it does, in order (every number is in report.json):
  6. Silhouette check: 1 - IoU of the filled outline against the raw mesh from front, side, top.
 """
 
+import contextlib
 import json
 import math
 import os
@@ -95,7 +96,7 @@ def parse():
         opts["mv"] = {"views": get("--mv-views")}
     elif "--mv-python" in argv:
         opts["mv"] = {"python": get("--mv-python"), "src": get("--mv-src"),
-                      "hf_home": get("--hf-home")}
+                      "hf_home": get("--hf-home"), "gpu_lock": get("--gpu-lock")}
     if opts["type"] not in BUDGETS:
         raise SystemExit(f"--type must be one of {sorted(BUDGETS)}")
     return opts
@@ -1184,7 +1185,15 @@ def mv_generate(obj_co, vi, vn, d0, ref_path, work_dir, mv):
         if mv.get("hf_home"):
             env["HF_HOME"] = mv["hf_home"]
         env["HF_HUB_OFFLINE"] = "1"  # weights are on disk; never download during a clean
-        r = subprocess.run(cmd, capture_output=True, text=True, env=env)
+        # --gpu-lock DIR: hold the shared GPU lock only while the generator runs (the rest of the
+        # clean is CPU work and runs in parallel with other jobs)
+        lock = contextlib.nullcontext()
+        if mv.get("gpu_lock"):
+            sys.path.insert(0, str(HERE.parent / "src"))
+            from asset_forge.gpu_lock import gpu_lock
+            lock = gpu_lock(Path(mv["gpu_lock"]), "clean multiview", 5.0)
+        with lock:
+            r = subprocess.run(cmd, capture_output=True, text=True, env=env)
         info["seconds_generator"] = round(time.perf_counter() - t1, 2)
         if r.returncode:
             raise SystemExit("Painting the sides the picture cannot see failed. Press Redo; if it "
