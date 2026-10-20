@@ -8,7 +8,10 @@ build step is the bake-off (section 5.2), and its result goes back to him before
 
 A local app that turns a text prompt or a reference image into game-ready art, with no spend:
 
-1. **3D models**: humanoids, monsters (including many-legged ones), and low-poly animals.
+1. **3D models**: humanoids, monsters (including many-legged ones), low-poly animals, and
+   (director, 2026-10-20, D-032) every other game 3D asset: gear, props, vehicles, buildings.
+   Creatures are rigged and animated; hard-surface things (gear, props, vehicles, buildings)
+   are static or move by parts (wheels, doors), see ROADMAP Phase 12.
    Each is generated, rebuilt in Blender into a clean game mesh, given a skeleton, given a
    standard set of animations, and exported for Godot.
 2. **Pokémon-style 2D sprites**: pixel-perfect (every pixel on the grid, a limited palette, no
@@ -231,6 +234,15 @@ and animals with a confident template fit can optionally run straight through.
 | Materials | 1 | 1 |
 | Texture | ≤ 1024×1024 | ≤ 512×512 |
 | Bone influences per vertex | ≤ 4 | ≤ 4 |
+
+**Hard-surface budgets (proposed 2026-10-20, D-032; the bake-off sets the final numbers):**
+
+| Limit | Gear / prop | Vehicle | Building (one piece) |
+|---|---|---|---|
+| Triangles | ≤ 2,000 | ≤ 8,000 | ≤ 12,000 |
+| Materials | 1 | ≤ 2 (glass) | ≤ 2 |
+| Texture | ≤ 512×512 | ≤ 1024×1024 | ≤ 1024×1024 (tileable parts preferred) |
+| Bones | 0 (parts as nodes) | 0 (parts as nodes) | 0 |
 
 Defaults are editable per asset, but the export always checks against the asset's own budget.
 Every export loads in headless Godot with no errors.

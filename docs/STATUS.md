@@ -57,4 +57,7 @@ States: working · running a check · awaiting director · blocked · available.
 ### Phase 9 — Prompt generator (assigned 2026-10-20, D-022)
 8. DONE 2026-10-20. Back end (PR #12) and page (PR #14).
 
+### Phase 10 — Cut out the subject (assigned 2026-10-20, D-031)
+14. BiRefNet "Cut out the subject" step (lead builds it; see ROADMAP Phase 10).
+
 Later phases are in `docs/ROADMAP.md` and start only when listed here.
