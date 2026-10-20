@@ -2,8 +2,9 @@
 
 - the clips are exactly idle, walk, run, attack, hit, faint;
 - every looping clip ends where it starts (no pop) and moves on at the same pace (no kink);
-- planted feet do not slide: each foot joint is replayed through the node tree and measured
-  with gait.foot_slide (the faint is left out: the body falls, the feet go with it).
+- planted feet do not slide: the point of each foot that stays on the ground is replayed
+  through the node tree and measured with gait.foot_slide (the faint is left out: the body
+  falls, the feet go with it).
 
 Pure Python + numpy, reads glTF 2.0 binary directly.
 """
@@ -95,23 +96,27 @@ def _trs(t, r, s) -> np.ndarray:
     return M
 
 
-def world_positions(anims: GlbAnimations, clip: str, joints: list[str], fps: float) -> np.ndarray:
-    """(frames, len(joints), 3) world positions of the named nodes over a clip."""
+def node_of(joint: str) -> str:
+    """The node a joint lives on: "<bone>.tail" (a bone's far end) is on the bone's node."""
+    return joint.removesuffix(".tail")
+
+
+def world_positions(anims: GlbAnimations, clip: str, joints: list[str], fps: float,
+                    tips: dict | None = None) -> np.ndarray:
+    """(frames, len(joints), 3) world positions of the named joints over a clip. A joint is a
+    node, or "<bone>.tail" with its rest position (glTF axes) in `tips`, carried by the bone's
+    node; a tail with no rest position falls back to the node itself."""
     by_node: dict[int, dict[str, Channel]] = {}
     for ch in anims.clips[clip]:
         by_node.setdefault(ch.node, {})[ch.path] = ch
     parent = {c: i for i, n in enumerate(anims.nodes) for c in n.get("children", [])}
-    want = [anims.node_index(j) for j in joints]
-    n_frames = int(round(anims.duration(clip) * fps)) + 1
-    out = np.zeros((n_frames, len(want), 3))
-    for f in range(n_frames):
-        t = f / fps
-        cache: dict[int, np.ndarray] = {}
+    want = [anims.node_index(node_of(j)) for j in joints]
 
-        def world(i, t=t, cache=cache):
+    def world_at(t, cache, animated=True):
+        def world(i):
             if i in cache:
                 return cache[i]
-            nd, ch = anims.nodes[i], by_node.get(i, {})
+            nd, ch = anims.nodes[i], by_node.get(i, {}) if animated else {}
             tr = _sample(ch["translation"], t) if "translation" in ch else nd.get(
                 "translation", [0, 0, 0])
             ro = _sample(ch["rotation"], t) if "rotation" in ch else nd.get(
@@ -122,9 +127,20 @@ def world_positions(anims: GlbAnimations, clip: str, joints: list[str], fps: flo
                 M = world(parent[i]) @ M
             cache[i] = M
             return M
+        return world
 
+    rest = world_at(0.0, {}, animated=False)
+    local = []
+    for j, i in zip(joints, want, strict=True):
+        p = (tips or {}).get(j)
+        local.append(np.linalg.solve(rest(i), [*p, 1.0]) if p is not None and j != node_of(j)
+                     else np.array([0.0, 0.0, 0.0, 1.0]))
+    n_frames = int(round(anims.duration(clip) * fps)) + 1
+    out = np.zeros((n_frames, len(want), 3))
+    for f in range(n_frames):
+        world = world_at(f / fps, {})
         for k, i in enumerate(want):
-            out[f, k] = world(i)[:3, 3]
+            out[f, k] = (world(i) @ local[k])[:3]
     return out
 
 
@@ -168,10 +184,11 @@ def foot_joints(template: str, legs: list[str]) -> list[str]:
     """The joint of each foot that must stay put while it is on the ground. A person's heel
     lifts at push-off and the foot turns about its ball, so the ball (the Toes joint) is the
     one that stays: a flat foot moves as one piece, so a sliding foot moves its ball too. An
-    animal's paw is short; its ankle stays within the limit while the paw tip turns."""
+    animal's paw and a bird's foot turn about their tip ("<leg>Foot.tail"); the ankle above a
+    flat paw swings forward as the pad peels off the ground, which is not a slide."""
     if template == "humanoid":
         return [f"{lg}Toes" for lg in legs]
-    return [f"{lg}Foot" for lg in legs]
+    return [f"{lg}Foot.tail" for lg in legs]
 
 
 def check_animated_glb(glb: Path, rep: dict) -> AnimReport:
@@ -206,21 +223,22 @@ def check_animated_glb(glb: Path, rep: dict) -> AnimReport:
     leg_len = float(rep.get("leg_length_m", 1.0))
     joints = foot_joints(rep.get("template", "humanoid"), rep.get("legs", []))
     meta = {c["name"]: c for c in rep.get("clips", [])}
-    if not joints or any(j not in anims.names for j in joints):
+    if not joints or any(node_of(j) not in anims.names for j in joints):
         out.problems.append("The feet could not be found in the animated file.")
         return out
     for name in CLIP_NAMES:
         if name not in anims.clips or name in NOT_PLANTED:
             continue
         speed = float(meta.get(name, {}).get("speed_m_s", 0.0))
-        tr = world_positions(anims, name, joints, float(rep.get("fps", 30)))
+        tr = world_positions(anims, name, joints, float(rep.get("fps", 30)),
+                             rep.get("foot_tips"))
         worst = 0.0
         for k, j in enumerate(joints):
             s = foot_slide(tr[:, k], rep.get("fps", 30), speed, GLTF_FWD, GLTF_UP,
                            CONTACT_FRAC * leg_len)
             worst = max(worst, s.worst_m)
             if s.worst_m > SLIDE_FRAC * leg_len:
-                part = j.replace("Foot", " foot").replace("Toes", " toes")
+                part = node_of(j).replace("Foot", " foot").replace("Toes", " toes")
                 out.problems.append(f"In {name}, the {part} slides {s.worst_m * 100:.1f} cm while "
                                     f"planted (limit {SLIDE_FRAC * leg_len * 100:.1f} cm).")
         out.slide_cm[name] = round(worst * 100, 3)

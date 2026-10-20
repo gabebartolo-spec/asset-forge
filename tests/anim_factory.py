@@ -99,7 +99,62 @@ def write_anim_glb(path: Path, names=CLIP_NAMES, bad: str | None = None) -> Path
     return _pack(path, gltf, bytes(blob))
 
 
-__all__ = ["FPS", "GAIT", "LEG", "clips_json", "foot_track", "write_anim_glb"]
+PAW_TIP = np.array([0.0, -0.05, 0.02])  # from the ankle node: below it and a little ahead
+
+
+def paw_tips() -> dict:
+    """clips.json "foot_tips" for write_paw_glb (rest positions, glTF axes)."""
+    return {"LeftFoot.tail": [0.1, *PAW_TIP[1:]], "RightFoot.tail": [-0.1, *PAW_TIP[1:]]}
+
+
+def write_paw_glb(path: Path, names=CLIP_NAMES) -> Path:
+    """Two feet that stand still in every clip, except that in idle the left paw peels off the
+    ground and back about its planted tip (PAW_TIP): the tip never moves, the ankle node swings
+    forward 13 mm while staying within the contact band."""
+    nodes = [{"name": "Root", "children": [1, 2]},
+             {"name": "LeftFoot", "translation": [0.1, 0.0, 0.0]},
+             {"name": "RightFoot", "translation": [-0.1, 0.0, 0.0]}]
+    blob = bytearray()
+    accessors, views, anims = [], [], []
+
+    def add(arr: np.ndarray, kind: str) -> int:
+        data = np.ascontiguousarray(arr, dtype="<f4").tobytes()
+        views.append({"buffer": 0, "byteOffset": len(blob), "byteLength": len(data)})
+        blob.extend(data)
+        acc = {"bufferView": len(views) - 1, "componentType": 5126, "count": len(arr),
+               "type": kind}
+        if kind == "SCALAR":
+            acc["min"], acc["max"] = [float(arr.min())], [float(arr.max())]
+        accessors.append(acc)
+        return len(accessors) - 1
+
+    for name in names:
+        frames = 25
+        times = np.arange(frames, dtype=float) / FPS
+        a = np.zeros(frames)
+        if name == "idle":
+            a = 0.25 * np.sin(np.pi * np.arange(frames) / (frames - 1)) ** 2
+        c, s_ = np.cos(a), np.sin(a)
+        # turned about x by a, then moved so the tip stays where it rests: t = x0 + p - R p
+        rp = np.stack([np.zeros(frames), PAW_TIP[1] * c - PAW_TIP[2] * s_,
+                       PAW_TIP[1] * s_ + PAW_TIP[2] * c], 1)
+        tr = np.array([0.1, 0.0, 0.0]) + PAW_TIP - rp
+        q = np.stack([np.sin(a / 2), np.zeros(frames), np.zeros(frames), np.cos(a / 2)], 1)
+        chans, samplers = [], []
+        for out, path_ in ((tr, "translation"), (q, "rotation")):
+            samplers.append({"input": add(times, "SCALAR"),
+                             "output": add(out, "VEC3" if path_ == "translation" else "VEC4"),
+                             "interpolation": "LINEAR"})
+            chans.append({"sampler": len(samplers) - 1, "target": {"node": 1, "path": path_}})
+        anims.append({"name": name, "channels": chans, "samplers": samplers})
+    gltf = {"asset": {"version": "2.0"}, "scene": 0, "scenes": [{"nodes": [0]}],
+            "nodes": nodes, "animations": anims, "accessors": accessors,
+            "bufferViews": views, "buffers": [{"byteLength": len(blob)}]}
+    return _pack(path, gltf, bytes(blob))
+
+
+__all__ = ["FPS", "GAIT", "LEG", "PAW_TIP", "clips_json", "foot_track", "paw_tips",
+           "write_anim_glb", "write_paw_glb"]
 
 
 def write_budget_glb(path: Path, tris: int = 100, materials: int = 1, tex_px: int = 0) -> Path:

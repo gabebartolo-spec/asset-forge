@@ -322,6 +322,11 @@ def main():
         "template": template, "fps": clips[0].fps, "leg_length_m": round(body.leg_len, 4),
         "height_m": round(body.height, 4), "forward": "-Y (glTF +Z)",
         "legs": [lg.name for lg in body.legs],
+        # where each paw or bird foot tip rests, in glTF axes (x, z, -y): the slide check
+        # follows that point, which stays on the ground as the foot turns
+        "foot_tips": {f"{lg.foot}.tail": [round(float(v), 5) for v in
+                                          (lg.tip[0], lg.tip[2], -lg.tip[1])]
+                      for lg in body.legs if template != "humanoid"},
         "clips": [{"name": c.name, "frames": c.frames, "seconds": round(c.seconds, 3),
                    "loop": c.loop, "speed_m_s": round(c.speed, 4),
                    "froude": round(c.froude, 3), "cadence_capped": c.capped,
