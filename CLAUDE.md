@@ -4,10 +4,20 @@ Python 3.12 app (FastAPI backend + a three.js page on localhost) that drives loc
 (ComfyUI or a dedicated env), headless Blender 5.2 and Godot 4.7.2 (export checks only). Read
 this file, then your handoff (`agent-handoffs/<role>.md`), then the design
 (`docs/superpowers/specs/2026-10-19-asset-forge-design.md`, the source of truth for what the
-tool is), then `docs/STATUS.md` "Assigned items". The general rules every project shares live in
+tool is), the roadmap and `docs/STATUS.md` "Assigned items"; those three load in full
+automatically ("Always loaded" below). The general rules every project shares live in
 `~/.claude/CLAUDE.md` and the skills it names (`ask-the-director`, `ai-game-dev-playbook`,
 `github-hygiene`, `game-architecture`, `art-qa-critic`, `ai-slop-art`); this file holds only
 what is true for Asset Forge.
+
+## Always loaded
+
+Claude Code imports these core documents in full at every session start (the `@` lines below),
+so they are part of this file: read them as rules, never skim or skip them.
+
+@docs/superpowers/specs/2026-10-19-asset-forge-design.md
+@docs/ROADMAP.md
+@docs/STATUS.md
 
 ## Philosophy (permanent)
 
@@ -46,7 +56,8 @@ taste and final judgement. Agents supply execution, evidence and honest pushback
 ## Machine rules (shared PC, one 12 GB GPU)
 
 - One GPU job at a time (ComfyUI, Blender bakes/renders, local models). Free ComfyUI VRAM before
-  a Blender bake. Do not run generation while the director is in a fullscreen game.
+  a Blender bake. Never slow down, defer or pause work for what the director is doing on the
+  PC; the one limit is never popping up a window or stealing his focus.
 - Blender always `blender -b` (never a window). Godot only headless (`--headless`), isolated
   `APPDATA=<scratch>`. Never kill Blender, Godot or ComfyUI by image name; kill your own PID.
 - Worktrees: `git worktree add -b claude/<topic> ../asset-forge-wt/<topic> origin/main`. Remove
