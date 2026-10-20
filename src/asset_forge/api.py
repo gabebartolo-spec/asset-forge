@@ -34,14 +34,16 @@ from collections.abc import Callable
 from pathlib import Path
 
 from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .anatomy import check_mesh
 from .config import Settings, load_settings
+from .cutout import CutoutError, Cutter, as_png, default_cutter, needs_model
 from .draw import DrawError, ReferenceDrawer, default_drawer
 from .generators import Registry
+from .gpu_lock import gpu_lock, vram_need
 from .jobqueue import GpuQueue, Job
 from .library import register_library
 from .matte import one_subject, prepare_reference
@@ -103,7 +105,7 @@ def release_idea_writer() -> None:
 
 def create_app(settings: Settings | None = None, registry: Registry | None = None,
                queue: GpuQueue | None = None, expander: Expander | None = None,
-               drawer: ReferenceDrawer | None = None,
+               drawer: ReferenceDrawer | None = None, cutter: Cutter | None = None,
                release_writer: Callable[[], None] | None = None) -> FastAPI:
     settings = settings or load_settings()
     store = Store(settings.library_dir)
@@ -126,6 +128,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
 
     expander = expander or real_expander
     drawer = drawer or default_drawer(settings)
+    cutter = cutter or default_cutter(settings.models_dir)
     release_writer = release_writer or release_idea_writer
 
     gpu_queue = queue or GpuQueue(settings.lock_dir, persist=persist,
@@ -148,6 +151,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
             "types": [{"id": t, "label": TYPE_LABELS[t]} for t in ASSET_TYPES],
             "generators": registry.menu(),
             "text_draw": {"available": drawer.available, "note": drawer.note},
+            "cutout": {"available": cutter.available, "note": cutter.note},
         }
 
     @app.post("/api/assets")
@@ -157,12 +161,46 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         if len(data) > MAX_UPLOAD:
             raise HTTPException(400, "That picture is too big. Use one under 25 MB.")
         try:
-            cut = prepare_reference(data)
-            buf = io.BytesIO()
-            cut.save(buf, "PNG")
-            return store.create_asset(type, buf.getvalue())
-        except ValueError as e:
+            return store.create_asset(type, as_png(cut_picture(data)))
+        except (ValueError, CutoutError) as e:
             raise HTTPException(400, str(e)) from e
+
+    @app.post("/api/cutout")
+    async def cutout(image: UploadFile = File(...),  # noqa: B008
+                     model: bool = Form(False)) -> Response:  # noqa: B008
+        """Cut the subject out of any picture and return a transparent PNG (the page's "Cut
+        out" preview and Claude's tool). `model=true` always uses the cut-out model."""
+        data = await image.read(MAX_UPLOAD + 1)
+        if len(data) > MAX_UPLOAD:
+            raise HTTPException(400, "That picture is too big. Use one under 25 MB.")
+        try:
+            return Response(as_png(cut_picture(data, force_model=model)), media_type="image/png")
+        except (ValueError, CutoutError) as e:
+            raise HTTPException(400, str(e)) from e
+
+    def cut_picture(data: bytes, force_model: bool = False):  # noqa: ANN202
+        """Quick plain-background cut first; the cut-out model when that left no single whole
+        subject (a busy background) or when asked. Falls back to the quick cut, with its plain
+        error, when the model is not installed."""
+        first_error = None
+        try:
+            cut = prepare_reference(data)
+        except ValueError as e:
+            if "not a picture" in str(e):  # nothing for the model to look at
+                raise
+            cut, first_error = None, e
+        if force_model or cut is None or needs_model(cut):
+            if cutter.available:
+                release_writer()
+                with gpu_lock(settings.lock_dir, "asset-forge:cutout",
+                              vram_mb=vram_need("cutout:birefnet"),
+                              budget_mb=settings.gpu_budget_mb, make_room=release_writer):
+                    return prepare_reference(cutter.cut(data))
+            if force_model:
+                raise CutoutError(cutter.note)
+        if cut is None:
+            raise first_error
+        return cut
 
     def need_drawer() -> None:
         if not drawer.available:
