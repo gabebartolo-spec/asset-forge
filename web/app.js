@@ -623,6 +623,7 @@ function showLimbs() {
     rm.onclick = () => removeLimb(i);
     li.append(pick, rm);
     list.append(li);
+    if (i === state.limbSel) requestAnimationFrame(() => li.scrollIntoView({ block: "nearest" }));
   });
   render();
 }
