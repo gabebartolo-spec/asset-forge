@@ -13,7 +13,7 @@ Deliverables: bake-off report (design 5.2 bar). Gate: the director's menu (which
 generators, in what order; D-018, D-019) in DECISIONS.md.
 
 ## Phase 2 — 3D: Generate and Clean, end to end
-Deliverables: app shell (step screens, viewer, job store, one GPU queue); Generate with the
+Deliverables: app shell (step screens, viewer, job store, GPU budget queue); Generate with the
 generator menu (every generator on the D-019 menu behind one interface, top preselected; D-018);
 Clean
 (rebuild, decimate, UV, bake); five-view inspection sheet; export gate; headless Godot import
