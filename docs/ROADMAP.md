@@ -74,5 +74,26 @@ Source: r/aigamedev posts the director shared, 2026-10-20 (assessed in the lead 
 - Optional side and back reference pictures supplied by the user (better colour than invented views).
 - "Send back with notes" on a step (a Redo that takes a note), designed with Phase 8's Claude MCP queue.
 - KTX2 textures: only if the Godot import check shows a size or load-time gain.
-Not adopted (reasons in D-031): TRELLIS.2 (nvdiffrast banned, 24 GB), Claude-built CSG/three.js models
-(not local or free, poor on creatures), tree leaf cards and armour kits (outside the design).
+Not adopted (reasons in D-031): TRELLIS.2 (nvdiffrast banned, 24 GB), three.js models (cannot export to Godot);
+Claude-built Godot CSG models moved to Phase 12 (D-032); tree leaf cards and armour kits (outside the design).
+
+## Phase 12 — Every kind of 3D asset: gear, props, vehicles, buildings (director, 2026-10-20, D-032)
+His words: "we want this program to be adept at all 3d models, gear, objects, vehicles, buildings"
+and "modelling in godot directly may be useful, dont abandon that thread, we are going to model more
+than just monsters in the game". Deliverables, in order, each starting only when STATUS lists it:
+1. Types Prop/gear, Vehicle, Building in Step 1: per-type reference-drawing views, per-type budgets
+   (design section 6), Clean that keeps hard edges and flat faces (the creature rebuild rounds them),
+   a static or by-parts export (no skeleton), the same gates and Godot import check.
+2. Bake-off for hard-surface: the Hi3DGen and TripoSG menu on 5 prompts (a sword, a crate, a car, a hut,
+   a robot), scored on the same five-view inspection; the director picks.
+3. Godot-direct modelling ("Build in code"): Claude, operating Forge through the Phase 8 MCP, writes a
+   Godot CSG or generated-mesh scene (or a Blender script) from a reference or five-view sheet; Forge runs
+   it headless, bakes a .glb (Godot's GLTF export, to be verified), applies the gates and shows the
+   five views. Fits vehicles, buildings, robots, props; not organic creatures (the community poster's
+   own caveat). Not a paid API inside the app: the director's own Claude session does the writing, as in
+   Phase 8, so hard rule 1 (local and free) holds.
+4. Rebuild-from-generated: generate a model from a picture, then Claude rebuilds it as a clean procedural
+   model with the needed improvements; compare against the raw model on the same views.
+5. Modular kits for buildings (walls, roofs, doors that snap together) so a town stays light to run.
+Gate: one gear piece, one vehicle and one building exported inside their budgets, Godot-green, five-view
+inspected, and a fresh realism critic passes; director sees them.

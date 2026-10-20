@@ -8,7 +8,10 @@ build step is the bake-off (section 5.2), and its result goes back to him before
 
 A local app that turns a text prompt or a reference image into game-ready art, with no spend:
 
-1. **3D models**: humanoids, monsters (including many-legged ones), and low-poly animals.
+1. **3D models**: humanoids, monsters (including many-legged ones), low-poly animals, and
+   (director, 2026-10-20, D-032) every other game 3D asset: gear, props, vehicles, buildings.
+   Creatures are rigged and animated; hard-surface things (gear, props, vehicles, buildings)
+   are static or move by parts (wheels, doors), see ROADMAP Phase 12.
    Each is generated, rebuilt in Blender into a clean game mesh, given a skeleton, given a
    standard set of animations, and exported for Godot.
 2. **Pokémon-style 2D sprites**: pixel-perfect (every pixel on the grid, a limited palette, no

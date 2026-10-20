@@ -4,6 +4,15 @@ Cap: 400 lines; oldest roll to `docs/archive/`. One decision per entry, newest f
 that is not here does not exist. Format: date · id · who decided · the decision · why · what it
 changes. Only the lead edits this file, from the "Board and log" section of merged PRs.
 
+## 2026-10-20 · D-032 · Director · Forge makes every kind of 3D asset, and Godot-direct modelling stays on the roadmap
+His words: "we want this program to be adept at all 3d models, gear, objects, vehicles, buildings" and
+"modelling in godot directly may be useful, dont abandon that thread, we are going to model more than just
+monsters in the game". Changes: design section 1 scope and proposed hard-surface budgets (section 6),
+ROADMAP Phase 12 (types, bake-off, Godot-direct modelling through the Claude MCP, rebuild-from-generated,
+building kits). Lead's call: Godot-direct modelling is written by the director's Claude session via
+Phase 8, not by a paid API inside the app, so "local and free" stands; budgets are proposals until the
+bake-off. Supersedes the D-031 line that put Claude-built models outside the design.
+
 ## 2026-10-20 · D-031 · Director · Take the good ideas from the community posts; add background cut-out
 His words: "assess the claims in all the images I linked you, take whats good from it", "our forge also
 needs the ability to remove backgrounds/cut the subject out of the image", "well incorporate all the good
