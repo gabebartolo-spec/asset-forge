@@ -9,7 +9,11 @@
     GET  /api/assets/{id}/files/{step}/{name}   an output (raw.glb, input.png, ...)
     POST /api/assets/{id}/clean           Step 2 hook (not wired yet: 501)
     POST /api/assets/{id}/skeleton        Step 3: fit, bind, test pose (queued; needs clean.glb)
-    POST /api/assets/from-text            text-only input (not built yet: 501)
+    POST /api/expand                      {idea, type, variation?} -> job; result {prompt}
+                                          ("Expand my idea", on the one GPU queue)
+    POST /api/assets/from-text            {prompt, type} -> new asset with no picture yet
+    POST /api/assets/{id}/draw            {prompt?, seed?} -> job: draws input.png from the words
+                                          (re-roll = call again); 501 until the SDXL drawer lands
 """
 
 from __future__ import annotations
@@ -18,6 +22,7 @@ import io
 import mimetypes
 import secrets
 import time
+from collections.abc import Callable
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
@@ -25,6 +30,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .config import Settings, load_settings
+from .draw import DrawError, ReferenceDrawer, default_drawer
 from .generators import Registry
 from .jobqueue import GpuQueue, Job
 from .matte import prepare_reference
@@ -36,6 +42,7 @@ mimetypes.add_type("model/gltf-binary", ".glb")
 
 TYPE_LABELS = {"humanoid": "Humanoid", "monster": "Monster", "animal": "Animal"}
 MAX_UPLOAD = 25 * 1024 * 1024
+MAX_WORDS = 600
 
 
 class GenerateRequest(BaseModel):
@@ -43,8 +50,48 @@ class GenerateRequest(BaseModel):
     seed: int | None = None
 
 
+class ExpandRequest(BaseModel):
+    idea: str
+    type: str
+    variation: int = 0  # 0 = the first version; each re-roll sends a new number
+
+
+class TextAssetRequest(BaseModel):
+    prompt: str
+    type: str
+
+
+class DrawRequest(BaseModel):
+    prompt: str | None = None
+    seed: int | None = None
+
+
+Expander = Callable[[str, str, int | None], str]
+
+
+def real_expander(idea: str, asset_type: str, seed: int | None) -> str:
+    """The Qwen prompt writer (src/asset_forge/prompts). It runs in its own env and stays
+    loaded after the first call (about 4.2 GB of VRAM) until `release_idea_writer` frees it."""
+    from . import prompts
+    from .generators import GeneratorError
+
+    try:
+        return prompts.expand(idea, asset_type, seed=seed)
+    except prompts.PromptGenError as e:
+        raise GeneratorError("The idea writer could not run. Type the full description "
+                             "yourself, or try Expand my idea again.") from e
+
+
+def release_idea_writer() -> None:
+    from .prompts import llm
+
+    llm.stop()
+
+
 def create_app(settings: Settings | None = None, registry: Registry | None = None,
-               queue: GpuQueue | None = None) -> FastAPI:
+               queue: GpuQueue | None = None, expander: Expander | None = None,
+               drawer: ReferenceDrawer | None = None,
+               release_writer: Callable[[], None] | None = None) -> FastAPI:
     settings = settings or load_settings()
     store = Store(settings.library_dir)
     store.fail_unfinished()
@@ -55,6 +102,10 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
             store.write_status(job.asset_id, job.step, job.public())
         except NotFound:
             pass
+
+    expander = expander or real_expander
+    drawer = drawer or default_drawer(settings)
+    release_writer = release_writer or release_idea_writer
 
     gpu_queue = queue or GpuQueue(settings.lock_dir, persist=persist)
     if queue is not None:
@@ -74,6 +125,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         return {
             "types": [{"id": t, "label": TYPE_LABELS[t]} for t in ASSET_TYPES],
             "generators": registry.menu(),
+            "text_draw": {"available": drawer.available, "note": drawer.note},
         }
 
     @app.post("/api/assets")
@@ -90,11 +142,64 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         except ValueError as e:
             raise HTTPException(400, str(e)) from e
 
+    def need_drawer() -> None:
+        if not drawer.available:
+            raise HTTPException(501, drawer.note)
+
+    def clean_words(text: str, what: str) -> str:
+        text = " ".join(text.split())
+        if not text:
+            raise HTTPException(400, f"Type {what} first.")
+        if len(text) > MAX_WORDS:
+            raise HTTPException(400, "That is too long. Please keep it under 600 letters.")
+        return text
+
+    @app.post("/api/expand")
+    def expand_idea(req: ExpandRequest) -> dict:
+        idea = clean_words(req.idea, "a few words")
+        if req.type not in ASSET_TYPES:
+            raise HTTPException(400, "Choose Humanoid, Monster or Animal first.")
+        seed = req.variation if req.variation > 0 else None
+
+        def run(job: Job) -> dict:
+            job.set_message("Writing your description...")
+            return {"prompt": expander(idea, req.type, seed)}
+
+        return gpu_queue.submit("expand", "expand", run).public()
+
     @app.post("/api/assets/from-text")
-    def from_text() -> JSONResponse:
-        return JSONResponse(
-            {"detail": "Describing a character in words is coming next. For now, choose a "
-                       "picture."}, status_code=501)
+    def from_text(req: TextAssetRequest) -> dict:
+        need_drawer()
+        prompt = clean_words(req.prompt, "a description")
+        try:
+            return store.create_text_asset(req.type, prompt)
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from e
+
+    @app.post("/api/assets/{asset_id}/draw")
+    def draw_reference(asset_id: str, req: DrawRequest) -> dict:
+        need_drawer()
+        try:
+            asset = store.get_asset(asset_id)
+        except NotFound:
+            raise missing("model") from None
+        prompt = clean_words(req.prompt or asset.get("prompt") or "", "a description")
+        store.set_prompt(asset_id, prompt)
+        seed = req.seed if req.seed is not None else secrets.randbelow(2**31)
+
+        def run(job: Job) -> dict:
+            release_writer()  # the idea writer must not hold VRAM while the picture is drawn
+            t0 = time.time()
+            png = drawer.draw(prompt, asset["type"], seed, job.set_message)
+            buf = io.BytesIO()
+            try:
+                prepare_reference(png).save(buf, "PNG")
+            except ValueError as e:
+                raise DrawError("The drawing came out empty. Press Draw another.") from e
+            (store.step_dir(asset_id, "generate") / "input.png").write_bytes(buf.getvalue())
+            return {"seed": seed, "draw_s": round(time.time() - t0, 1)}
+
+        return gpu_queue.submit(asset_id, "generate", run).public()
 
     @app.get("/api/assets")
     def list_assets() -> list[dict]:
@@ -116,6 +221,8 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
             raise missing("model") from None
         except KeyError:
             raise HTTPException(400, "Pick one of the generators in the list.") from None
+        if not (store.step_dir(asset_id, "generate") / "input.png").is_file():
+            raise HTTPException(400, "Draw the picture first, then make the 3D model.")
         seed = req.seed if req.seed is not None else secrets.randbelow(2**31)
         store.write_settings(asset_id, "generate", {
             "generator": generator.id, "seed": seed, "type": asset["type"],
@@ -123,6 +230,7 @@ def create_app(settings: Settings | None = None, registry: Registry | None = Non
         })
 
         def run(job: Job) -> dict:
+            release_writer()  # free the idea writer's VRAM before a 3D run
             sd = store.step_dir(asset_id, "generate")
             t0 = time.time()
             res = generator.run(sd / "input.png", sd, seed, job.set_message)

@@ -5,6 +5,9 @@ const state = {
   file: null, type: null, generator: null, asset: null,
   busy: false, done: false, step: 1, menu: null,
   cleanReady: false, rig: null, bones: false, pose: false, meshUrl: null,
+  expanding: false, source: "", variation: 0, // "Expand my idea": the words it started from
+  reference: false, refUrl: "",               // text-only: the drawn picture is ready to check
+  showing: null,                              // what the viewer shows: "model", "ref" or null
 };
 let viewer = null;
 
@@ -17,6 +20,9 @@ async function api(path, opts) {
   }
   return body;
 }
+const post = (path, data) => api(path, {
+  method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data),
+});
 
 function showMsg(text, kind = "") {
   const m = $("viewer-msg");
@@ -32,6 +38,16 @@ function showMsg(text, kind = "") {
     m.append(document.createTextNode(line));
   });
   m.classList.toggle("hidden", !text);
+}
+function showRef(text) { // the drawn reference picture, shown before the 3D run
+  const m = $("viewer-msg");
+  m.className = "viewer-msg ref";
+  m.textContent = "";
+  const img = document.createElement("img");
+  img.alt = "The picture drawn from your words";
+  img.src = state.refUrl;
+  m.append(img, document.createTextNode(text));
+  state.showing = "ref";
 }
 function makerTime() {
   const g = state.menu && state.menu.generators.find((x) => x.id === state.generator);
@@ -69,23 +85,29 @@ function render() {
   const pill1 = $("pill1");
   pill1.classList.toggle("clickable", !onStep1);
   pill1.onclick = onStep1 ? null : () => backToStep1();
-  redo.classList.toggle("hidden", !onStep1);
+  redo.classList.toggle("hidden", !onStep1 || !state.asset);
   const hint = $("foot-hint");
   hint.textContent = "";
+  const words = $("idea").value.trim();
+  const textOnly = !state.file && !!words;
+  const canDraw = !!(state.menu && state.menu.text_draw.available);
   if (onStep1) {
     if (state.done && !state.busy) {
       next.textContent = "Next: Clean up";
       next.disabled = false;
     } else {
-      next.textContent = state.busy ? "Working..." : "Make 3D model";
-      next.disabled = !state.file || !state.type || state.busy;
+      const needDraw = textOnly && !state.reference;
+      next.textContent = state.busy ? "Working..." : (needDraw && canDraw ? "Draw a picture" : "Make 3D model");
+      const haveInput = state.file || (textOnly && (state.reference || canDraw));
+      next.disabled = !haveInput || !state.type || state.busy || state.expanding;
       if (!state.busy && !state.done) {
-        if (!state.file && !state.type) hint.textContent = "Pick a picture and say what it is, then press Make 3D model.";
-        else if (!state.file) hint.textContent = "Pick a picture first.";
+        if (!state.file && !words && !state.type) hint.textContent = "Pick a picture or describe your model, and say what it is, then press Make 3D model.";
+        else if (!state.file && !words) hint.textContent = "Pick a picture or describe your model first.";
         else if (!state.type) hint.textContent = "Now say what it is (step 2).";
+        else if (needDraw && canDraw) hint.textContent = "Press Draw a picture. You can check it before the 3D model is made.";
       }
     }
-    redo.disabled = state.busy || !state.asset;
+    redo.disabled = state.busy || state.expanding || !state.asset;
   } else if (state.step === 3) {
     next.textContent = state.busy ? "Working..." : state.rig ? "Next: Animate (coming next)" : "Build skeleton";
     next.disabled = state.busy || !!state.rig;
@@ -97,7 +119,32 @@ function render() {
     next.textContent = "Coming next";
     next.disabled = true;
   }
+  const ih = $("idea-hint");
+  const wordCount = words ? words.split(/\s+/).length : 0;
+  const noDraw = !!(state.menu && !state.menu.text_draw.available);
+  $("draw-note").textContent = noDraw ? state.menu.text_draw.note : "";
+  $("draw-note").classList.toggle("hidden", !(noDraw && !state.file && (state.source || wordCount >= 3)));
+  $("expand-why").classList.toggle("hidden", !(words && !state.type));
+  $("expand").disabled = !words || !state.type || state.busy || state.expanding;
+  $("expand").textContent = state.expanding ? "Writing..." : "Expand my idea";
+  $("reroll").classList.toggle("hidden", !state.source);
+  $("reroll").disabled = state.busy || state.expanding || !state.type;
+  $("idea").disabled = state.busy || state.expanding;
+  if (!state.expanding && !ih.classList.contains("error")) {
+    ih.textContent = !words ? "Type a few words, then press Expand my idea. You can edit the result."
+      : !state.type ? ""
+      : state.file ? "Your picture builds the model; your words are kept as notes."
+      : state.source ? "Edit it if you like. Not quite right? Try another version." : "";
+  }
+  grow();
+  $("viewer-hint").classList.toggle("hidden", !(state.showing === "model" && !state.busy));
   $("panel-1").classList.toggle("busy", state.busy);
+}
+
+function grow() { // the box grows with its text (about 8 lines), then scrolls
+  const t = $("idea");
+  t.style.height = "auto";
+  t.style.height = Math.min(t.scrollHeight + 2, 200) + "px";
 }
 
 function buildMenu(menu) {
@@ -136,8 +183,13 @@ function buildMenu(menu) {
   selectType(null);
   selectGenerator(state.generator);
 }
+function newInput() { // the picture or words changed: the old model and drawn picture no longer match
+  state.asset = null;
+  state.done = false;
+  state.reference = false;
+}
 function selectType(id) {
-  if (state.asset && id !== state.type) { state.asset = null; state.done = false; } // new type = new model
+  if (state.asset && id !== state.type) newInput(); // new type = new model
   state.type = id;
   document.querySelectorAll("#types button").forEach((b) =>
     b.setAttribute("aria-checked", String(b.dataset.value === id)));
@@ -152,8 +204,7 @@ function selectGenerator(id) {
 function chooseFile(file) {
   if (!file) return;
   state.file = file;
-  state.asset = null;
-  state.done = false;
+  newInput();
   $("preview").src = URL.createObjectURL(file);
   $("preview").classList.remove("hidden");
   $("drop").classList.add("has-image");
@@ -162,13 +213,41 @@ function chooseFile(file) {
   render();
 }
 
+// Follow a job until it ends. `what` is the plain-words name of the work; the footer says
+// "Waiting for the graphics card..." while the job is only queued and the work once it runs.
+async function follow(jobId, what, onTick) {
+  for (;;) {
+    const j = await api(`/api/jobs/${jobId}`);
+    if (j.state === "done") return j;
+    if (j.state === "failed") throw new Error(j.error || j.message);
+    let text, foot;
+    if (j.state === "waiting") {
+      foot = "Waiting for the graphics card...";
+      text = "Waiting for the graphics card (another job is running)...\nIt starts by itself when the graphics card is free. You can leave this open.";
+    } else if (j.state === "queued") {
+      foot = "Waiting for the graphics card...";
+      text = j.ahead > 0 ? "Waiting for your turn...\nIt starts by itself when the graphics card is free. You can leave this open." : "Getting ready...";
+    } else {
+      foot = what.foot;
+      text = `${what.foot} ${clock(j.elapsed_s)}\n${what.takes()}`;
+    }
+    onTick(foot, text, j.state);
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
+const MODEL = { foot: "Making your model...", takes: () => `This can take ${makerTime()}.` };
+const PICTURE = { foot: "Drawing your picture...", takes: () => "This takes about a minute." };
+const WRITING = { foot: "Writing your description...", takes: () => "" };
+const busyTick = (foot, text) => { $("foot-info").textContent = foot; showMsg(text, "busy"); };
+
 async function start() {
-  if (state.busy || !state.file) return;
+  if (state.busy) return;
+  if (!state.file && !state.reference) return drawPicture();
   state.busy = true;
   render();
   note($("note"), "");
-  $("foot-info").textContent = "Making your model...";
-  showMsg("Sending your picture...", "busy");
+  $("foot-info").textContent = "Getting ready...";
+  showMsg(state.file ? "Sending your picture..." : "Getting ready...", "busy");
   try {
     if (!state.asset) {
       const fd = new FormData();
@@ -177,27 +256,33 @@ async function start() {
       state.asset = await api("/api/assets", { method: "POST", body: fd });
     }
     // a new seed every time: Redo keeps the picture and changes the roll of the dice
-    const job = await api(`/api/assets/${state.asset.id}/generate`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ generator: state.generator }),
-    });
-    await watch(job.id);
+    const job = await post(`/api/assets/${state.asset.id}/generate`, { generator: state.generator });
+    await finish(await follow(job.id, MODEL, busyTick));
   } catch (e) {
     fail(e.message);
   }
 }
 
-async function watch(jobId) {
-  for (;;) {
-    const j = await api(`/api/jobs/${jobId}`);
-    if (j.state === "done") return finish(j);
-    if (j.state === "failed") return fail(j.error || j.message);
-    let text;
-    if (j.state === "waiting") text = "Waiting for the graphics card (another job is running)...\nIt starts by itself when the graphics card is free. You can leave this open.";
-    else if (j.state === "queued") text = j.ahead > 0 ? "Waiting for your turn...\nIt starts by itself when the graphics card is free. You can leave this open." : "Getting ready...";
-    else text = `Making your model... ${clock(j.elapsed_s)}\nThis can take ${makerTime()}.`;
-    showMsg(text, "busy");
-    await new Promise((r) => setTimeout(r, 1000));
+async function drawPicture() { // text only: draw the reference first, so it can be checked
+  state.busy = true;
+  state.done = false;
+  render();
+  note($("note"), "");
+  $("foot-info").textContent = "Getting ready...";
+  showMsg("Getting ready...", "busy");
+  const words = $("idea").value.trim();
+  try {
+    if (!state.asset) state.asset = await post("/api/assets/from-text", { prompt: words, type: state.type });
+    const job = await post(`/api/assets/${state.asset.id}/draw`, { prompt: words });
+    await follow(job.id, PICTURE, busyTick);
+    state.refUrl = `/api/assets/${state.asset.id}/files/generate/input.png?v=${job.id}`;
+    state.reference = true;
+    state.busy = false;
+    $("foot-info").textContent = "Your picture is ready";
+    showRef("Happy with it? Press Make 3D model. Not right? Press Redo for another picture.");
+    render();
+  } catch (e) {
+    fail(e.message);
   }
 }
 
@@ -206,12 +291,13 @@ async function finish(job) {
   showMsg("Loading the model...", "busy");
   try {
     viewer = viewer || new Viewer($("viewer"));
-    await viewer.load(`/api/assets/${job.asset_id}/files/generate/${r.mesh}?v=${job.id}`);
+    state.meshUrl = `/api/assets/${job.asset_id}/files/generate/${r.mesh}?v=${job.id}`;
+    await viewer.load(state.meshUrl);
   } catch {
     return fail("The model was made but I could not show it. Press Redo to try again.");
   }
   showMsg("");
-  $("viewer-hint").classList.remove("hidden");
+  state.showing = "model";
   state.busy = false;
   state.done = true;
   const name = state.menu.generators.find((g) => g.id === r.generator)?.name || r.generator;
@@ -238,6 +324,7 @@ async function backToStep1() {
 // Step 3. TODO(PR #9): Step 2 will call this itself once its clean.glb is written.
 async function goStep3() {
   state.step = 3;
+  state.showing = "model";
   $("skel-type").textContent = `This is ${TYPE_WORDS[state.asset.type] || "a model"}, so it gets a ${
     state.asset.type === "humanoid" ? "human" : "animal"} skeleton.`;
   render();
@@ -307,9 +394,44 @@ async function toggle(which) {
 
 function fail(text) {
   state.busy = false;
-  showMsg(state.done ? "" : "Your model will appear here. Press Make 3D model to try again.");
+  if (state.reference) showRef("Your picture is still here. Press Make 3D model to try again.");
+  else if (state.done) showMsg("");
+  else {
+    showMsg("Your model will appear here. Press Make 3D model to try again.");
+    state.showing = null;
+  }
   note($("note"), text, "error");
   $("foot-info").textContent = "";
+  render();
+}
+
+async function expand(again) {
+  if (state.expanding || state.busy) return;
+  const ih = $("idea-hint");
+  if (!again) { state.source = $("idea").value.trim(); state.variation = 0; }
+  else state.variation += 1;
+  state.expanding = true;
+  ih.classList.remove("error");
+  render();
+  ih.textContent = "Writing your description... The first time takes a few seconds longer.";
+  try {
+    const job = await post("/api/expand", { idea: state.source, type: state.type, variation: state.variation });
+    const j = await follow(job.id, WRITING, (_foot, _text, st) => {
+      ih.textContent = st === "running"
+        ? "Writing your description... The first time takes a few seconds longer."
+        : "Waiting for the graphics card...";
+    });
+    $("idea").value = j.result.prompt;
+    grow();
+    if (!state.file) newInput();
+    if (state.showing === "ref") { showMsg("Your model will appear here."); state.showing = null; }
+    ih.textContent = "";
+  } catch (e) {
+    if (!again) state.source = "";
+    ih.textContent = e.message;
+    ih.classList.add("error");
+  }
+  state.expanding = false;
   render();
 }
 
@@ -323,12 +445,19 @@ async function init() {
     drop.classList.remove("over");
     chooseFile(e.dataTransfer.files[0]);
   };
+  $("idea").oninput = () => {
+    $("idea-hint").classList.remove("error");
+    if (!state.file) newInput();
+    render();
+  };
+  $("expand").onclick = () => expand(false);
+  $("reroll").onclick = () => expand(true);
   $("next").onclick = async () => {
     if (state.step === 3) return buildSkeleton();
     if (state.step === 2) return;
     if (state.done) { state.step = 2; render(); } else start();
   };
-  $("redo").onclick = () => start();
+  $("redo").onclick = () => (state.file || state.done ? start() : drawPicture());
   $("tog-bones").onclick = () => toggle("bones");
   $("tog-pose").onclick = () => toggle("pose");
   try {

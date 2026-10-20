@@ -129,9 +129,10 @@ class GpuQueue:
 def _plain(e: Exception) -> str:
     """Our own errors are already plain words; anything else gets a generic line (the detail
     is in the console and the generator log)."""
+    from .draw import DrawError
     from .generators import GeneratorError
     from .skeleton import RigFailed
 
-    if isinstance(e, GeneratorError | InterruptedError | RigFailed):
+    if isinstance(e, GeneratorError | DrawError | InterruptedError | RigFailed):
         return str(e)
     return "Something went wrong. Press Redo to try again."
