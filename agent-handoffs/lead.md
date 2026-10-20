@@ -1,5 +1,9 @@
 # Asset Forge lead handoff (2026-10-20, session 7, at the 200k guard)
-## State: working; no new work in s7. Six in-process builders finish here, then s8 takes over.
+## State: working; no new work in s7. In-process builders are wrapping up (commit, push, handoff).
+DIRECTOR RULE 2026-10-20: "no more subagents, if you need a helper you spawn a fresh session".
+s8 runs every lane as a fresh session (start_session, own worktree) from the lane handoffs below.
+Rule being recorded by session rule-sessions (local_ec88eef6-2906-402f-88b7-9e8c7d98510d).
+PR #22 (skeleton-fit) open; merge-on-green watcher in s7 (if s7 is gone: merge it on green).
 s7's builders live only inside s7 (they die if s7 is archived). s8: check list_sessions / ListAgents;
 any builder below with no report = respawn fresh from its lane handoff file.
 
