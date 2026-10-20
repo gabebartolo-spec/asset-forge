@@ -82,7 +82,7 @@ def test_a_dead_holder_is_cleared(tmp_path):
     dead.wait()
     (lock / f"holder-{dead.pid}-dead.json").write_text(json.dumps(
         {"owner": "crashed", "pid": dead.pid, "vram_mb": 11000, "exclusive": True}))
-    with gpu_lock(lock, "me", 6800, poll_s=0.01, card=lambda: None):
+    with gpu_lock(lock, "me", vram_mb=6800, poll_s=0.01, card=lambda: None):
         assert [f.name for f in lock.glob("holder-*")] != [f"holder-{dead.pid}-dead.json"]
         assert "crashed" not in lock_owner(lock)
     assert not lock.exists()
@@ -91,11 +91,11 @@ def test_a_dead_holder_is_cleared(tmp_path):
 def test_a_live_holder_blocks_by_budget_and_names_itself(tmp_path):
     lock = tmp_path / "gpu.lock"
     seen = []
-    with gpu_lock(lock, "hi3dgen job", 6800, poll_s=0.01, card=lambda: None):
+    with gpu_lock(lock, "hi3dgen job", vram_mb=6800, poll_s=0.01, card=lambda: None):
         stop = threading.Event()
 
         def second():
-            with gpu_lock(lock, "sdxl", 10800, poll_s=0.01, on_wait=seen.append,
+            with gpu_lock(lock, "sdxl", vram_mb=10800, poll_s=0.01, on_wait=seen.append,
                           cancelled=stop.is_set, card=lambda: None):
                 seen.append("entered")
 
@@ -116,7 +116,7 @@ def test_live_free_memory_is_respected_and_make_room_is_tried(tmp_path):
         calls.append(1)
         free["mb"] = 11000
 
-    with gpu_lock(lock, "draw", 10800, poll_s=0.01, make_room=make_room,
+    with gpu_lock(lock, "draw", vram_mb=10800, poll_s=0.01, make_room=make_room,
                   card=lambda: (free["mb"], 12282)):
         pass
     assert calls == [1]
@@ -125,9 +125,9 @@ def test_live_free_memory_is_respected_and_make_room_is_tried(tmp_path):
 def test_exclusive_holder_waits_for_everyone_and_blocks_everyone(tmp_path):
     lock = tmp_path / "gpu.lock"
     order = []
-    with gpu_lock(lock, "small", 1000, poll_s=0.01, card=lambda: None):
+    with gpu_lock(lock, "small", vram_mb=1000, poll_s=0.01, card=lambda: None):
         def whole():
-            with gpu_lock(lock, "whole", None, poll_s=0.01, card=lambda: None):
+            with gpu_lock(lock, "whole", vram_mb=None, poll_s=0.01, card=lambda: None):
                 order.append("whole")
 
         t = threading.Thread(target=whole)
@@ -193,3 +193,24 @@ def test_every_worktree_layout_shares_the_main_checkouts_lock(tmp_path, monkeypa
     assert shared_models_dir(main) == main / "models"
     monkeypatch.setenv("FORGE_MODELS_DIR", str(tmp_path / "elsewhere"))
     assert shared_models_dir(main) == tmp_path / "elsewhere"
+
+
+def test_old_positional_callers_still_take_the_whole_card(tmp_path):
+    """clean.py and pre-D-030 branches call gpu_lock(lock, owner, poll_s): poll_s must never
+    be read as a VRAM need."""
+    lock = tmp_path / "gpu.lock"
+    with gpu_lock(lock, "clean multiview", 5.0):
+        (entry,) = [json.loads(f.read_text()) for f in lock.glob("holder-*.json")]
+        assert entry["exclusive"] is True
+    assert vram_need("clean:multiview") == 11000
+
+
+def test_clean_command_passes_the_lock_only_when_asked(tmp_path):
+    from asset_forge.steps import clean_command
+
+    args = ("blender", tmp_path, tmp_path / "raw.glb", tmp_path / "clean", "humanoid",
+            tmp_path / "ref.png")
+    assert "--gpu-lock" not in clean_command(*args)
+    assert clean_command(*args, gpu_lock_dir=tmp_path / "gpu.lock")[-2:] == [
+        "--gpu-lock", str(tmp_path / "gpu.lock")]
+    assert vram_need("clean") == 0, "the Clean job itself never waits for the card"

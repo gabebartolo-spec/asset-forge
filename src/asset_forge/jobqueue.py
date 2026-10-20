@@ -143,9 +143,9 @@ class GpuQueue:
                     if self._stop.is_set():
                         raise InterruptedError("stopped while waiting for the graphics card")
                     self._mu.wait(0.5)
-            with gpu_lock(self.lock_dir, f"asset-forge:{job.asset_id}:{job.step}", job.vram_mb,
-                          budget_mb=self.budget_mb, poll_s=self.lock_poll_s, on_wait=on_wait,
-                          cancelled=self._stop.is_set, make_room=self.make_room):
+            with gpu_lock(self.lock_dir, f"asset-forge:{job.asset_id}:{job.step}",
+                          self.lock_poll_s, on_wait, self._stop.is_set, vram_mb=job.vram_mb,
+                          budget_mb=self.budget_mb, make_room=self.make_room):
                 self._admitted(job)
                 job.state = RUNNING
                 job.started = time.time()

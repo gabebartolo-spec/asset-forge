@@ -41,6 +41,7 @@ VRAM_MB: dict[str, int] = {
     "generate:step1x": 5800,
     "generate:triposr": 5400,
     "draw:sdxl": 10800,
+    "clean:multiview": 11000,  # MV-Adapter views inside Clean (its VRAM_CAP_GB 11.0): whole card
     "expand:qwen": 4200,
     "clean": 0,  # remesh, decimate, merge, UV (Blender, CPU)
     "skeleton": 0,  # template fit, bind, weights (Blender, CPU)
@@ -215,18 +216,20 @@ def _leave(lock: Path, holder: Path, poll_s: float) -> None:
 def gpu_lock(
     lock: Path,
     owner: str,
-    vram_mb: int | None = None,
-    *,
-    budget_mb: int = DEFAULT_BUDGET_MB,
     poll_s: float = 1.0,
     on_wait: Callable[[str], None] | None = None,
     cancelled: Callable[[], bool] | None = None,
+    *,
+    vram_mb: int | None = None,
+    budget_mb: int = DEFAULT_BUDGET_MB,
     make_room: Callable[[], None] | None = None,
     card: Callable[[], tuple[int, int] | None] | None = None,
 ) -> Iterator[None]:
     """Hold `vram_mb` of the card's budget while the block runs. `vram_mb=None` takes the whole
     card (the old one-at-a-time lock); 0 means CPU only and returns at once. `make_room` is
-    called once when only the live free memory is short (e.g. to unload an idle model)."""
+    called once when only the live free memory is short (e.g. to unload an idle model).
+    The positional arguments are the old lock's (lock, owner, poll_s, on_wait, cancelled), so
+    callers written before D-030 keep the whole card unchanged."""
     if vram_mb == 0:
         yield
         return

@@ -50,8 +50,7 @@ def gpu_lock(owner: str, poll_s: float = 5.0, vram_mb: int | None = None):
             print(f"[gpu_lock] waiting for {held}", file=sys.stderr, flush=True)
             said.append(held)
 
-    return _budget_lock(LOCK, owner, vram_mb, budget_mb=_budget(), poll_s=poll_s,
-                        on_wait=on_wait)
+    return _budget_lock(LOCK, owner, poll_s, on_wait, vram_mb=vram_mb, budget_mb=_budget())
 
 
 def main(argv: list[str]) -> int:

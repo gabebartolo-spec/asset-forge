@@ -1,7 +1,7 @@
 # Handoff: gpu-pool (builder)
 
 Date: 2026-10-20. State: done; PR #28 open and ready, CI running, Auto-fix on (lead merges). Branch `claude/gpu-pool`
-(commit 8237abf + this handoff),
+(8237abf; lead follow-up: Clean hook + positional fix in the next commit),
 worktree `.claude/worktrees/confident-allen-f3502b`.
 
 ## Task (lead brief, director 2026-10-20: "why is there only 1 gpu queue? open as many as you can")
@@ -19,6 +19,11 @@ Replace the one-at-a-time `models/gpu.lock` with a VRAM budget (D-030 in the PR'
   folder (< 2 s) is treated as an old holder starting. Old code waits while any new entry exists.
 - `VRAM_MB` table (one place): hi3dgen 6800, triposg 6300, step1x 5800, triposr 5400, draw:sdxl
   10800, expand:qwen 4200; clean/skeleton/animate/measure/sprite-post 0. Unknown type = exclusive.
+- Lead follow-up (2026-10-20): `gpu_lock` keeps the OLD positional order (lock, owner, poll_s,
+  on_wait, cancelled); `vram_mb` is keyword-only, because clean.py (reverent-liskov worktree)
+  calls `gpu_lock(path, "clean multiview", 5.0)`. Row `clean:multiview` 11000 (whole card;
+  MV-Adapter VRAM_CAP_GB 11.0). Clean job = 0 MB; `steps.clean_command(..., gpu_lock_dir=)`
+  adds `--gpu-lock DIR`. Wiring it into the Clean job waits for #9 (not in main yet).
 - `shared_models_dir(repo)`: reads the worktree's `.git` file to find the main checkout. Fixed an
   old bug: from `.claude/worktrees/<name>` the old CLI and config used the worktree's own
   `models/` (a private lock nobody else saw).
@@ -48,6 +53,8 @@ Replace the one-at-a-time `models/gpu.lock` with a VRAM budget (D-030 in the PR'
   worktree lock that the unit tests could not see.
 
 ## Next
+- #9 author: submit Clean with step "clean" (0 MB), pass `gpu_lock_dir=settings.lock_dir`, and
+  have clean.py pass `vram_mb=vram_need("clean:multiview")`.
 - Lead: merge; record D-030; tell running agents they may pass `--vram <MB>` from the table.
 - Follow-up: measure Blender bake/render VRAM and add rows; forge-tests "never while the director
   is in a fullscreen game" contradicts the rulebook (lead's call).
