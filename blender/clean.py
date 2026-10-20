@@ -524,7 +524,82 @@ def fill_colour(c, s, edges, deg):
     return diffuse(out, edges, deg, 3)
 
 
-def bake_colour(obj, ref, d0, size):
+# Measured colour gates for animals (Step 2 fidelity check). Regions are boxes in the reference
+# outline's own normalised coordinates (u from the left, v from the TOP of the bounding box);
+# the same boxes are read on the reference picture and on the saved albedo, through the same
+# registration, over every texel (so the front of the chest counts, not only the picture's side).
+# Only references named here are checked.
+REGION_GATES = {
+    "fox": {
+        "chest": (0.08, 0.28, 0.38, 0.58),
+        "flank": (0.35, 0.65, 0.25, 0.55),
+        "tail_body": (0.80, 0.97, 0.30, 0.70),
+        "tail_tip": (0.90, 1.00, 0.72, 1.00),
+        "legs": (0.00, 0.90, 0.78, 1.00),
+    },
+}
+DARK_LUMA = 0.20    # a dark (black sock) pixel
+PALE_LUMA_MIN, PALE_SAT_MAX = 0.55, 0.22   # a white/pale pixel
+
+
+def region_stats(rgb):
+    mx, mn = rgb.max(axis=1), rgb.min(axis=1)
+    sa = (mx - mn) / np.maximum(mx, 1e-6)
+    lu = luma(rgb)
+    return {"n": int(len(rgb)), "rgb": rgb.mean(axis=0), "p90_luma": float(np.quantile(lu, 0.9)),
+            "pale": float(((lu > PALE_LUMA_MIN) & (sa < PALE_SAT_MAX)).mean()),
+            "dark": float((lu < DARK_LUMA).mean())}
+
+
+def region_gate_checks(ref_s, tex_s):
+    """(name, measured, limit text, ok) per gate; ref_s/tex_s are region_stats by region."""
+    d = lambda k: float(np.linalg.norm(tex_s[k]["rgb"] - ref_s[k]["rgb"]))  # noqa: E731
+    out = [
+        ("legs_dark_fraction", tex_s["legs"]["dark"], f">= {0.5 * ref_s['legs']['dark']:.2f}",
+         tex_s["legs"]["dark"] >= 0.5 * ref_s["legs"]["dark"]),
+        ("chest_p90_luma_ratio", tex_s["chest"]["p90_luma"] / max(ref_s["chest"]["p90_luma"], 1e-6),
+         "0.85 .. 1.25",
+         0.85 <= tex_s["chest"]["p90_luma"] / max(ref_s["chest"]["p90_luma"], 1e-6) <= 1.25),
+        ("chest_pale_fraction", tex_s["chest"]["pale"], f">= {0.6 * ref_s['chest']['pale']:.2f}",
+         tex_s["chest"]["pale"] >= 0.6 * ref_s["chest"]["pale"]),
+        ("flank_colour_distance", d("flank"), "<= 0.12", d("flank") <= 0.12),
+        ("tail_body_colour_distance", d("tail_body"), "<= 0.15", d("tail_body") <= 0.15),
+        ("tail_body_pale_fraction", tex_s["tail_body"]["pale"],
+         f"<= {ref_s['tail_body']['pale'] + 0.10:.2f}",
+         tex_s["tail_body"]["pale"] <= ref_s["tail_body"]["pale"] + 0.10),
+        ("tail_tip_pale_fraction", tex_s["tail_tip"]["pale"],
+         f">= {0.6 * ref_s['tail_tip']['pale']:.2f}",
+         tex_s["tail_tip"]["pale"] >= 0.6 * ref_s["tail_tip"]["pale"]),
+    ]
+    return out
+
+
+def region_gates(name, ref, reg, right, p, colour):
+    boxes = REGION_GATES.get(name)
+    if not boxes:
+        return None
+    rw1, rh1 = reg.rx1 - 1 - reg.rx0, reg.ry1 - 1 - reg.ry0
+    rm = ref_mask(ref)
+    yy, xx = np.mgrid[0:ref.shape[0], 0:ref.shape[1]]
+    ru, rv = (xx - reg.rx0) / max(rw1, 1), 1 - (yy - reg.ry0) / max(rh1, 1)
+    px, py = reg.to_ref(p @ right, p[:, 2])
+    tu, tv = (px - reg.rx0) / max(rw1, 1), 1 - (py - reg.ry0) / max(rh1, 1)
+    ref_s, tex_s = {}, {}
+    for k, (u0, u1, v0, v1) in boxes.items():
+        ref_s[k] = region_stats(ref[rm & (ru >= u0) & (ru < u1) & (rv >= v0) & (rv < v1)][:, :3])
+        sel = (tu >= u0) & (tu < u1) & (tv >= v0) & (tv < v1)
+        tex_s[k] = region_stats(colour[sel])
+    checks = region_gate_checks(ref_s, tex_s)
+    fmt = lambda s: {k: ([round(float(x), 3) for x in v] if k == "rgb" else round(v, 3))  # noqa
+                     for k, v in s.items()}
+    return {"reference": name, "passed": all(c[3] for c in checks),
+            "gates": [{"gate": c[0], "value": round(float(c[1]), 3), "limit": c[2], "ok": bool(c[3])}
+                      for c in checks],
+            "reference_regions": {k: fmt(v) for k, v in ref_s.items()},
+            "albedo_regions": {k: fmt(v) for k, v in tex_s.items()}}
+
+
+def bake_colour(obj, ref, d0, size, ref_name=None):
     """Project `ref` onto obj (see module docstring). Returns (RGBA array, stats, info)."""
     me = obj.data
     me.calc_loop_triangles()
@@ -702,6 +777,7 @@ def bake_colour(obj, ref, d0, size):
         pc_used = fill_t[kk] + dev * scale[:, None]
         colour[kk] = alpha_t[kk, None] * pc_used + (1 - alpha_t[kk, None]) * fill_t[kk]
     alpha_used = np.where(known, alpha_t, 0.0)
+    gates = region_gates(ref_name, ref, reg, right, p, colour)
     painted = int((alpha_used > 0.5).sum())
 
     img = np.zeros((size, size, 4), np.float32)
@@ -729,6 +805,7 @@ def bake_colour(obj, ref, d0, size):
         "mirrored_far_side": False,
         "mirrored_left_right": bool(mirror),
         "mirrored_points": int(n_mirrored[0]),
+        "region_gates": gates,
         "registration": {
             "method": "outline fit: per-axis bbox scale + smoothed per-row shift (centre of the "
                       f"reference outline onto the centre of the model outline), {REG_ROWS} rows",
@@ -976,7 +1053,7 @@ def main():
     lap("uv_unwrap", t0)
 
     t0 = time.perf_counter()
-    img_arr, bake_stats, bake_info = bake_colour(work, ref, d0, tex_px)
+    img_arr, bake_stats, bake_info = bake_colour(work, ref, d0, tex_px, Path(o["ref"]).stem)
     img = make_material(work, img_arr, out, tex_px)
     albedo = albedo_check(out / "texture.png", bake_info, ref)
     lap("colour_bake", t0)
